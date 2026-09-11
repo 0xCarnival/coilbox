@@ -19,7 +19,7 @@ import { componentsFor, type CreatableKind } from '../document/factory.js';
 import { isFiniteJsonNumber, isJsonString, jsonQuaternion, jsonVec3 } from '../json-values.js';
 import { ChevronRight, Plus } from 'lucide-react';
 import { useScrub } from '../ui/useScrub.js';
-import { FieldShell, ScrubLabel } from '../ui/Field.js';
+import { FieldShell, ScrubLabel, Select } from '../ui/Field.js';
 import { Switch } from '../ui/Field.js';
 import { Button } from '../ui/Button.js';
 import {
@@ -258,10 +258,30 @@ const styles = stylex.create({
     gap: space.xs,
     flex: 1,
   },
+  /**
+   * A vector row's name sits *outside* the box, not inside it.
+   *
+   * One box around three numbers is what the reference does — the three axes are one value, and
+   * three separately bordered inputs would read as three unrelated settings. The name labels the
+   * group, so it belongs on the group's edge.
+   */
+  fieldLabelBare: {
+    flexShrink: 0,
+    flexBasis: '88px',
+    paddingInlineStart: space.lg,
+    fontSize: fontSize.xs,
+    fontWeight: 500,
+    color: color.muted,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
   axis: {
     display: 'flex',
     alignItems: 'center',
-    gap: '3px',
+    gap: '2px',
+    flex: 1,
+    minWidth: 0,
   },
   /**
    * `.axis span`. The axis letter stays at 10px: it is a colour-coded suffix on a number, not a
@@ -286,9 +306,30 @@ const styles = stylex.create({
   axisLabelDragging: {
     color: color.text,
   },
-  /** `.axis input` — the width moves onto the input itself. */
+  /**
+   * `.axis input` — borderless and transparent, because the surrounding field box is the control
+   * now. An input drawing its own border inside a bordered shell is two boxes for one value.
+   */
   axisInput: {
     width: '100%',
+    height: '22px',
+    paddingInline: space.xs,
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    borderStyle: 'none',
+    color: color.text,
+    fontSize: fontSize.sm,
+    textAlign: 'right',
+    fontVariantNumeric: 'tabular-nums',
+    ':hover': {
+      borderWidth: 0,
+      borderColor: 'transparent',
+    },
+    ':focus': {
+      outline: 'none',
+      borderColor: 'transparent',
+      backgroundColor: color.wash,
+    },
   },
   /**
    * `.advanced button`: the disclosure row's own chrome. A quiet text disclosure with a chevron,
@@ -765,21 +806,13 @@ function Field({
       );
     case 'enum':
       return (
-        <label {...withDomClass(styles.field, DOM.field)}>
-          <span {...withDomClass(styles.fieldLabel, DOM.fieldLabel)}>{field.label}</span>
-          <select
-            {...stylex.props(styles.fieldControl)}
-            value={String(value ?? '')}
-            disabled={disabled}
-            onChange={(event) => onChange(coerceEnum(field, event.target.value))}
-          >
-            {(field.options ?? []).map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        <SelectField
+          label={field.label}
+          value={String(value ?? '')}
+          disabled={disabled}
+          options={(field.options ?? []).map((option) => ({ value: option.value, label: option.label }))}
+          onValueChange={(next) => onChange(coerceEnum(field, next))}
+        />
       );
     case 'vec3':
     case 'positive-vec3':
@@ -811,46 +844,39 @@ function Field({
       const kind = field.key === 'assetId' && entity.components.some((component) => component.type === 'audio') ? 'audio' : 'model';
       const options = snapshot.assets.filter((asset) => asset.kind === kind);
       return (
-        <label {...withDomClass(styles.field, DOM.field)}>
-          <span {...withDomClass(styles.fieldLabel, DOM.fieldLabel)}>{field.label}</span>
-          <select
-            {...stylex.props(styles.fieldControl)}
-            value={isJsonString(value) ? value : ''}
-            disabled={disabled}
-            onChange={(event) => onChange(event.target.value)}
-          >
-            <option value="">None</option>
-            {options.map((asset) => (
-              <option key={asset.id} value={asset.id}>
-                {asset.id}
-              </option>
-            ))}
-            {isJsonString(value) && value.length > 0 && !options.some((asset) => asset.id === value) && (
-              <option value={value}>{value} (missing)</option>
-            )}
-          </select>
-        </label>
+        <SelectField
+          label={field.label}
+          value={isJsonString(value) ? value : ''}
+          disabled={disabled}
+          options={[
+            { value: '', label: 'None' },
+            ...options.map((asset) => ({ value: asset.id, label: asset.id })),
+            /**
+             * A reference to an asset that is no longer in the manifest stays selectable and says
+             * so. Dropping it would silently rewrite the document to "None" the moment the field
+             * rendered, which is the failure this panel exists to prevent.
+             */
+            ...(isJsonString(value) && value.length > 0 && !options.some((asset) => asset.id === value)
+              ? [{ value, label: `${value} (missing)` }]
+              : []),
+          ]}
+          onValueChange={(next) => onChange(next)}
+        />
       );
     }
     case 'clip-reference': {
       const clips = snapshot.modelClips[entity.id] ?? [];
       return (
-        <label {...withDomClass(styles.field, DOM.field)}>
-          <span {...withDomClass(styles.fieldLabel, DOM.fieldLabel)}>{field.label}</span>
-          <select
-            {...stylex.props(styles.fieldControl)}
-            value={isJsonString(value) ? value : ''}
-            disabled={disabled || clips.length === 0}
-            onChange={(event) => onChange(event.target.value === '' ? null : event.target.value)}
-          >
-            <option value="">{clips.length === 0 ? 'No clips loaded' : 'First clip'}</option>
-            {clips.map((clip) => (
-              <option key={clip} value={clip}>
-                {clip}
-              </option>
-            ))}
-          </select>
-        </label>
+        <SelectField
+          label={field.label}
+          value={isJsonString(value) ? value : ''}
+          disabled={disabled || clips.length === 0}
+          options={[
+            { value: '', label: clips.length === 0 ? 'No clips loaded' : 'First clip' },
+            ...clips.map((clip) => ({ value: clip, label: clip })),
+          ]}
+          onValueChange={(next) => onChange(next === '' ? null : next)}
+        />
       );
     }
     case 'entity-reference':
@@ -974,8 +1000,13 @@ function VectorField({
   onChange(value: Vec3): void;
 }): JSX.Element {
   return (
-    <div {...withDomClass(styles.vectorField, DOM.vectorField)}>
-      {label && <span {...withDomClass(styles.fieldLabel, DOM.fieldLabel)}>{label}</span>}
+    <FieldShell
+      bare
+      hookProps={withDomClass(styles.vectorField, DOM.vectorField)}
+      label={
+        label ? <span {...withDomClass(styles.fieldLabelBare, DOM.fieldLabel)}>{label}</span> : undefined
+      }
+    >
       <div {...stylex.props(styles.vectorInputs)}>
         {(['X', 'Y', 'Z'] as const).map((axis, index) => (
           <ScrubAxisInput
@@ -990,7 +1021,7 @@ function VectorField({
           />
         ))}
       </div>
-    </div>
+    </FieldShell>
   );
 }
 
@@ -1059,6 +1090,64 @@ function ScrubAxisInput({
   );
 }
 
+/**
+ * One axis of the rotation row.
+ *
+ * It is separate from `ScrubAxisInput` because rotation is stored as a quaternion and shown in
+ * degrees: the scrub has to convert the whole triple back through Euler angles on every step, which
+ * is a different write than setting one component of a stored vector.
+ */
+function ScrubRotationAxis({
+  axis,
+  componentIndex,
+  degrees,
+  disabled,
+  onChange,
+}: {
+  axis: 'X' | 'Y' | 'Z';
+  componentIndex: number;
+  degrees: Vec3;
+  disabled: boolean;
+  onChange(value: Quat): void;
+}): JSX.Element {
+  const setComponent = (next: number) => {
+    const out: Vec3 = [degrees[0], degrees[1], degrees[2]];
+    out[componentIndex] = next;
+    onChange(eulerDegreesToQuaternion(out));
+  };
+  const scrub = useScrub({
+    value: degrees[componentIndex],
+    onChange: setComponent,
+    step: 1,
+    disabled,
+  });
+
+  return (
+    <label {...stylex.props(styles.axis)}>
+      <span
+        {...stylex.props(styles.axisLabel, scrub.dragging && styles.axisLabelDragging)}
+        onPointerDown={scrub.onPointerDown}
+        title={`${axis} — drag to change, Shift for coarse, Alt for fine`}
+      >
+        {axis}
+      </span>
+      <input
+        {...stylex.props(styles.axisInput)}
+        type="number"
+        step={1}
+        disabled={disabled}
+        aria-label={`${axis} component`}
+        value={Number.isFinite(degrees[componentIndex]) ? Number(degrees[componentIndex]!.toFixed(3)) : ''}
+        onChange={(event) => {
+          const parsed = Number(event.target.value);
+          if (!Number.isFinite(parsed)) return;
+          setComponent(parsed);
+        }}
+      />
+    </label>
+  );
+}
+
 function RotationField({
   value,
   disabled,
@@ -1070,30 +1159,66 @@ function RotationField({
 }): JSX.Element {
   const degrees = quaternionToEulerDegrees(value);
   return (
-    <div {...withDomClass(styles.vectorField, DOM.vectorField)}>
-      <span {...withDomClass(styles.fieldLabel, DOM.fieldLabel)}>Rotation (°)</span>
+    <FieldShell
+      bare
+      hookProps={withDomClass(styles.vectorField, DOM.vectorField)}
+      label={
+        <span {...withDomClass(styles.fieldLabelBare, DOM.fieldLabel)}>Rotation (°)</span>
+      }
+    >
       <div {...stylex.props(styles.vectorInputs)}>
         {(['X', 'Y', 'Z'] as const).map((axis, index) => (
-          <label key={axis} {...stylex.props(styles.axis)}>
-            <span {...stylex.props(styles.axisLabel)}>{axis}</span>
-            <input
-              {...stylex.props(styles.axisInput)}
-              type="number"
-              step={1}
-              disabled={disabled}
-              value={Number.isFinite(degrees[index]) ? Number(degrees[index]!.toFixed(3)) : ''}
-              onChange={(event) => {
-                const parsed = Number(event.target.value);
-                if (!Number.isFinite(parsed)) return;
-                const next: Vec3 = [degrees[0], degrees[1], degrees[2]];
-                next[index] = parsed;
-                onChange(eulerDegreesToQuaternion(next));
-              }}
-            />
-          </label>
+          <ScrubRotationAxis
+            key={axis}
+            axis={axis}
+            componentIndex={index}
+            degrees={degrees}
+            disabled={disabled}
+            onChange={onChange}
+          />
         ))}
       </div>
-    </div>
+    </FieldShell>
+  );
+}
+
+/**
+ * A labelled picker: the field box, the label, and a Radix `Select`.
+ *
+ * The reference uses a real select for every enumerated property, which is what gives a long option
+ * list a scroll affordance, keyboard traversal, and a typeahead. A native `<select>` cannot be styled
+ * to match the field boxes around it — the popup is the platform's — so the field would have been the
+ * one control in the panel that looked like the operating system rather than the editor.
+ *
+ * Radix renders this as a `[role="combobox"]` button plus a portalled listbox, so the browser gate
+ * helper drives whichever of the two shapes it finds.
+ */
+function SelectField({
+  label,
+  value,
+  options,
+  onValueChange,
+  disabled,
+}: {
+  label: string;
+  value: string;
+  options: readonly { value: string; label: string }[];
+  onValueChange(next: string): void;
+  disabled: boolean;
+}): JSX.Element {
+  return (
+    <FieldShell
+      hookProps={withDomClass(styles.field, DOM.field)}
+      label={<span {...withDomClass(styles.fieldLabel, DOM.fieldLabel)}>{label}</span>}
+    >
+      <Select
+        label={label}
+        value={value}
+        options={options}
+        disabled={disabled}
+        onValueChange={onValueChange}
+      />
+    </FieldShell>
   );
 }
 

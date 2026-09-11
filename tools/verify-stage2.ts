@@ -190,7 +190,18 @@ async function main(): Promise<void> {
     await page.click('.add-component button:has-text("Add component")');
     await page.click('.add-menu [role="menuitem"]:has-text("Animation")');
     await page.waitForSelector('.section-title:has-text("Animation")', { timeout: 10_000 });
-    const clipOptions = await page.locator('.section:has-text("Animation") select').first().locator('option').allTextContents();
+    /**
+     * The clip list is read by opening the picker, because the control is a Radix dropdown now and
+     * has no `<option>` elements to enumerate. What the check is actually asking is "does the loaded
+     * model offer a clip called Hop", and that question survives the control changing shape.
+     */
+    const clipField = page.locator('.section:has-text("Animation") .field:has(.field-label:text-is("Clip"))').first();
+    await clipField.locator('[role="combobox"]').first().click();
+    const clipOptions = await page.locator('[role="option"]').evaluateAll((els) =>
+      els.map((el) => el.getAttribute('data-value') ?? ''),
+    );
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(150);
     await selectField(page, 'Clip', 'Hop', { section: 'Animation' });
 
     const animating = await page.evaluate(async () => {
@@ -618,12 +629,47 @@ async function setColorField(page: Page, label: string, value: string): Promise<
   await page.waitForTimeout(200);
 }
 
+/**
+ * Choose an option in a component field.
+ *
+ * The Inspector's pickers moved from a native `<select>` to a Radix dropdown, which renders a button
+ * plus a portalled listbox rather than a `<select>`. This drives whichever is present, so the gate is
+ * pinned to "choose the option called X" rather than to the element type underneath — the same reason
+ * the toolbar's icon-only buttons are selected by accessible name.
+ */
+/**
+ * Choose an option in a component field.
+ *
+ * The Inspector's pickers moved from a native `<select>` to a Radix dropdown, which renders a button
+ * plus a portalled listbox rather than a `<select>`. This drives whichever is present, so the gate is
+ * pinned to "choose the option called X" rather than to the element type underneath — the same reason
+ * the toolbar's icon-only buttons are selected by accessible name.
+ *
+ * The option may be named by its stored value (`box`) or by the label it shows (`Box`); both are
+ * published on the option, so the caller says which it means.
+ */
+async function pickOption(page: Page, value: string): Promise<void> {
+  const option = page
+    .locator(`[role="option"][data-value="${value}"], [role="option"][data-label="${value}"]`)
+    .first();
+  await option.click();
+  await page.waitForTimeout(120);
+}
+
 async function setComponentSelect(page: Page, label: string, value: string, options: { section?: string } = {}): Promise<void> {
   const scope = options.section ? page.locator(`.section:has(.section-title:text-is("${options.section}"))`).first() : page;
-  const select = scope.locator(`.field:has(.field-label:text-is("${label}")) select`).first();
-  if ((await select.count()) === 0) return;
-  await select.selectOption(value);
-  await page.waitForTimeout(120);
+  const field = scope.locator(`.field:has(.field-label:text-is("${label}"))`).first();
+  if ((await field.count()) === 0) return;
+
+  const native = field.locator('select').first();
+  if ((await native.count()) > 0) {
+    await native.selectOption(value);
+    await page.waitForTimeout(120);
+    return;
+  }
+
+  await field.locator('[role="combobox"]').first().click();
+  await pickOption(page, value);
 }
 
 async function selectField(page: Page, label: string, value: string, options: { section?: string } = {}): Promise<void> {

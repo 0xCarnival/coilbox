@@ -205,6 +205,22 @@ export const Select = React.forwardRef<
                 key={option.value}
                 value={option.value}
                 disabled={option.disabled}
+                /**
+                 * The authored value, as a data attribute.
+                 *
+                 * Radix keeps the value in React state and renders only the label, so a test driving
+                 * this list has nothing stable to select on but the visible text — and the text is a
+                 * display label ("Box", "Static (never moves)") while the value is what the document
+                 * stores ("box", "static"). Publishing the value is what lets a check choose the
+                 * option by the thing it actually means.
+                 */
+                data-value={option.value}
+                /**
+                 * The display label too, because a caller can reasonably name an option by either.
+                 * `Shape` stores `box` and shows `Box`; `Asset` stores and shows `spinning-crate`.
+                 * Publishing both lets a check say which it means instead of the helper guessing.
+                 */
+                data-label={option.label}
                 className={mergedClass(surface.menuItem, selectStyles.item)}
               >
                 <span {...stylex.props(selectStyles.itemIndicator)}>
@@ -396,6 +412,18 @@ const shellStyles = stylex.create({
     minWidth: 0,
     paddingInlineEnd: space.sm,
   },
+  /**
+   * A bare row: the label column and the control slot, with no box of its own.
+   *
+   * A vector row draws one box around all three of its numbers — they are one value — so the row
+   * itself must not add a second.
+   */
+  bareRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: space.sm,
+    minHeight: controlSize.sm,
+  },
   /** A bare box with no label column, for a control that supplies its own context (a vector row). */
   controlBare: {
     display: 'flex',
@@ -466,12 +494,23 @@ export function FieldShell({
    * `coilbox/no-classname-after-spread` exists to prevent, reached through a spread rather than
    * through a literal `className`, which is why the rule did not catch it.
    */
-  const shell = stylex.props(shellStyles.shell);
+  const shell = stylex.props(bare ? shellStyles.bareRow : shellStyles.shell);
   const merged = hookProps?.className ? { ...shell, className: `${shell.className ?? ''} ${hookProps.className}`.trim() } : shell;
+  /**
+   * `bare` drops the box, not the label.
+   *
+   * A vector row supplies its own box — one around three numbers, rather than three — but the row
+   * still needs its name on the edge, aligned to the same column as every other field's label. The
+   * first version treated `bare` as "no label either", and the Transform rows rendered as three
+   * unlabelled triples of numbers.
+   */
+  const showLabel = label !== undefined;
   return (
     <div {...merged}>
-      {!bare && label !== undefined ? label : null}
-      <span {...stylex.props(bare ? shellStyles.controlBare : shellStyles.control)}>{children}</span>
+      {showLabel ? label : null}
+      <span {...stylex.props(bare && !showLabel ? shellStyles.controlBare : shellStyles.control)}>
+        {children}
+      </span>
     </div>
   );
 }

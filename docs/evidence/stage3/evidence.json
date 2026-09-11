@@ -1,8 +1,8 @@
 {
   "stage": 3,
-  "generatedAt": "2026-09-11T22:46:59.239Z",
+  "generatedAt": "2026-09-11T23:12:45.429Z",
   "node": "v24.18.0",
-  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage3-rd7TEf",
+  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage3-WIJ4Uk",
   "steps": [
     {
       "name": "typecheck",
@@ -78,16 +78,16 @@
       "id": "collect-room-input",
       "title": "Keyboard input drives the character mover, and it stays on the floor",
       "passed": true,
-      "detail": "player moved 5.71 m from (0.0, -6.0) to (0.0, -0.3); y went -0.00 → -0.00",
+      "detail": "player moved 5.71 m from (0.0, -6.0) to (0.0, -0.3); y went 1.69 → 0.00",
       "observed": {
         "beforeWalk": {
           "x": 0,
-          "y": -3.973641860000043e-9,
+          "y": 1.6944444179534912,
           "z": -6
         },
         "afterWalk": {
           "x": 0,
-          "y": -3.973640971821624e-9,
+          "y": 1.986823372490676e-9,
           "z": -0.2916548550128937
         },
         "walked": 5.708345144987106,
@@ -102,17 +102,17 @@
       "observed": {
         "atWall": {
           "x": 0,
-          "y": 7.947290825427444e-9,
+          "y": 7.947289937249025e-9,
           "z": 7.400000095367432
         },
         "stillAtWall": {
           "x": 0,
-          "y": 7.947291713605864e-9,
+          "y": 1.986826481115145e-9,
           "z": 7.400000095367432
         },
         "slid": {
           "x": 2.9169421195983887,
-          "y": -3.973636975018735e-9,
+          "y": -9.93410154137564e-9,
           "z": 7.400000095367432
         },
         "approachGap": 0,
@@ -153,10 +153,10 @@
       "id": "collect-room-restart-position",
       "title": "After a restart the player is standing in the rebuilt level, not falling",
       "passed": true,
-      "detail": "player at (0.0, -0.00, -6.0) after restart",
+      "detail": "player at (0.0, 0.00, -6.0) after restart",
       "observed": {
         "x": 0,
-        "y": -9.934105982267738e-9,
+        "y": 7.947287272713766e-9,
         "z": -6
       }
     },
@@ -217,14 +217,14 @@
       "id": "targets-physics",
       "title": "Clicking launches the ball and knocking targets down updates the score",
       "passed": true,
-      "detail": "5 targets knocked down, score 5, launches 8",
+      "detail": "5 targets knocked down, score 5, launches 6",
       "observed": {
         "knocked": 5,
         "boardState": {
           "score": 5,
           "targetsDown": 5,
-          "launches": 8,
-          "timeRemaining": 50.78,
+          "launches": 6,
+          "timeRemaining": 52.98,
           "won": true,
           "lost": false,
           "scoreTarget": 5,
@@ -258,9 +258,9 @@
       "id": "editor-tuning-affects-play",
       "title": "The edited tuning value changes how the game plays",
       "passed": true,
-      "detail": "with move speed 12 the player covered 11.06 m over 72 simulated steps; at the default 5 m/s the same time allows 6.00 m",
+      "detail": "with move speed 12 the player covered 11.25 m over 72 simulated steps; at the default 5 m/s the same time allows 6.00 m",
       "observed": {
-        "studioWalked": 11.055485725402832,
+        "studioWalked": 11.252403259277344,
         "defaultSpeedDistance": 6,
         "before": {
           "x": 0,
@@ -269,8 +269,8 @@
         },
         "after": {
           "x": 0,
-          "y": 7.947288160892185e-9,
-          "z": 5.055485725402832
+          "y": -3.973640971821624e-9,
+          "z": 5.252403259277344
         }
       }
     },

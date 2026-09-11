@@ -885,11 +885,29 @@ async function enterName(page: Page, name: string): Promise<void> {
   await page.waitForTimeout(150);
 }
 
-/** Choose an option in a component field, e.g. the Model section's "Asset" picker. */
+/**
+ * Choose an option in a component field, e.g. the Model section's "Asset" picker.
+ *
+ * Handles both the native `<select>` this used to be and the Radix dropdown it is now — see the
+ * helper of the same name in `verify-stage2.ts` for why the gate is written against the choice
+ * rather than the element.
+ */
 async function selectComponentField(page: Page, label: string, value: string): Promise<void> {
-  const select = page.locator(`.field:has(.field-label:text-is("${label}")) select`).first();
-  if ((await select.count()) === 0) throw new Error(`no "${label}" select in the inspector`);
-  await select.selectOption(value);
+  const field = page.locator(`.field:has(.field-label:text-is("${label}"))`).first();
+  if ((await field.count()) === 0) throw new Error(`no "${label}" field in the inspector`);
+
+  const native = field.locator('select').first();
+  if ((await native.count()) > 0) {
+    await native.selectOption(value);
+    await page.waitForTimeout(120);
+    return;
+  }
+
+  await field.locator('[role="combobox"]').first().click();
+  const option = page
+    .locator(`[role="option"][data-value="${value}"], [role="option"][data-label="${value}"]`)
+    .first();
+  await option.click();
   await page.waitForTimeout(120);
 }
 
