@@ -312,7 +312,10 @@ async function main(): Promise<void> {
       observed: { exportDir },
     });
 
-    // The editor service is no longer needed: serve the export on its own origin.
+    // The editor service is no longer needed: serve the export on its own origin. The editor page
+    // is closed first, because an open tab keeps polling the service and would turn its shutdown
+    // into console errors that have nothing to do with the product.
+    await page.close();
     await api.close();
     const exportServer = await startStaticServer({ root: exportDir, prefix: '/games/stage1/', quiet: true });
     try {
@@ -323,7 +326,9 @@ async function main(): Promise<void> {
         timeout: 30_000,
       });
       await exportPage.evaluate(() => window.__PLAYER__?.ready);
-      await exportPage.waitForTimeout(2000);
+      // Steps, not seconds: the check is that the exported game renders, and a slow runner takes
+      // fewer frames per second without the export being any less correct.
+      await waitForPlaySteps(exportPage, 60);
       const exportState = await exportPage.evaluate(() => {
         const player = window.__PLAYER__;
         if (!player) throw new Error('no player');

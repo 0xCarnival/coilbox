@@ -22,7 +22,7 @@ const from = fromIndex >= 0 ? Number(String(args[fromIndex + 1] ?? '').replace('
 const extra = args.includes('--skip-build') ? ['--skip-build'] : [];
 
 const stages = [0, 1, 2, 3, 4, 5].filter((stage) => stage >= (Number.isFinite(from) ? from : 0));
-const results: Array<{ label: string; ok: boolean; summary: string }> = [];
+const results: Array<{ label: string; ok: boolean; summary: string; failures: string[] }> = [];
 
 /**
  * The gate's own tally is the last line that is exactly "N/M checks passed". A check *detail* may
@@ -35,6 +35,15 @@ function tally(output: string): string {
   return last ? `${last[1]}/${last[2]} checks passed` : 'passed';
 }
 
+/**
+ * The titles of the checks that failed, in gate order. A CI log is long enough that the middle of
+ * it is not always readable afterwards, so the names are repeated in the summary at the end —
+ * "17/18 checks passed" is not something anyone can act on.
+ */
+function failingChecks(output: string): string[] {
+  return [...output.matchAll(/^FAIL\s+(.+)$/gm)].map((match) => match[1]!.trim());
+}
+
 if (!args.includes('--skip-lint')) {
   process.stdout.write(`\n${'='.repeat(72)}\nLINT\n${'='.repeat(72)}\n`);
   try {
@@ -45,12 +54,12 @@ if (!args.includes('--skip-lint')) {
       env: { ...process.env, FORCE_COLOR: '0' },
     });
     process.stdout.write(`${`${stdout}${stderr}`.split('\n').slice(-6).join('\n')}\n`);
-    results.push({ label: 'lint', ok: true, summary: 'clean' });
+    results.push({ label: 'lint', ok: true, summary: 'clean', failures: [] });
   } catch (error) {
     const failure = error as { stdout?: string; stderr?: string };
     const output = `${failure.stdout ?? ''}${failure.stderr ?? ''}`;
     process.stdout.write(`${output.split('\n').slice(-40).join('\n')}\n`);
-    results.push({ label: 'lint', ok: false, summary: 'violations found' });
+    results.push({ label: 'lint', ok: false, summary: 'violations found', failures: failingChecks(output) });
   }
 }
 
@@ -65,18 +74,19 @@ for (const stage of stages) {
     });
     const output = `${stdout}${stderr}`;
     process.stdout.write(`${output.split('\n').slice(-6).join('\n')}\n`);
-    results.push({ label: `stage ${stage}`, ok: true, summary: tally(output) });
+    results.push({ label: `stage ${stage}`, ok: true, summary: tally(output), failures: failingChecks(output) });
   } catch (error) {
     const failure = error as { stdout?: string; stderr?: string };
     const output = `${failure.stdout ?? ''}${failure.stderr ?? ''}`;
     process.stdout.write(`${output.split('\n').slice(-25).join('\n')}\n`);
-    results.push({ label: `stage ${stage}`, ok: false, summary: tally(output) });
+    results.push({ label: `stage ${stage}`, ok: false, summary: tally(output), failures: failingChecks(output) });
   }
 }
 
 process.stdout.write(`\n${'='.repeat(72)}\nSUMMARY\n${'='.repeat(72)}\n`);
 for (const result of results) {
   process.stdout.write(`${result.label}: ${result.ok ? 'PASS' : 'FAIL'} (${result.summary})\n`);
+  for (const title of result.failures) process.stdout.write(`    - ${title}\n`);
 }
 const failed = results.filter((result) => !result.ok);
 process.stdout.write(`\n${results.length - failed.length}/${results.length} gates passed\n`);
