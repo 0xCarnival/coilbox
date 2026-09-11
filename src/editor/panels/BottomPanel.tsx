@@ -25,23 +25,51 @@ const styles = stylex.create({
     minHeight: 0,
   },
   /**
-   * The tab strip: a row of chips with the watching status on the trailing edge, and a hairline
-   * under the whole strip.
+   * The panel header: a 40px band holding the tab chips, with the panel's own actions on the
+   * trailing edge and a hairline below.
    *
-   * This is the reference's panel-header shape — a 36px band, chips at `h-7`, a hairline below —
-   * rather than the text-with-an-underline it was. The chips are what make it obvious the tab set is
-   * a control rather than a row of labels.
+   * This is the reference's panel-header shape, and the split matters — tabs describe *what* is
+   * shown, the trailing controls act on it. Putting Reload and Clear log at the same visual weight
+   * as the tabs, as the previous version did, made three view-switchers and two commands look like
+   * five peers.
    */
   tabs: {
     display: 'flex',
     alignItems: 'center',
     gap: space.xxs,
-    height: '36px',
+    height: '40px',
     paddingInline: space.md,
     borderBlockEndWidth: '1px',
     borderBlockEndStyle: 'solid',
     borderBlockEndColor: color.border,
     flexShrink: 0,
+  },
+  /** The trailing action cluster, separated from the tabs by a rule. */
+  tabActions: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: space.xxs,
+    marginInlineStart: space.md,
+    paddingInlineStart: space.md,
+    borderInlineStartWidth: '1px',
+    borderInlineStartStyle: 'solid',
+    borderInlineStartColor: color.border,
+  },
+  /** A quiet command in the panel header: Reload, Clear log. */
+  headerAction: {
+    height: '24px',
+    paddingInline: space.md,
+    borderRadius: radius.md,
+    fontSize: fontSize.sm,
+    color: color.muted,
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    borderStyle: 'none',
+    cursor: 'pointer',
+    ':hover': {
+      color: color.text,
+      backgroundColor: color.wash,
+    },
   },
   /**
    * `.tabs button[role='tab'].active` was a descendant selector on the parent. The button knows
@@ -51,7 +79,7 @@ const styles = stylex.create({
    * loud element (the selected tab) instead of two (the tab and its outline).
    */
   tabButton: {
-    height: '24px',
+    height: '26px',
     paddingInline: space.md,
     borderRadius: radius.md,
     fontSize: fontSize.sm,
@@ -60,6 +88,7 @@ const styles = stylex.create({
     backgroundColor: 'transparent',
     borderWidth: 0,
     borderStyle: 'none',
+    cursor: 'pointer',
     ':hover': {
       color: color.text,
       backgroundColor: color.wash,
@@ -217,10 +246,10 @@ export function BottomPanel({
         {snapshot.conflict && (
           <span {...withDomClass(styles.conflict, DOM.conflict)} role="alert">
             {snapshot.conflict.source === 'external' ? 'The file changed on disk.' : 'Save was refused: the file changed on disk.'}
-            <button type="button" onClick={() => void session.reloadScene()}>
+            <button {...stylex.props(styles.headerAction)} type="button" onClick={() => void session.reloadScene()}>
               Reload from disk
             </button>
-            <button type="button" onClick={() => void session.overwriteWithLocal()}>
+            <button {...stylex.props(styles.headerAction)} type="button" onClick={() => void session.overwriteWithLocal()}>
               Keep my version
             </button>
           </span>
@@ -228,12 +257,19 @@ export function BottomPanel({
         {!snapshot.conflict && snapshot.watching && (
           <span {...stylex.props(styles.muted)}>watching for external changes</span>
         )}
-        <button type="button" onClick={onReloadScene} title="Re-read the scene from disk">
-          Reload
-        </button>
-        <button type="button" onClick={() => session.clearLogs()}>
-          Clear log
-        </button>
+        <span {...stylex.props(styles.tabActions)}>
+          <button
+            {...stylex.props(styles.headerAction)}
+            type="button"
+            onClick={onReloadScene}
+            title="Re-read the scene from disk"
+          >
+            Reload
+          </button>
+          <button {...stylex.props(styles.headerAction)} type="button" onClick={() => session.clearLogs()}>
+            Clear log
+          </button>
+        </span>
       </div>
       <div {...stylex.props(styles.tabBody)}>
         {tab === 'assets' && <AssetBrowser />}

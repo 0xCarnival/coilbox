@@ -200,9 +200,12 @@ function injectStyles(documentRef: Document): void {
  * See coilbox/no-stylex-outside-editor.
  *
  * The values below are the editor palette's, spelled literally because this file cannot import the
- * editor's tokens. They are duplicated deliberately and not by accident — the overlay floats over
- * the same render the editor's viewport shows, so a blue button here would be the one cool pixel in
- * an otherwise warm-neutral product. Keep them in step with src/editor/styles/tokens.stylex.ts.
+ * editor's tokens. They are duplicated deliberately and not by accident — the overlay floats over the
+ * same render the editor's viewport shows, so a coloured button here would be the one chromatic
+ * pixel in a strictly neutral product. The editor's chrome is #171717 with #fafafa text,
+ * white/10% borders, and a near-white primary button; keep these in step with
+ * src/editor/styles/tokens.stylex.ts. (No backticks in this comment: it lives inside a template
+ * literal, and a stray pair would close it and turn the rest of the stylesheet into JavaScript.)
  */
 .coilbox-hud { position: fixed; inset: 0; pointer-events: none; font: 14px/1.4 Inter, ui-sans-serif, -apple-system, "Segoe UI", sans-serif; }
 .hud-host > .coilbox-hud { position: absolute; }
@@ -214,11 +217,11 @@ function injectStyles(documentRef: Document): void {
 .coilbox-hud .hud-bottom-center { bottom: 12px; left: 50%; transform: translateX(-50%); }
 .coilbox-hud .hud-bottom-right { bottom: 12px; right: 12px; }
 .coilbox-hud .hud-center { inset: 0; display: flex; align-items: center; justify-content: center; }
-.coilbox-hud .hud-overlay > * { background: rgba(18, 19, 22, 0.94); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 10px; padding: 22px 26px; text-align: center; min-width: 240px; pointer-events: auto; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55); }
+.coilbox-hud .hud-overlay > * { background: rgba(23, 23, 23, 0.94); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 6px; padding: 22px 26px; text-align: center; min-width: 240px; pointer-events: auto; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55); }
 .coilbox-hud .hud-overlay h2 { margin: 0 0 6px; font-size: 20px; letter-spacing: -0.01em; }
-.coilbox-hud .hud-overlay p { margin: 0 0 14px; color: #a8aab1; }
-.coilbox-hud button { pointer-events: auto; background: #e0a458; color: #1a1408; border: 0; border-radius: 6px; padding: 7px 16px; font: inherit; font-weight: 600; cursor: pointer; }
-.coilbox-hud button:hover { background: #eeb268; }
+.coilbox-hud .hud-overlay p { margin: 0 0 14px; color: #b4b4b4; }
+.coilbox-hud button { pointer-events: auto; background: #e8e8e8; color: #171717; border: 0; border-radius: 6px; padding: 7px 16px; font: inherit; font-weight: 500; cursor: pointer; }
+.coilbox-hud button:hover { background: #dcdcdc; }
 .coilbox-hud .hud-counter, .coilbox-hud .hud-label { font-variant-numeric: tabular-nums; text-shadow: 0 1px 3px rgba(0,0,0,0.6); }
 `;
   documentRef.head.appendChild(style);
