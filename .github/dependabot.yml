@@ -26,3 +26,13 @@ updates:
     groups:
       minor-and-patch:
         update-types: [minor, patch]
+    ignore:
+      # TypeScript is pinned to the 5.x line on purpose (see docs/pinned-versions.md): the 7.x
+      # native port is not supported by the pinned toolchain, and CI proves it by failing. A major
+      # here is a migration decision, so it should be made deliberately rather than proposed weekly.
+      - dependency-name: typescript
+        update-types: [version-update:semver-major]
+      # Node types track the pinned Node version (24.x). Jumping to a newer major's types would
+      # type-check against an API surface this project does not run on.
+      - dependency-name: '@types/node'
+        update-types: [version-update:semver-major]
