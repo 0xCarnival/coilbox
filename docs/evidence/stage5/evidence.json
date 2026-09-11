@@ -1,9 +1,9 @@
 {
   "stage": 5,
-  "generatedAt": "2026-09-11T18:43:38.362Z",
+  "generatedAt": "2026-09-11T19:36:37.134Z",
   "node": "v24.18.0",
   "host": "darwin",
-  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage5-cu3GLh",
+  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage5-RzTdqN",
   "measurements": {
     "playStopCycles": {
       "first": {
@@ -216,26 +216,29 @@
     },
     "referenceScene": {
       "frames": 120,
-      "medianFrameMs": 43.37536756299623,
-      "p95FrameMs": 46.277180910737705,
-      "medianPhysicsMs": 0.03580413983734557,
+      "medianFrameMs": 37.566188829611654,
+      "p95FrameMs": 39.691907630184026,
+      "medianPhysicsMs": 0.03468245290380283,
       "drawCalls": 401,
       "triangles": 4812,
       "entities": 203,
       "physicsBodies": 26,
-      "fps": 22.467296147753252
+      "fps": 26.16658017771902
     },
     "frameRateIndependence": {
-      "stepsTaken": 20,
-      "droppedTime": 0.18306666666666835,
-      "clampedTime": 0.11660000000000037
+      "stepsTaken": 17,
+      "droppedTime": 0.18313333333333398,
+      "clampedTime": 0.09990000000000054,
+      "busiestFrameSteps": 5,
+      "maxSubSteps": 5,
+      "framesToWatch": 8
     },
     "narrowViewport": {
       "width": 390,
       "height": 844,
-      "rendered": 0.6060487301008628,
-      "distinctColors": 2295,
-      "steps": 60
+      "rendered": 0.6062188601288128,
+      "distinctColors": 2287,
+      "steps": 64
     }
   },
   "steps": [
@@ -285,28 +288,31 @@
       "id": "reference-performance",
       "title": "The reference scene renders on the declared conditions and the numbers are recorded",
       "passed": true,
-      "detail": "203 entities, 26 bodies, 401 draw calls, 4812 triangles; median frame 43.38 ms, p95 46.28 ms, physics 0.04 ms (software rasteriser, not the M1 Pro target)",
+      "detail": "203 entities, 26 bodies, 401 draw calls, 4812 triangles; median frame 37.57 ms, p95 39.69 ms, physics 0.03 ms (software rasteriser, not the M1 Pro target)",
       "observed": {
         "frames": 120,
-        "medianFrameMs": 43.37536756299623,
-        "p95FrameMs": 46.277180910737705,
-        "medianPhysicsMs": 0.03580413983734557,
+        "medianFrameMs": 37.566188829611654,
+        "p95FrameMs": 39.691907630184026,
+        "medianPhysicsMs": 0.03468245290380283,
         "drawCalls": 401,
         "triangles": 4812,
         "entities": 203,
         "physicsBodies": 26,
-        "fps": 22.467296147753252
+        "fps": 26.16658017771902
       }
     },
     {
       "id": "frame-rate-independence",
       "title": "A stalled frame is clamped and its backlog dropped, not replayed as extra steps",
       "passed": true,
-      "detail": "a 400 ms stall produced 20 steps, 0.183 s dropped, 0.117 s clamped",
+      "detail": "a 400 ms stall produced 17 steps, 0.183 s dropped, 0.100 s clamped; the busiest of the 8 following frames ran 5 steps (cap 5)",
       "observed": {
-        "stepsTaken": 20,
-        "droppedTime": 0.18306666666666835,
-        "clampedTime": 0.11660000000000037
+        "stepsTaken": 17,
+        "droppedTime": 0.18313333333333398,
+        "clampedTime": 0.09990000000000054,
+        "busiestFrameSteps": 5,
+        "maxSubSteps": 5,
+        "framesToWatch": 8
       }
     },
     {
@@ -322,13 +328,13 @@
       "id": "narrow-viewport",
       "title": "The game runs at a narrow viewport (a viewport test, not a phone test)",
       "passed": true,
-      "detail": "390x844, 60.6% rendered, 60 steps",
+      "detail": "390x844, 60.6% rendered, 64 steps",
       "observed": {
         "width": 390,
         "height": 844,
-        "rendered": 0.6060487301008628,
-        "distinctColors": 2295,
-        "steps": 60
+        "rendered": 0.6062188601288128,
+        "distinctColors": 2287,
+        "steps": 64
       }
     },
     {
@@ -385,16 +391,16 @@
       "id": "acceptance-play-stop",
       "title": "Acceptance: play and stop without touching code",
       "passed": true,
-      "detail": "play world ran 65 steps with 9 behaviors, then stopped",
+      "detail": "play world ran 62 steps with 9 behaviors, then stopped",
       "observed": {
         "state": "running",
         "frames": 23,
-        "steps": 65,
-        "fps": 11.996576968268547,
-        "frameTimeMs": 83.35711116971468,
-        "physicsTimeMs": 0.109814553556268,
-        "droppedTime": 0.7000333333333343,
-        "clampedTime": 1.283147999999999,
+        "steps": 62,
+        "fps": 11.387034916867599,
+        "frameTimeMs": 87.81917393778265,
+        "physicsTimeMs": 0.10482702588178934,
+        "droppedTime": 0.8498333333333372,
+        "clampedTime": 1.3833079999999973,
         "drawCalls": 17,
         "triangles": 5192,
         "geometries": 13,
@@ -457,7 +463,7 @@
       "id": "export-nested-path",
       "title": "The export runs from a nested path on a separate static server with no workspace service",
       "passed": true,
-      "detail": "8 requests from http://127.0.0.1:61799/releases/2026/gem-rush/, 0 failed, 64 steps",
+      "detail": "8 requests from http://127.0.0.1:64235/releases/2026/gem-rush/, 0 failed, 62 steps",
       "observed": {
         "failures": [],
         "requests": 8
@@ -492,7 +498,7 @@
         "gameState": {
           "score": 2,
           "collectiblesRemaining": 3,
-          "timeRemaining": 44.18,
+          "timeRemaining": 44.2,
           "objective": "",
           "won": false,
           "lost": false,
@@ -512,7 +518,7 @@
         "before": {
           "score": 2,
           "collectiblesRemaining": 3,
-          "timeRemaining": 44.18,
+          "timeRemaining": 44.2,
           "objective": "",
           "won": false,
           "lost": false,
@@ -560,7 +566,7 @@
       "id": "bounded-test-physics-targets",
       "title": "The bounded test passes for physics-targets",
       "passed": true,
-      "detail": "9/9 checks in 3.0s"
+      "detail": "9/9 checks in 2.9s"
     },
     {
       "id": "bounded-test-gem-rush",
