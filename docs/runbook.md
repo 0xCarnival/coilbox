@@ -133,6 +133,13 @@ pnpm verify                          # every gate in order
 
 Every command is bounded by a timeout, prints why it failed, and exits non-zero on failure.
 
+The same gates run in CI on every push to `main` and every pull request
+(`.github/workflows/verify.yml`), so a red badge means the commands above failed somewhere other
+than your machine — which is the point: they are written to measure the engine and not the
+computer, and a check that only passes on a fast laptop is a check that lies. When a run fails it
+uploads `docs/evidence/` as an artifact, because the screenshots and the recorded numbers are what
+explain the failure after the log has scrolled away.
+
 ## Assets
 
 Supported today: self-contained `.glb` models, PNG/JPEG/WebP images, MP3/OGG/WAV audio. Anything

@@ -323,6 +323,19 @@ async function main(): Promise<void> {
       const session = window.__STUDIO__?.session;
       return session?.scene?.entities.find((entity) => entity.id === 'player')?.name ?? null;
     });
+
+    // Make the editor dirty *first*, and wait until it really is. Writing the external change
+    // before the local edit is a race: if the service's event wins, the editor has nothing unsaved
+    // and reloads silently — which is correct behaviour, and a failed check. This check has been
+    // passing on a fast machine by winning that race.
+    await page.click('.tree-row:has-text("Player")');
+    const nameField = page.locator('.inspector-title .name-field');
+    await nameField.fill('Player (local edit)');
+    await nameField.blur();
+    await page.waitForFunction(() => window.__STUDIO__?.session.snapshot().dirty === true, undefined, {
+      timeout: 10_000,
+    });
+
     const external = JSON.parse(await readFile(join(workspaceRoot, AGENT_GAME, 'scenes', 'main.scene.json'), 'utf8')) as {
       revision: number;
       entities: Array<{ id: string; name: string; transform: { position: number[] } }>;
@@ -330,12 +343,6 @@ async function main(): Promise<void> {
     external.entities.find((entity) => entity.id === 'player')!.name = 'Player (renamed externally)';
     external.revision += 1;
     await writeFile(join(workspaceRoot, AGENT_GAME, 'scenes', 'main.scene.json'), `${JSON.stringify(external, null, 2)}\n`, 'utf8');
-
-    // Make the editor dirty so the incoming change is a genuine conflict.
-    await page.click('.tree-row:has-text("Player")');
-    const nameField = page.locator('.inspector-title .name-field');
-    await nameField.fill('Player (local edit)');
-    await nameField.blur();
 
     const conflicted = await page
       .waitForFunction(

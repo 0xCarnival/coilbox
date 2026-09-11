@@ -71,7 +71,14 @@ interface Stage5Measurements {
     physicsBodies: number;
     fps: number;
   };
-  frameRateIndependence?: { stepsTaken: number; droppedTime: number; clampedTime: number };
+  frameRateIndependence?: {
+    stepsTaken: number;
+    droppedTime: number;
+    clampedTime: number;
+    busiestFrameSteps: number;
+    maxSubSteps: number;
+    framesToWatch: number;
+  };
   narrowViewport?: { width: number; height: number; rendered: number; distinctColors: number; steps: number };
 }
 
@@ -428,27 +435,41 @@ async function main(): Promise<void> {
     // --- frame-rate independence ---------------------------------------------
     // A blocked main thread must not be replayed as hundreds of physics steps.
     const blocked = await page.evaluate(async () => {
-      const world = window.__PLAYER__?.session?.current;
+      const player = window.__PLAYER__;
+      const world = player?.session?.current;
       if (!world) throw new Error('no runtime world');
+      const maxSubSteps = player?.game?.settings.physics.maxSubSteps ?? 0;
       const before = world.getLoopStats();
       const start = performance.now();
       while (performance.now() - start < 400) {
         // Deliberately block the frame.
       }
-      await new Promise((resolve) => setTimeout(resolve, 250));
+      // What a caught-up loop would show is one frame running every step the stall owed (24 at
+      // 60 Hz). The loop publishes the step count of its most recent frame, so the honest question
+      // is whether any single frame after the stall exceeded the configured sub-step cap — a bound
+      // that holds whatever the machine's frame rate is, unlike a total counted over wall time.
+      let busiestFrameSteps = 0;
+      const framesToWatch = 8;
+      for (let index = 0; index < framesToWatch; index += 1) {
+        await new Promise((resolve) => requestAnimationFrame(() => resolve(undefined)));
+        busiestFrameSteps = Math.max(busiestFrameSteps, world.getLoopStats().lastFrameSteps);
+      }
       const after = world.getLoopStats();
       return {
         stepsTaken: after.steps - before.steps,
         droppedTime: after.droppedTime - before.droppedTime,
         clampedTime: after.clampedTime - before.clampedTime,
+        busiestFrameSteps,
+        maxSubSteps,
+        framesToWatch,
       };
     });
     measurements['frameRateIndependence'] = blocked;
     record({
       id: 'frame-rate-independence',
       title: 'A stalled frame is clamped and its backlog dropped, not replayed as extra steps',
-      passed: blocked.stepsTaken < 60 && blocked.clampedTime > 0,
-      detail: `a 400 ms stall produced ${blocked.stepsTaken} steps, ${blocked.droppedTime.toFixed(3)} s dropped, ${blocked.clampedTime.toFixed(3)} s clamped`,
+      passed: blocked.clampedTime > 0 && blocked.maxSubSteps > 0 && blocked.busiestFrameSteps <= blocked.maxSubSteps,
+      detail: `a 400 ms stall produced ${blocked.stepsTaken} steps, ${blocked.droppedTime.toFixed(3)} s dropped, ${blocked.clampedTime.toFixed(3)} s clamped; the busiest of the ${blocked.framesToWatch} following frames ran ${blocked.busiestFrameSteps} steps (cap ${blocked.maxSubSteps})`,
       observed: blocked,
     });
 
