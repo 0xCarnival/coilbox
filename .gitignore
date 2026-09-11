@@ -15,3 +15,8 @@ tests/.tmp/
 playwright-report/
 test-results/
 *.tsbuildinfo
+# Local environment and coverage output
+.env
+.env.*
+*.local
+coverage/

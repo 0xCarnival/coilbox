@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: How to run the studio
+    url: https://github.com/0xCarnival/coilbox/blob/main/docs/runbook.md
+    about: Starting the dev server, running a game, exports, and everyday recovery.
+  - name: Building a game with an agent
+    url: https://github.com/0xCarnival/coilbox/blob/main/docs/agent-contract.md
+    about: The contract an agent follows to create or change a game in this format.

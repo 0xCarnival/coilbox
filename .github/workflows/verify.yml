@@ -1,0 +1,39 @@
+name: verify
+
+# The same gates that run on a development machine, so a pull request cannot be merged on a claim
+# the repository cannot back up. `pnpm verify` includes the clean-checkout step: it clones the
+# committed tree into a temporary directory, installs from the frozen lockfile, and builds there.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.25.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.18.0
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Browser checks run headless Chromium with SwiftShader, so a GPU-less runner can still
+      # render WebGL2. The dependencies are the shared libraries Chromium needs on Linux.
+      - run: pnpm exec playwright install --with-deps chromium
+
+      - name: Gates (lint, typecheck, unit tests, stages 0-5)
+        run: pnpm verify

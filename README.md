@@ -4,6 +4,8 @@
 
 # Coilbox
 
+[![verify](https://github.com/0xCarnival/coilbox/actions/workflows/verify.yml/badge.svg)](https://github.com/0xCarnival/coilbox/actions/workflows/verify.yml)
+
 A local-first, open-source game studio built around Three.js: create or generate a game,
 open it in the studio, select and move things, change gameplay settings, press Play, save,
 and export a standalone browser game.
@@ -29,10 +31,24 @@ rules.
 - `pnpm verify:stage4` — 18/18 checks (agent-built game, human edit, independence, management)
 - `pnpm verify:stage5` — 23/23 checks (compatibility, resource ownership, reference-scene
   performance, the release acceptance session, and an export served with the service shut down)
-- `pnpm verify` — every gate in order; 6/6 gates pass
+- `pnpm lint` — the architectural rules: one vendor boundary, one renderer, runtime never imports
+  editor, styling stays in the editor, and no low-evidence assertions
+- `pnpm verify` — every gate in order (lint plus stages 0-5); 7/7 gates pass
 
 See `docs/status.md` for the per-stage detail, `docs/runbook.md` for start-up and recovery, and
 `docs/evidence/` for the raw results.
+
+## What it looks like
+
+The editor, with a game running in Play mode. The HUD, the inspector, and the asset browser are the
+same code an export ships.
+
+![The Coilbox editor with Gem Rush in Play mode](docs/evidence/stage5/acceptance-play.png)
+
+Authoring a scene with an imported model, its material, and its animation clip — all of it document
+edits, none of it code.
+
+![Authoring a scene with an imported model](docs/evidence/stage2/editor-with-assets.png)
 
 ## Requirements
 

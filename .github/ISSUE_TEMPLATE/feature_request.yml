@@ -1,0 +1,37 @@
+name: Feature request
+description: Propose something the studio, the runtime, or the format should do.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The plan is deliberate about scope: `docs/threejs-game-studio-plan.md` §17 lists what is
+        explicitly deferred (multiplayer, cloud sync, a visual scripting graph, terrain and mesh
+        editors, and more). A request that needs one of those is a conversation about the plan,
+        not a small patch — say so and we can have it.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do that you cannot do today?
+      description: Describe the game or the workflow, not the implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like it to do?
+    validations:
+      required: false
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part of the project does this touch?
+      options:
+        - Editor authoring
+        - Runtime or behaviors
+        - Project format or compatibility
+        - Export pipeline
+        - CLI or workspace service
+        - Documentation
+    validations:
+      required: false

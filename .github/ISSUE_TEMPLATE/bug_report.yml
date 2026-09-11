@@ -1,0 +1,55 @@
+name: Bug report
+description: Something in the studio, the runtime, or an export does not work.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. `pnpm studio test <project>` and `pnpm verify` print what they
+        checked and exit non-zero on failure — pasting their output usually explains the problem
+        faster than a description does.
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Where does it happen?
+      options:
+        - The editor
+        - Playing a game (player page or export)
+        - A CLI command (`studio validate` / `test` / `build`)
+        - The example games in `games/`
+        - The verification gates
+        - Somewhere else
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. pnpm dev
+        2. Open http://127.0.0.1:5178/
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Command output or console errors
+      description: Copy the full output, including the exit status.
+      render: shell
+    validations:
+      required: false
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: Output of `node -v`, `pnpm -v`, and your browser.
+      placeholder: node v24.18.0, pnpm 11.25.0, Chromium 153
+    validations:
+      required: false
