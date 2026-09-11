@@ -98,6 +98,21 @@ export function validateSceneRelationships(scene: SceneDocument, context: SceneV
     });
   });
 
+  // Physics bodies must be scene roots in v1 (plan §9): their visual children carry
+  // local offsets, but a body nested under another entity would make the transform
+  // ownership rules ambiguous.
+  for (const [index, entity] of scene.entities.entries()) {
+    if (entity.parentId !== null && entity.components.some((component) => component.type === 'rigidBody')) {
+      issues.push(
+        error(
+          'physics-body-not-root',
+          `entities[${index}].parentId`,
+          `"${entity.name}" has a rigid body but is not a scene root; physics bodies must be roots in this version`,
+        ),
+      );
+    }
+  }
+
   // Parent existence and cycles.
   for (const [index, entity] of scene.entities.entries()) {
     if (entity.parentId === null) continue;

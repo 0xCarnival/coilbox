@@ -12,11 +12,10 @@
     "dev": "tsx server/cli.ts dev",
     "studio": "tsx server/cli.ts",
     "build": "vite build",
-    "build:player": "tsx tools/cli.ts build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:unit": "vitest run --project unit",
-    "test:browser": "vitest run --project browser",
+    "templates": "tsx tools/write-templates.ts",
+    "probe-project": "tsx tools/write-probe-project.ts",
     "verify:stage0": "tsx tools/verify-stage0.ts"
   },
   "dependencies": {
