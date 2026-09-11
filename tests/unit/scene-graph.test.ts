@@ -131,14 +131,28 @@ describe('scene graph projection', () => {
     expect(graph.root.children.map((child) => child.name)).toContain('Orphan');
   });
 
-  it('rejects gameplay components the runtime cannot run yet instead of silently ignoring them', () => {
+  it('shows a placeholder for a model with no prepared instance and records why', () => {
     const scene = parseScene({
       schemaVersion: 1,
       id: 's',
       name: 'S',
       entities: [{ id: 'm', name: 'M', components: [{ type: 'model', assetId: 'thing.glb' }] }],
     }).value as SceneDocument;
-    expect(() => buildSceneGraph(scene)).toThrow(/model component/);
+    const warnings: string[] = [];
+    const graph = buildSceneGraph(scene, { onWarning: (message) => warnings.push(message) });
+    const placeholder = graph.entities.get('m')?.visual as THREE.Mesh | null;
+    expect(placeholder?.name).toBe('model-placeholder');
+    expect(warnings.join(' ')).toMatch(/could not load its model/);
+  });
+
+  it('rejects components the runtime still cannot run instead of silently ignoring them', () => {
+    const scene = parseScene({
+      schemaVersion: 1,
+      id: 's',
+      name: 'S',
+      entities: [{ id: 'b', name: 'B', components: [{ type: 'behavior', behaviorId: 'game.rules', properties: {} }] }],
+    }).value as SceneDocument;
+    expect(() => buildSceneGraph(scene)).toThrow(/behavior component/);
   });
 
   it('builds an offset collider size from the collider component, not the visual size', () => {

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useImperativeHandle, useRef, useState, type Ref
 import type { JSX } from 'react';
 import type { SceneDocument, Transform } from '@schema/index.js';
 import { RuntimeWorld, RuntimeWorldError } from '@runtime/world.js';
+import { AssetCache } from '@runtime/assets/loader.js';
 import wasmUrl from 'virtual:box3d-wasm-url';
 import { EditorViewport, type SnapSettings, type TransformTool } from '../viewport/viewport-controller.js';
 import { useSession } from '../hooks.js';
@@ -32,6 +33,12 @@ export interface ViewportHandle {
   samplePlayPixels(): { width: number; height: number; distinctColors: number; nonBackgroundPixels: number } | null;
   /** Runtime statistics of the live play world, or null when stopped. */
   playStats(): unknown;
+  /** Whether an entity's model is loading, loaded, or failed. */
+  modelStatus(entityId: string): 'none' | 'loading' | 'loaded' | 'failed';
+  clipNames(entityId: string): string[] | null;
+  animationState(entityId: string): { clip: string | null; time: number; playing: boolean } | null;
+  /** Animation state inside the running play world (independent of the editor preview). */
+  playAnimationState(entityId: string): { clip: string | null; time: number; playing: boolean } | null;
 }
 
 export interface ViewportProps {
@@ -49,6 +56,7 @@ export function Viewport({ handleRef, tool, snap, onPlayStateChange, onStatus }:
   const playCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const viewportRef = useRef<EditorViewport | null>(null);
   const worldRef = useRef<RuntimeWorld | null>(null);
+  const assetCacheRef = useRef<AssetCache | null>(null);
   const [playState, setPlayState] = useState<PlayState>('stopped');
   const [error, setError] = useState<string | null>(null);
 
@@ -58,12 +66,28 @@ export function Viewport({ handleRef, tool, snap, onPlayStateChange, onStatus }:
   const sessionRef = useRef(session);
   sessionRef.current = session;
 
+  /** One asset cache per editor session: models stay loaded across Play/Stop cycles. */
+  const assetCache = (() => {
+    if (!assetCacheRef.current) {
+      assetCacheRef.current = new AssetCache({
+        resolver: session.assetResolver,
+        describe: (assetId) => session.assetResolver.getEntry(assetId),
+        onWarning: (message) => setError((current) => current ?? message),
+      });
+    }
+    return assetCacheRef.current;
+  })();
+
   useEffect(() => {
     const canvas = editorCanvasRef.current;
     const container = containerRef.current;
     if (!canvas || !container) return;
 
     const viewport = new EditorViewport({
+      onModelLoaded: (entityId, clips) => sessionRef.current.reportModelClips(entityId, clips),
+      onModelFailed: (entityId, message) => {
+        sessionRef.current.log('error', `Model for "${entityId}" did not load`, message);
+      },
       canvas,
       container,
       onSelect: (entityId, additive) => sessionRef.current.select(entityId, { additive }),
@@ -73,6 +97,10 @@ export function Viewport({ handleRef, tool, snap, onPlayStateChange, onStatus }:
       onWarning: (message) => callbacksRef.current.onStatus(message),
     });
     viewportRef.current = viewport;
+    viewport.setAssetProvider({
+      instantiate: (assetId) => assetCache.instantiate(assetId),
+      clipsFor: (assetId) => null,
+    });
     viewport.start();
     viewport.setTool(tool);
     viewport.setSnap(snap);
@@ -132,6 +160,8 @@ export function Viewport({ handleRef, tool, snap, onPlayStateChange, onStatus }:
         canvas,
         game,
         scene: currentScene,
+        assets: sessionRef.current.assetResolver,
+        assetCache,
         wasmLocateFile: () => wasmUrl,
         label: 'editor-play',
         onError: (runtimeError: RuntimeWorldError) => {
@@ -219,6 +249,10 @@ export function Viewport({ handleRef, tool, snap, onPlayStateChange, onStatus }:
         return { width, height, distinctColors: counts.size, nonBackgroundPixels: width * height - background };
       },
       playStats: () => (worldRef.current ? worldRef.current.getStats() : null),
+      modelStatus: (entityId: string) => viewportRef.current?.modelStatus(entityId) ?? 'none',
+      clipNames: (entityId: string) => viewportRef.current?.clipNames(entityId) ?? null,
+      animationState: (entityId: string) => viewportRef.current?.animationState(entityId) ?? null,
+      playAnimationState: (entityId: string) => worldRef.current?.getAnimationState(entityId) ?? null,
     }),
     [play, pause, step, stopPlay],
   );

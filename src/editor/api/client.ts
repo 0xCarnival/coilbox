@@ -1,4 +1,4 @@
-import type { GameDocument, SceneDocument, ValidationIssue } from '@schema/index.js';
+import type { AssetEntry, AssetManifest, GameDocument, SceneDocument, ValidationIssue } from '@schema/index.js';
 
 /**
  * Browser client for the local workspace service (plan §13).
@@ -96,17 +96,51 @@ export class WorkspaceClient {
     });
   }
 
+  listAssets(projectId: string): Promise<{
+    manifest: AssetManifest;
+    usage: Record<string, Array<{ sceneId: string; entityId: string; entityName: string }>>;
+  }> {
+    return this.request(`/projects/${encodeURIComponent(projectId)}/assets`, { method: 'GET' });
+  }
+
+  /**
+   * Import a file. The bytes go up as-is with the filename in the query string; the service
+   * decides the kind from the extension and refuses unsupported formats with a reason.
+   */
+  async importAsset(
+    projectId: string,
+    file: { name: string; bytes: ArrayBuffer; type?: string },
+    options: { assetId?: string; replaceAssetId?: string } = {},
+  ): Promise<{ entry: AssetEntry; manifest: AssetManifest; replaced: boolean; warnings: string[] }> {
+    const query = new URLSearchParams({ filename: file.name });
+    if (options.assetId) query.set('assetId', options.assetId);
+    if (options.replaceAssetId) query.set('replace', options.replaceAssetId);
+    return this.request(`/projects/${encodeURIComponent(projectId)}/assets?${query.toString()}`, {
+      method: 'POST',
+      rawBody: file.bytes,
+      contentType: file.type && file.type.length > 0 ? file.type : 'application/octet-stream',
+    });
+  }
+
+  deleteAsset(projectId: string, assetId: string): Promise<{ manifest: AssetManifest; removed: AssetEntry }> {
+    return this.request(
+      `/projects/${encodeURIComponent(projectId)}/assets/${encodeURIComponent(assetId)}`,
+      { method: 'DELETE' },
+    );
+  }
+
   validateProject(projectId: string): Promise<{ ok: boolean; issues: ValidationIssue[] }> {
     return this.request(`/projects/${encodeURIComponent(projectId)}/validate`, { method: 'POST', body: {} });
   }
 
   private async request<T>(
     path: string,
-    options: { method: string; body?: unknown },
+    options: { method: string; body?: unknown; rawBody?: ArrayBuffer; contentType?: string },
     withToken = true,
   ): Promise<T> {
     const headers: Record<string, string> = { accept: 'application/json' };
     if (options.body !== undefined) headers['content-type'] = 'application/json';
+    if (options.rawBody !== undefined) headers['content-type'] = options.contentType ?? 'application/octet-stream';
     if (withToken && options.method !== 'GET') headers['x-coilbox-token'] = await this.sessionToken();
 
     let response: Response;
@@ -114,7 +148,12 @@ export class WorkspaceClient {
       response = await fetch(`${this.baseUrl}${path}`, {
         method: options.method,
         headers,
-        body: options.body === undefined ? undefined : JSON.stringify(options.body),
+        body:
+          options.rawBody !== undefined
+            ? options.rawBody
+            : options.body === undefined
+              ? undefined
+              : JSON.stringify(options.body),
       });
     } catch (cause) {
       throw new WorkspaceClientError(0, 'network-error', `cannot reach the workspace service: ${String(cause)}`);

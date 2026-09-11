@@ -17,7 +17,9 @@
     "templates": "tsx tools/write-templates.ts",
     "probe-project": "tsx tools/write-probe-project.ts",
     "verify:stage0": "tsx tools/verify-stage0.ts",
-    "verify:stage1": "tsx tools/verify-stage1.ts"
+    "verify:stage1": "tsx tools/verify-stage1.ts",
+    "verify:stage2": "tsx tools/verify-stage2.ts",
+    "fixtures": "tsx tools/write-fixtures.ts"
   },
   "dependencies": {
     "box3d.js": "0.1.1",

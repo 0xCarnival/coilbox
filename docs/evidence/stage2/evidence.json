@@ -1,0 +1,218 @@
+{
+  "stage": 2,
+  "generatedAt": "2026-09-11T12:26:39.544Z",
+  "node": "v24.18.0",
+  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage2-ZfGyAQ",
+  "steps": [
+    {
+      "name": "typecheck",
+      "ok": true,
+      "detail": "exit 0"
+    },
+    {
+      "name": "unit tests",
+      "ok": true,
+      "detail": "exit 0"
+    }
+  ],
+  "checks": [
+    {
+      "id": "unsupported-import-message",
+      "title": "An unsupported import is refused with a message that says what to do",
+      "passed": true,
+      "detail": "415: FBX is not supported in this version. Export a self-contained .glb from your modelling tool instead.",
+      "observed": {
+        "status": 415,
+        "message": "FBX is not supported in this version. Export a self-contained .glb from your modelling tool instead.",
+        "body": {
+          "error": "unsupported-format",
+          "message": "FBX is not supported in this version. Export a self-contained .glb from your modelling tool instead.",
+          "issues": []
+        }
+      }
+    },
+    {
+      "id": "unsupported-codec-recorded",
+      "title": "A model needing a decoder we do not bundle is recorded as such at import",
+      "passed": true,
+      "detail": "requires=[\"KHR_draco_mesh_compression\"]",
+      "observed": [
+        "KHR_draco_mesh_compression"
+      ]
+    },
+    {
+      "id": "asset-import",
+      "title": "Models, images, and audio import through the editor and appear in the manifest",
+      "passed": true,
+      "detail": "manifest lists draco-required, animated-limb, spinning-crate, swatch, beep",
+      "observed": [
+        "draco-required",
+        "animated-limb",
+        "spinning-crate",
+        "swatch",
+        "beep"
+      ]
+    },
+    {
+      "id": "model-loads-in-editor",
+      "title": "A model asset loads into the viewport without editing code",
+      "passed": true,
+      "detail": "the selected entity reports its model as loaded"
+    },
+    {
+      "id": "clip-playback",
+      "title": "The imported clip is discoverable and plays in the editor preview",
+      "passed": true,
+      "detail": "clips offered: First clip, Hop; preview time advanced from 0.12289999961853026 to 0.6324999999999998",
+      "observed": {
+        "before": 0.12289999961853026,
+        "after": 0.6324999999999998,
+        "clip": "Hop"
+      }
+    },
+    {
+      "id": "skinned-model-clips",
+      "title": "A skinned model loads and reports its clips to the inspector",
+      "passed": true,
+      "detail": "model loaded=true, clips=[\"Wave\"]",
+      "observed": [
+        "Wave"
+      ]
+    },
+    {
+      "id": "property-controls",
+      "title": "Light and material properties are editable in the inspector",
+      "passed": true,
+      "detail": "light intensity 1.4, camera fov 42, ground colour #2f6f4f",
+      "observed": {
+        "intensity": 1.4,
+        "fov": 42,
+        "colour": "#2f6f4f"
+      }
+    },
+    {
+      "id": "snapping-toggle",
+      "title": "Snapping can be switched on for transform handles",
+      "passed": true,
+      "detail": "snap toggle is on",
+      "observed": true
+    },
+    {
+      "id": "save-scene-with-assets",
+      "title": "The scene with models and clips saves and reopens",
+      "passed": true,
+      "detail": "revision 1, 2 model entities on disk: Crate A, Limb",
+      "observed": {
+        "revision": 1,
+        "models": [
+          "Crate A",
+          "Limb"
+        ]
+      }
+    },
+    {
+      "id": "reopen-reloads-assets",
+      "title": "Reopening the project reloads the assets it references",
+      "passed": true,
+      "detail": "the crate model loads again after a full page reload"
+    },
+    {
+      "id": "play-animates",
+      "title": "Play runs the runtime animation: clips advance inside the play world",
+      "passed": true,
+      "detail": "Limb clip \"Wave\" advanced 0.033 -> 0.133; 2 animated entities, 2 models loaded",
+      "observed": {
+        "ids": {
+          "limbId": "box-2",
+          "crateId": "box"
+        },
+        "first": {
+          "clip": "Wave",
+          "clipNames": [
+            "Wave"
+          ],
+          "playing": true,
+          "loop": true,
+          "speed": 1,
+          "time": 0.03333333333333333,
+          "duration": 1
+        },
+        "second": {
+          "clip": "Wave",
+          "clipNames": [
+            "Wave"
+          ],
+          "playing": true,
+          "loop": true,
+          "speed": 1,
+          "time": 0.13333333333333333,
+          "duration": 1
+        },
+        "crate": {
+          "clip": "Hop",
+          "clipNames": [
+            "Hop"
+          ],
+          "playing": true,
+          "loop": true,
+          "speed": 1,
+          "time": 0.13333333333333333,
+          "duration": 0.800000011920929
+        },
+        "stats": {
+          "state": "running",
+          "frames": 7,
+          "steps": 8,
+          "fps": 28.151813722826837,
+          "frameTimeMs": 35.52168999999997,
+          "physicsTimeMs": 0.06383195373903752,
+          "droppedTime": 0.18323333333333347,
+          "clampedTime": 0.21669999999999984,
+          "drawCalls": 6,
+          "triangles": 1268,
+          "geometries": 4,
+          "textures": 4,
+          "programs": 3,
+          "entities": 6,
+          "physicsBodies": 1,
+          "physics": {
+            "bodyCount": 1,
+            "shapeCount": 1,
+            "contactCount": 0,
+            "jointCount": 0,
+            "islandCount": 0,
+            "awakeBodyCount": 0,
+            "byteCount": 164960
+          },
+          "contactEvents": 0,
+          "sensorEvents": 0,
+          "hitEvents": 0,
+          "listeners": 2,
+          "animatedEntities": 2,
+          "loadedModels": 2
+        }
+      }
+    },
+    {
+      "id": "missing-asset-error",
+      "title": "A missing asset file produces an understandable error, not a blank scene",
+      "passed": true,
+      "detail": "model status \"failed\"; console: Model for \"box\" did not load asset \"spinning-crate\" returned HTTP 410 from /api/projects/stage2-room/assets/spinning-crate/content",
+      "observed": {
+        "status": "failed",
+        "errors": [
+          "Model for \"box\" did not load asset \"spinning-crate\" returned HTTP 410 from /api/projects/stage2-room/assets/spinning-crate/content"
+        ]
+      }
+    },
+    {
+      "id": "no-console-errors",
+      "title": "No unexpected page errors while building and revising the scene",
+      "passed": true,
+      "detail": "clean console",
+      "observed": [
+        "Failed to load resource: the server responded with a status of 410 (Gone)"
+      ]
+    }
+  ]
+}

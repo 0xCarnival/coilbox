@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import type { Component, Entity, LightComponent, PrimitiveComponent, SceneDocument } from '@schema/index.js';
+import { AnimationController } from './animation.js';
+import type { ModelInstance } from './assets/loader.js';
 
 /**
  * Scene-document -> Three.js projection (plan §6, §7).
@@ -8,8 +10,10 @@ import type { Component, Entity, LightComponent, PrimitiveComponent, SceneDocume
  * module builds objects, geometries, materials, and lights for a scene document and
  * reports exactly what it created so the runtime can dispose it again.
  *
- * Not implemented yet in this stage (they raise a clear error instead of silently doing
- * nothing): model assets, animation playback, audio, and behavior instances.
+ * Model and animation components are projected from instances prepared by the caller: the
+ * runtime preloads assets asynchronously and hands each entity its own instance, so this
+ * function stays synchronous and testable. Audio playback and behaviors raise a clear error
+ * instead of silently doing nothing.
  */
 
 export class RuntimeWorldError extends Error {
@@ -37,6 +41,10 @@ export interface BuiltEntity {
   light: THREE.Light | null;
   camera: THREE.PerspectiveCamera | null;
   hasPhysics: boolean;
+  /** Present when the entity plays an imported clip. */
+  animation: AnimationController | null;
+  /** Instance materials owned by this entity, for recolouring and disposal. */
+  instanceMaterials: THREE.Material[];
 }
 
 export interface BuiltScene {
@@ -50,6 +58,13 @@ export interface BuiltScene {
 export interface BuildSceneOptions {
   /** Editor helpers are skipped in runtime worlds; kept for future preview use. */
   includeHelpers?: boolean;
+  /**
+   * Prepared model instances keyed by entity id. The caller loads assets (asynchronously)
+   * and instantiates one copy per entity; a missing entry becomes a placeholder with a
+   * recorded error rather than a silent empty object.
+   */
+  models?: Map<string, ModelInstance>;
+  onWarning?: (message: string) => void;
 }
 
 export function buildSceneGraph(scene: SceneDocument, options: BuildSceneOptions = {}): BuiltScene {
@@ -75,7 +90,17 @@ export function buildSceneGraph(scene: SceneDocument, options: BuildSceneOptions
     object.userData.entityId = entity.id;
     applyTransform(object, entity);
 
-    const built: BuiltEntity = { entity, object, visual: null, mesh: null, light: null, camera: null, hasPhysics: false };
+    const built: BuiltEntity = {
+      entity,
+      object,
+      visual: null,
+      mesh: null,
+      light: null,
+      camera: null,
+      hasPhysics: false,
+      animation: null,
+      instanceMaterials: [],
+    };
 
     for (const component of entity.components) {
       switch (component.type) {
@@ -121,13 +146,43 @@ export function buildSceneGraph(scene: SceneDocument, options: BuildSceneOptions
           }
           break;
         }
-        case 'model':
-        case 'animation':
+        case 'model': {
+          const instance = options.models?.get(entity.id);
+          if (!instance) {
+            // The world records why; the entity still gets a visible, selectable placeholder
+            // so a broken asset does not look like an empty scene.
+            const placeholder = createModelPlaceholder();
+            object.add(placeholder);
+            built.visual = placeholder;
+            options.onWarning?.(`entity "${entity.name}" could not load its model; a placeholder is shown`);
+            break;
+          }
+          object.add(instance.object);
+          built.visual = instance.object;
+          built.instanceMaterials = instance.materials;
+          break;
+        }
+        case 'animation': {
+          const instance = options.models?.get(entity.id);
+          if (!instance) {
+            options.onWarning?.(`entity "${entity.name}" has an animation component but no model to animate`);
+            break;
+          }
+          const controller = new AnimationController(instance.object, instance.clips, component);
+          for (const warning of controller.warningList) options.onWarning?.(`entity "${entity.name}": ${warning}`);
+          built.animation = controller;
+          break;
+        }
         case 'audio':
+          throw new RuntimeWorldError(
+            'unsupported-component',
+            `entity "${entity.name}" uses an audio component. Audio assets import in this version, but playback arrives with the gameplay layer.`,
+            entity.id,
+          );
         case 'behavior':
           throw new RuntimeWorldError(
             'unsupported-component',
-            `entity "${entity.name}" uses a ${component.type} component, which this build does not run yet`,
+            `entity "${entity.name}" uses a behavior component, which this build does not run yet`,
             entity.id,
           );
         case 'rigidBody':
@@ -183,6 +238,16 @@ export function applyTransform(object: THREE.Object3D, entity: Entity): void {
   object.position.set(position[0], position[1], position[2]);
   object.quaternion.set(rotation[0], rotation[1], rotation[2], rotation[3]).normalize();
   object.scale.set(scale[0], scale[1], scale[2]);
+}
+
+/** Visible stand-in for a model that failed to load. Editor-only styling, runtime-visible. */
+function createModelPlaceholder(): THREE.Mesh {
+  const mesh = new THREE.Mesh(
+    new THREE.BoxGeometry(0.8, 0.8, 0.8),
+    new THREE.MeshBasicMaterial({ color: 0xff7a5b, wireframe: true }),
+  );
+  mesh.name = 'model-placeholder';
+  return mesh;
 }
 
 export function createPrimitiveGeometry(component: PrimitiveComponent): THREE.BufferGeometry {

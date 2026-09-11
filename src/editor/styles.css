@@ -189,6 +189,13 @@ button:focus-visible {
   background: #212838;
 }
 
+.menu-hint {
+  color: var(--muted);
+  padding: 6px;
+  max-width: 220px;
+  font-size: 11px;
+}
+
 .save-indicator {
   color: var(--muted);
   min-width: 108px;
@@ -585,6 +592,67 @@ button:focus-visible {
   display: flex;
   align-items: center;
   gap: 6px;
+  color: var(--warn);
+}
+
+/* ------------------------------------------------------------------ asset browser */
+
+.asset-browser {
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+
+.asset-browser.dragging {
+  outline: 2px dashed var(--accent);
+  outline-offset: -6px;
+}
+
+.asset-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.asset-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.asset-table th {
+  text-align: left;
+  color: var(--muted);
+  font-weight: 500;
+  border-bottom: 1px solid var(--line);
+  padding: 4px 6px;
+}
+
+.asset-table td {
+  padding: 4px 6px;
+  border-bottom: 1px solid #1b202b;
+  vertical-align: top;
+}
+
+.asset-table tr:hover td {
+  background: #171d29;
+}
+
+.asset-actions {
+  display: flex;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+}
+
+.warn {
   color: var(--warn);
 }
 

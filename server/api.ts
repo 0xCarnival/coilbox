@@ -1,7 +1,9 @@
 import { randomBytes } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { Workspace, WorkspaceError } from './workspace.js';
 import { buildGame } from './build.js';
+import { AssetService } from './assets.js';
 import { UnsafePathError } from './paths.js';
 
 /**
@@ -20,6 +22,7 @@ import { UnsafePathError } from './paths.js';
 
 export interface ApiServerOptions {
   workspace: Workspace;
+  /** Stops the process after the given number of requests; used by tests. */
   host?: string;
   port?: number;
   /** Per-session write token; generated when omitted. */
@@ -151,6 +154,56 @@ export async function startApiServer(options: ApiServerOptions): Promise<ApiServ
           sendJson(response, 200, await workspace.validateProject(projectId));
           return;
         }
+        // --- assets ---------------------------------------------------------
+        if (route[2] === 'assets' && route.length === 3) {
+          const assets = new AssetService(workspace);
+          if (request.method === 'GET') {
+            const projectRoot = await workspace.projectRoot(projectId);
+            const manifest = await assets.readManifest(projectRoot);
+            sendJson(response, 200, { manifest, usage: await assets.usageIndex(projectId) });
+            return;
+          }
+          if (request.method === 'POST') {
+            const filename = url.searchParams.get('filename') ?? '';
+            const kind = url.searchParams.get('kind');
+            const replace = url.searchParams.get('replace');
+            if (filename.length === 0) {
+              throw new WorkspaceError('missing-filename', 'the filename query parameter is required', 400);
+            }
+            const bytes = await readBinaryBody(request, maxBodyBytes);
+            const result = await assets.import({
+              projectId,
+              filename,
+              bytes,
+              kind: kind === 'model' || kind === 'image' || kind === 'audio' ? kind : undefined,
+              replaceAssetId: replace ?? undefined,
+            });
+            sendJson(response, result.replaced ? 200 : 201, result);
+            return;
+          }
+        }
+
+        if (route[2] === 'assets' && route.length >= 4) {
+          const assets = new AssetService(workspace);
+          const assetId = route[3] ?? '';
+          if (route.length === 4 && request.method === 'DELETE') {
+            sendJson(response, 200, await assets.remove(projectId, assetId));
+            return;
+          }
+          if (route.length === 5 && route[4] === 'content' && request.method === 'GET') {
+            const { path, entry } = await assets.assetFilePath(projectId, assetId);
+            const bytes = await readFile(path);
+            response.writeHead(200, {
+              'content-type': contentTypeFor(entry.path),
+              'content-length': bytes.byteLength,
+              'cache-control': 'no-store',
+              etag: `"${entry.hash}"`,
+            });
+            response.end(bytes);
+            return;
+          }
+        }
+
         // Export Game. The pipeline is fixed; the browser cannot pass arguments to it.
         if (route[2] === 'build' && route.length === 3 && request.method === 'POST') {
           const result = await buildGame({ workspace, projectId, log: (message) => logger(message) });
@@ -255,6 +308,33 @@ export function isAllowedOrigin(origin: string, extraOrigins: Set<string> = new 
   } catch {
     return false;
   }
+}
+
+async function readBinaryBody(request: IncomingMessage, maxBytes: number): Promise<Uint8Array> {
+  const chunks: Buffer[] = [];
+  let size = 0;
+  for await (const chunk of request) {
+    const buffer = chunk as Buffer;
+    size += buffer.length;
+    if (size > maxBytes) {
+      throw new WorkspaceError('body-too-large', `request body exceeds ${maxBytes} bytes`, 413);
+    }
+    chunks.push(buffer);
+  }
+  return new Uint8Array(Buffer.concat(chunks));
+}
+
+function contentTypeFor(path: string): string {
+  const lower = path.toLowerCase();
+  if (lower.endsWith('.glb')) return 'model/gltf-binary';
+  if (lower.endsWith('.gltf')) return 'model/gltf+json';
+  if (lower.endsWith('.png')) return 'image/png';
+  if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
+  if (lower.endsWith('.webp')) return 'image/webp';
+  if (lower.endsWith('.mp3')) return 'audio/mpeg';
+  if (lower.endsWith('.ogg')) return 'audio/ogg';
+  if (lower.endsWith('.wav')) return 'audio/wav';
+  return 'application/octet-stream';
 }
 
 async function readJsonBody(request: IncomingMessage, maxBytes: number): Promise<Record<string, unknown>> {

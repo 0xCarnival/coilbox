@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { JSX } from 'react';
-import type { Component, ComponentType, Entity, JsonValue, Vec3 } from '@schema/index.js';
+import type { AssetEntry, Component, ComponentType, Entity, JsonValue, Vec3 } from '@schema/index.js';
 import { COMPONENT_TYPES, COMPONENT_LABELS } from '@schema/index.js';
 import { useSession, useSessionSnapshot } from '../hooks.js';
 import { COMPONENT_DESCRIPTORS, componentLabel, eulerDegreesToQuaternion, quaternionToEulerDegrees, type FieldDescriptor } from './field-schema.js';
@@ -97,22 +97,34 @@ export function Inspector({ locked }: { locked: boolean }): JSX.Element {
         </button>
         {addMenuOpen && (
           <div className="add-menu">
-            {COMPONENT_TYPES.filter((type) => isAddable(entity, type)).map((type) => (
-              <button
-                key={type}
-                type="button"
-                onClick={() => {
-                  setAddMenuOpen(false);
-                  session.execute({
-                    kind: 'addComponent',
-                    entityId: entity.id,
-                    component: defaultComponent(type),
-                  });
-                }}
-              >
-                {COMPONENT_LABELS[type]}
-              </button>
-            ))}
+            {COMPONENT_TYPES.filter((type) => isAddable(entity, type))
+              .map((type) => ({ type, component: defaultComponent(type, snapshot.assets) }))
+              .filter((entry): entry is { type: ComponentType; component: Component } => entry.component !== null)
+              .map(({ type, component }) => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => {
+                    setAddMenuOpen(false);
+                    // A model replaces the primitive placeholder rather than stacking a second
+                    // renderable on the same entity; both changes are one undo step.
+                    const replacePrimitive = type === 'model' && entity.components.some((candidate) => candidate.type === 'primitive');
+                    if (replacePrimitive) {
+                      session.transaction(`Add ${COMPONENT_LABELS[type]}`, [
+                        { kind: 'removeComponent', entityId: entity.id, componentType: 'primitive' },
+                        { kind: 'addComponent', entityId: entity.id, component },
+                      ]);
+                      return;
+                    }
+                    session.execute({ kind: 'addComponent', entityId: entity.id, component });
+                  }}
+                >
+                  {COMPONENT_LABELS[type]}
+                </button>
+              ))}
+            {snapshot.assets.filter((asset) => asset.kind === 'model').length === 0 && (
+              <span className="menu-hint">Import a .glb in the Assets tab to add a Model component.</span>
+            )}
           </div>
         )}
       </div>
@@ -126,16 +138,20 @@ function isAddable(entity: Entity, type: ComponentType): boolean {
   if (type === 'primitive' && entity.components.some((component) => component.type === 'primitive' || component.type === 'model')) {
     return false;
   }
+
   if (SINGLETON.includes(type) && entity.components.some((component) => component.type === type)) return false;
   if (type === 'collider' && !entity.components.some((component) => component.type === 'rigidBody')) return false;
   return true;
 }
 
 /**
- * Default values for a component added from the menu. Creation-menu kinds reuse the single
- * source of defaults in `document/factory.ts`; component-only types are described here.
+ * Default values for a component added from the menu.
+ *
+ * Creation-menu kinds reuse the single source of defaults in `document/factory.ts`. Model and
+ * audio components need an asset to reference, so with none imported they return null and the
+ * entry is not offered — an empty asset reference would be an invalid document.
  */
-function defaultComponent(type: ComponentType): Component {
+function defaultComponent(type: ComponentType, assets: readonly AssetEntry[]): Component | null {
   switch (type) {
     case 'primitive':
       return componentsFor('box')[0] as Component;
@@ -143,6 +159,16 @@ function defaultComponent(type: ComponentType): Component {
       return componentsFor('camera')[0] as Component;
     case 'light':
       return componentsFor('directionalLight')[0] as Component;
+    case 'model': {
+      const asset = assets.find((candidate) => candidate.kind === 'model');
+      return asset ? { type: 'model', assetId: asset.id, castShadow: true, receiveShadow: true } : null;
+    }
+    case 'audio': {
+      const asset = assets.find((candidate) => candidate.kind === 'audio');
+      return asset
+        ? { type: 'audio', assetId: asset.id, loop: false, autoplay: false, volume: 1, spatial: false, maxDistance: 20 }
+        : null;
+    }
     default:
       return defaultLiteralFor(type);
   }
@@ -160,6 +186,8 @@ function defaultLiteralFor(type: ComponentType): Component {
       return { type: 'animation', clip: null, playing: true, loop: true, speed: 1, autoplay: true };
     case 'audio':
       return { type: 'audio', assetId: 'audio', loop: false, autoplay: false, volume: 1, spatial: false, maxDistance: 20 };
+    case 'model':
+      return { type: 'model', assetId: 'model', castShadow: true, receiveShadow: true };
     case 'behavior':
       return { type: 'behavior', behaviorId: 'behavior.id', properties: {} };
     default:
@@ -242,6 +270,7 @@ function Field({
   onChange(value: JsonValue): void;
 }): JSX.Element {
   const session = useSession();
+  const snapshot = useSessionSnapshot();
   const scene = session.scene;
 
   switch (field.kind) {
@@ -303,6 +332,46 @@ function Field({
           />
         </div>
       );
+    case 'asset-reference': {
+      const kind = field.key === 'assetId' && entity.components.some((component) => component.type === 'audio') ? 'audio' : 'model';
+      const options = snapshot.assets.filter((asset) => asset.kind === kind);
+      return (
+        <label className="field">
+          <span className="field-label">{field.label}</span>
+          <select value={typeof value === 'string' ? value : ''} disabled={disabled} onChange={(event) => onChange(event.target.value)}>
+            <option value="">None</option>
+            {options.map((asset) => (
+              <option key={asset.id} value={asset.id}>
+                {asset.id}
+              </option>
+            ))}
+            {typeof value === 'string' && value.length > 0 && !options.some((asset) => asset.id === value) && (
+              <option value={value}>{value} (missing)</option>
+            )}
+          </select>
+        </label>
+      );
+    }
+    case 'clip-reference': {
+      const clips = snapshot.modelClips[entity.id] ?? [];
+      return (
+        <label className="field">
+          <span className="field-label">{field.label}</span>
+          <select
+            value={typeof value === 'string' ? value : ''}
+            disabled={disabled || clips.length === 0}
+            onChange={(event) => onChange(event.target.value === '' ? null : event.target.value)}
+          >
+            <option value="">{clips.length === 0 ? 'No clips loaded' : 'First clip'}</option>
+            {clips.map((clip) => (
+              <option key={clip} value={clip}>
+                {clip}
+              </option>
+            ))}
+          </select>
+        </label>
+      );
+    }
     case 'entity-reference':
       return (
         <label className="field">

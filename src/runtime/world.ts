@@ -4,6 +4,9 @@ import { buildSceneGraph, RuntimeWorldError, type BuiltEntity, type BuiltScene }
 import { FixedStepLoop, type LoopStats } from './loop.js';
 import { RuntimeViewport, disposeSceneResources } from './render/viewport.js';
 import { createBox3DBackend } from './physics/box3d-adapter.js';
+import { AssetCache, disposeInstance, type ModelInstance } from './assets/loader.js';
+import type { AnimationController } from './animation.js';
+import { EmptyAssetResolver, type AssetResolver } from './assets/resolver.js';
 import type { ColliderSpec, ContactEvent, PhysicsBackend, PhysicsCounters, PhysicsWorldHandle } from './physics/types.js';
 
 /**
@@ -27,6 +30,10 @@ export interface RuntimeWorldOptions {
   wasmLocateFile?: (path: string) => string;
   /** Reuse an already-loaded backend (tests, or a second world in the same page). */
   physicsBackend?: PhysicsBackend;
+  /** Where model and texture assets come from. Defaults to a project with no assets. */
+  assets?: AssetResolver;
+  /** Reuse a warm asset cache across Play/Stop cycles. */
+  assetCache?: AssetCache;
   /** Called for recoverable runtime problems instead of throwing mid-frame. */
   onError?: (error: RuntimeWorldError) => void;
   /** Resize the drawing buffer from the canvas CSS size each frame. */
@@ -56,6 +63,10 @@ export interface RuntimeStats {
   sensorEvents: number;
   hitEvents: number;
   listeners: number;
+  /** Animated entities currently driven by a mixer. */
+  animatedEntities: number;
+  /** Model assets loaded by this world (or reused from a warm cache). */
+  loadedModels: number;
 }
 
 interface PhysicsBinding {
@@ -84,6 +95,11 @@ export class RuntimeWorld {
   private readonly loop: FixedStepLoop;
   private readonly bindings = new Map<string, PhysicsBinding>();
   private readonly autoResize: boolean;
+  private readonly assetCache: AssetCache;
+  private readonly ownsAssetCache: boolean;
+  private modelInstances: Map<string, ModelInstance>;
+  private readonly assets: AssetResolver;
+  private readonly onErrorCallback: ((error: RuntimeWorldError) => void) | undefined;
 
   private readonly listeners: Array<{ target: EventTarget; type: string; handler: EventListener }> = [];
   private readonly eventCounts = { contact: 0, sensor: 0, hit: 0 };
@@ -103,6 +119,9 @@ export class RuntimeWorld {
     viewport: RuntimeViewport,
     graph: BuiltScene,
     physics: PhysicsWorldHandle,
+    assetCache: AssetCache,
+    modelInstances: Map<string, ModelInstance>,
+    assets: AssetResolver,
   ) {
     this.game = options.game;
     this.scene = options.scene;
@@ -111,6 +130,11 @@ export class RuntimeWorld {
     this.viewport = viewport;
     this.graph = graph;
     this.physics = physics;
+    this.assetCache = assetCache;
+    this.ownsAssetCache = options.assetCache === undefined;
+    this.modelInstances = modelInstances;
+    this.assets = assets;
+    this.onErrorCallback = options.onError;
     this.autoResize = options.autoResize ?? true;
     this.warnings = [...graph.warnings];
 
@@ -128,7 +152,39 @@ export class RuntimeWorld {
       options.physicsBackend ??
       (await createBox3DBackend(options.wasmLocateFile ? { locateFile: options.wasmLocateFile } : undefined));
 
-    const graph = buildSceneGraph(options.scene);
+    const assets = options.assets ?? new EmptyAssetResolver();
+    // Per-world: warnings from one world must never appear in another's report.
+    const assetWarnings: string[] = [];
+    const assetCache =
+      options.assetCache ??
+      new AssetCache({
+        resolver: assets,
+        describe: (assetId) => assets.getEntry(assetId),
+        onWarning: (message) => assetWarnings.push(message),
+      });
+
+    // Load every referenced model before building the graph, so a missing or unsupported
+    // asset produces one clear error instead of half a scene.
+    const modelInstances = new Map<string, ModelInstance>();
+    const assetErrors: RuntimeWorldError[] = [];
+    for (const entity of options.scene.entities) {
+      const model = entity.components.find((component) => component.type === 'model');
+      if (!model || model.type !== 'model') continue;
+      if (!entity.enabled) continue;
+      try {
+        modelInstances.set(entity.id, await assetCache.instantiate(model.assetId));
+      } catch (cause) {
+        assetErrors.push(
+          new RuntimeWorldError(
+            'asset-load-failed',
+            cause instanceof Error ? cause.message : String(cause),
+            entity.id,
+          ),
+        );
+      }
+    }
+
+    const graph = buildSceneGraph(options.scene, { models: modelInstances });
     const viewport = new RuntimeViewport({
       canvas: options.canvas,
       render: options.game.settings.render,
@@ -145,7 +201,8 @@ export class RuntimeWorld {
       hitEventThreshold: options.game.settings.physics.hitEventThreshold,
     });
 
-    const world = new RuntimeWorld(options, viewport, graph, physics);
+    const world = new RuntimeWorld(options, viewport, graph, physics, assetCache, modelInstances, assets);
+    world.warnings.push(...assetWarnings);
     try {
       world.createPhysicsBodies();
       world.attachResizeHandling();
@@ -153,6 +210,12 @@ export class RuntimeWorld {
     } catch (cause) {
       world.dispose();
       throw cause;
+    }
+    // Asset problems are reported after the world exists, so the caller can show them next
+    // to a running scene instead of a blank failure.
+    for (const error of assetErrors) {
+      world.warnings.push(error.message);
+      world.onErrorCallback?.(error);
     }
     return world;
   }
@@ -294,6 +357,24 @@ export class RuntimeWorld {
     return this.bindings.has(entityId);
   }
 
+  /** Animation state of an entity, for the editor preview and for tests. */
+  getAnimationState(entityId: string): ReturnType<AnimationController['getState']> | null {
+    return this.graph.entities.get(entityId)?.animation?.getState() ?? null;
+  }
+
+  getAnimationController(entityId: string): AnimationController | null {
+    return this.graph.entities.get(entityId)?.animation ?? null;
+  }
+
+  getLoadedModel(entityId: string): ModelInstance | null {
+    return this.modelInstances.get(entityId) ?? null;
+  }
+
+  /** Clip names available to an entity's model, once loaded. */
+  getClipNames(entityId: string): string[] {
+    return this.modelInstances.get(entityId)?.clips.map((clip, index) => clip.name || `clip-${index}`) ?? [];
+  }
+
   /** Render one frame immediately at the given interpolation factor. */
   renderNow(alpha = 1): void {
     if (this.disposed) return;
@@ -324,6 +405,8 @@ export class RuntimeWorld {
       sensorEvents: this.eventCounts.sensor,
       hitEvents: this.eventCounts.hit,
       listeners: this.listeners.length,
+      animatedEntities: [...this.graph.entities.values()].filter((built) => built.animation !== null).length,
+      loadedModels: this.modelInstances.size,
     };
   }
 
@@ -335,10 +418,16 @@ export class RuntimeWorld {
     this.removeAllListeners();
     this.physics.dispose();
     this.bindings.clear();
+    for (const built of this.graph.entities.values()) built.animation?.dispose();
+    // Model instances are clones: dispose them per instance, then let the cache release the
+    // source assets when this world owns it.
+    for (const instance of this.modelInstances.values()) disposeInstance(instance);
+    this.modelInstances.clear();
     this.viewport.scene.remove(this.graph.root);
     disposeSceneResources(this.graph.root);
     this.graph.entities.clear();
     this.viewport.dispose();
+    if (this.ownsAssetCache) void this.assetCache.dispose();
   }
 
   // ---------------------------------------------------------------- internals
@@ -477,8 +566,13 @@ export class RuntimeWorld {
       this.physics.readTransform(binding.entityId, binding.current);
     }
 
+    // Animation advances on the fixed step as well, so Pause/Step advance clips exactly as
+    // they advance physics instead of freezing them between frames.
+    for (const built of this.graph.entities.values()) {
+      built.animation?.update(fixedDelta);
+    }
+
     this.handlePhysicsEvents(this.physics.drainEvents());
-    void fixedDelta;
     this.physicsTimeMs = this.physicsTimeMs * 0.9 + (nowMs() - started) * 0.1;
   }
 

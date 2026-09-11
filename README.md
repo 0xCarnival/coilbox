@@ -9,13 +9,15 @@ stage gates is tracked in `docs/status.md`.
 
 ## Status
 
-**Stages 0 and 1 are complete and verified.** The studio can create and open projects, edit
-a scene in a viewport with a transform inspector, undo/redo, save through the workspace
-service, play the scene with the same runtime an export uses, stop without disturbing the
-authored document, and export a standalone playable web build.
+**Stages 0–2 are complete and verified.** The studio can create and open projects, edit a
+scene in a viewport with a transform inspector, import models/images/audio, place models and
+play their animation clips, undo/redo, save through the workspace service, play the scene with
+the same runtime an export uses, stop without disturbing the authored document, and export a
+standalone playable web build.
 
 - `pnpm verify:stage0` — 14/14 checks (runtime, physics, teardown, WASM delivery)
 - `pnpm verify:stage1` — 11/11 checks (authoring loop end to end)
+- `pnpm verify:stage2` — 13/13 checks (assets, clips, property controls, understandable errors)
 
 See `docs/status.md` for the per-stage detail and `docs/evidence/` for the raw results.
 
@@ -40,6 +42,9 @@ pnpm studio list                  # projects in the workspace
 pnpm studio create my-game        # create from a template
 pnpm studio validate my-game      # validate a project on disk
 pnpm studio build my-game         # export a standalone playable build
+
+pnpm verify:stage2    # stage 2 gate: assets, model instancing, clip playback
+pnpm fixtures         # regenerate the binary test fixtures from code
 ```
 
 Pages:

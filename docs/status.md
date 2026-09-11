@@ -8,7 +8,7 @@ gaps that are knowingly left open.
 |---|---|---|
 | 0. Compatibility probe | complete | `pnpm verify:stage0` — 14/14 checks |
 | 1. End-to-end authoring loop | complete | `pnpm verify:stage1` — 11/11 checks |
-| 2. Comfortable scene editing | not started | — |
+| 2. Comfortable scene editing | complete | `pnpm verify:stage2` — 13/13 checks |
 | 3. Actual games | not started | — |
 | 4. Agent and management workflow | not started | — |
 | 5. Reliability and release | not started | — |
@@ -169,8 +169,82 @@ path traversal, symlink escape, DNS rebinding).
 - Export is single-project and does not yet generate a per-game behaviour registry (stage 4,
   when behaviours exist).
 
-## Stage 2 — comfortable scene editing — not started
+## Stage 2 — comfortable scene editing — **complete**
 
-Deliverable: hierarchy/groups, assets, camera/light/material controls, snapping, clip
+**Deliverable:** hierarchy/groups, assets, camera/light/material controls, snapping, clip
 playback, pause/step, errors.
+
+**Evidence required:** "Build and revise a small scene without editing code; missing asset and
+unsupported import errors are understandable."
+
+**Status:** demonstrated, 13/13 automated checks passing.
+
+### How to run
+
+```bash
+pnpm dev               # then open http://127.0.0.1:5178/
+pnpm verify:stage2     # typecheck, unit tests, build, and the asset/authoring gate
+pnpm fixtures          # regenerate the binary test fixtures from code
+```
+
+### Demonstrated result
+
+`tools/verify-stage2.ts` drives the real editor against a temporary workspace:
+
+| Requirement | Observed |
+|---|---|
+| Declared asset subset | `.glb`/`.gltf` models, PNG/JPEG/WebP images, MP3/OGG/WAV audio import; `.fbx` is refused with "FBX is not supported in this version. Export a self-contained .glb…" |
+| Compression detection | A GLB requiring `KHR_draco_mesh_compression` imports with that requirement recorded, and the asset list marks it "this version cannot decode it" |
+| Import through the editor | Four files import through the UI and appear in the manifest with `sha256:` hashes |
+| Model in the viewport | Choosing a model asset loads it into the viewport through the same loader the runtime uses |
+| Clip discovery and playback | The animation component lists the model's clips (`Hop`, `Wave`) and the editor preview advances the chosen clip |
+| Skinned instances | A skinned model loads, reports its clips, and clones per instance with independent skeletons |
+| Property controls | Light intensity, camera field of view, and material colour all edit through the inspector into the authored document |
+| Snapping | The snap toggle reaches the transform controls |
+| Save/reopen | The scene with two model entities saves at revision 1 and reloads after a full page reload |
+| Runtime animation | Play advances both clips inside the play world (≥2 animated entities, models loaded) |
+| Missing asset | Deleting the file behind a manifest entry makes the entity report `failed` with a fetch error in the console instead of rendering nothing |
+| Console | No unexpected page errors while building and revising the scene |
+
+Screenshots: `docs/evidence/stage2/editor-with-assets.png`, `play-with-models.png`; raw
+evidence in `docs/evidence/stage2/evidence.json`.
+
+### What was built
+
+- **Asset service** (`server/assets.ts`) — import with content hashes and stable ids, explicit
+  replacement that preserves identity, archival of the replaced original instead of deletion,
+  reference checking before removal, and codec detection read straight out of the GLB.
+- **Runtime asset layer** (`src/runtime/assets/loader.ts`) — GLTFLoader composition, skeleton-aware
+  instancing, per-instance materials, shared geometry, and errors that name the problem
+  (`UnsupportedAssetError`, `MissingAssetError`).
+- **Animation** (`src/runtime/animation.ts`) — one mixer per instance, clip/loop/speed, advanced on
+  the fixed step so Pause and Step behave predictably.
+- **Editor** — asset browser with drag-and-drop and per-asset usage, asset and clip pickers in
+  the inspector, model previews in the viewport, and asset loading shared with Play through one
+  cache.
+- **Test fixtures** (`tools/write-fixtures.ts`) — a skinned limb with a clip, a crate with a
+  transform clip, a codec-requiring GLB, a non-GLB, a PNG, and a WAV, all generated from code.
+
+### Bugs this stage found (each fixed and covered by a test)
+
+1. `fetch` stored on an instance and called later throws "Illegal invocation" in browsers; the
+   adapter now binds the global explicitly. Node's fetch does not have this failure mode, which is
+   why only the browser gate caught it.
+2. Instance clones share geometry and textures with their source, so per-instance disposal must
+   release only materials and skeletons — otherwise the first Stop would corrupt every other
+   instance.
+3. React's value tracker ignores a colour input whose value is assigned directly in tests; the
+   gate now uses the native setter before dispatching.
+4. Adding a Model component to an entity that still had a primitive produced an invalid document;
+   the editor now replaces the primitive inside one undo step.
+
+### Known gaps at this stage
+
+- Audio components import and are referenced, but playback arrives with the gameplay layer (stage 3).
+- `.gltf` files must be self-contained; the loader refuses external `.bin`/texture references with
+  an explicit message rather than half-loading them.
+- No texture assignment UI yet: imported images are stored and listed, and material colour is
+  editable, but image-to-material binding is stage 3 work with the material component.
+- Groups exist and reparenting preserves world transforms, but hierarchy drag-and-drop is still
+  a button ("Group") rather than a gesture.
 

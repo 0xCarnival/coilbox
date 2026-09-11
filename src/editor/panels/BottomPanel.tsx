@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { JSX } from 'react';
 import { useSession, useSessionSnapshot } from '../hooks.js';
+import { AssetBrowser } from './AssetBrowser.js';
 
 /**
  * Bottom panel (plan §3): assets, scenes, and errors/console as tabs.
@@ -29,7 +30,12 @@ export function BottomPanel({ onReloadScene }: { onReloadScene(): void }): JSX.E
             role="tab"
             aria-selected={tab === candidate}
             className={tab === candidate ? 'active' : ''}
-            onClick={() => setTab(candidate)}
+            onClick={() => {
+              setTab(candidate);
+              // Agents and other tools can add files behind the editor's back; opening the
+              // tab re-reads the manifest rather than showing a stale list.
+              if (candidate === 'assets') void session.refreshAssets();
+            }}
           >
             {candidate === 'assets' ? 'Assets' : candidate === 'scenes' ? 'Scenes' : `Console${errors > 0 ? ` (${errors})` : ''}`}
           </button>
@@ -54,11 +60,7 @@ export function BottomPanel({ onReloadScene }: { onReloadScene(): void }): JSX.E
         </button>
       </div>
       <div className="tab-body">
-        {tab === 'assets' && (
-          <div className="panel-empty">
-            No assets yet. Image, audio, and glTF import arrives with the asset pipeline (stage 2).
-          </div>
-        )}
+        {tab === 'assets' && <AssetBrowser />}
         {tab === 'scenes' && (
           <ul className="scene-list">
             {(snapshot.project?.scenes ?? []).map((entry) => (

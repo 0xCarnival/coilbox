@@ -1,8 +1,9 @@
-import type { GameDocument, SceneDocument, ValidationIssue } from '@schema/index.js';
+import type { AssetEntry, GameDocument, SceneDocument, ValidationIssue } from '@schema/index.js';
 import type { EditorCommand } from '../document/commands.js';
 import { SceneDocumentStore, type SaveState } from '../document/store.js';
 import { SelectionStore } from '../document/selection.js';
 import { WorkspaceClient, WorkspaceClientError, type ProjectDetail, type ProjectSummary } from '../api/client.js';
+import { ApiAssetResolver } from '../api/asset-resolver.js';
 
 export type { ProjectDetail, ProjectSummary } from '../api/client.js';
 
@@ -42,11 +43,21 @@ export interface SessionSnapshot {
   /** Set when a write was refused because the file changed underneath the editor. */
   conflict: { message: string; expected: number; actual: number } | null;
   lastSavedAt: string | null;
+  /** Imported assets, newest last. */
+  assets: AssetEntry[];
+  /** Where each asset is used, so removal can be honest about the consequences. */
+  assetUsage: Record<string, Array<{ sceneId: string; entityId: string; entityName: string }>>;
+  /** True while an import is in flight. */
+  importing: boolean;
+  /** Clip names per entity, reported as models finish loading. */
+  modelClips: Record<string, string[]>;
 }
 
 export class EditorSession {
   readonly client: WorkspaceClient;
   readonly selection = new SelectionStore();
+  /** Resolves asset ids to URLs for the viewport and for Play. */
+  readonly assetResolver = new ApiAssetResolver('');
 
   private projects: ProjectSummary[] = [];
   private project: ProjectDetail | null = null;
@@ -58,6 +69,10 @@ export class EditorSession {
   private logCounter = 1;
   private conflict: SessionSnapshot['conflict'] = null;
   private lastSavedAt: string | null = null;
+  private assets: AssetEntry[] = [];
+  private assetUsage: SessionSnapshot['assetUsage'] = {};
+  private importing = false;
+  private modelClips: Record<string, string[]> = {};
   private listeners = new Set<(snapshot: SessionSnapshot) => void>();
   private unsubscribes: Array<() => void> = [];
   private cachedSnapshot: SessionSnapshot | null = null;
@@ -99,6 +114,10 @@ export class EditorSession {
       logs: this.logs,
       conflict: this.conflict,
       lastSavedAt: this.lastSavedAt,
+      assets: this.assets,
+      assetUsage: this.assetUsage,
+      importing: this.importing,
+      modelClips: this.modelClips,
     };
     this.cachedSnapshot = snapshot;
     return snapshot;
@@ -164,6 +183,7 @@ export class EditorSession {
       const { project } = await this.client.readProject(projectId);
       this.project = project;
       this.projectError = null;
+      await this.refreshAssets();
       await this.openScene(sceneId ?? project.game.startScene, project);
       this.log('info', `Opened "${project.name}"`);
       return true;
@@ -174,6 +194,95 @@ export class EditorSession {
     } finally {
       this.loading = false;
       this.emit();
+    }
+  }
+
+  /** Called by the viewport when a model instance finishes loading. */
+  reportModelClips(entityId: string, clips: string[]): void {
+    const existing = this.modelClips[entityId];
+    if (existing && existing.length === clips.length && existing.every((name, index) => name === clips[index])) return;
+    this.modelClips = { ...this.modelClips, [entityId]: clips };
+    this.emit();
+  }
+
+  clipsFor(entityId: string): string[] {
+    return this.modelClips[entityId] ?? [];
+  }
+
+  async refreshAssets(): Promise<void> {
+    if (!this.project) return;
+    try {
+      const { manifest, usage } = await this.client.listAssets(this.project.id);
+      this.assets = manifest.assets;
+      this.assetUsage = usage;
+      this.assetResolver.setProject(this.project.id, manifest.assets);
+    } catch (error) {
+      this.log('error', 'Could not read the asset manifest', describeError(error));
+    }
+    this.emit();
+  }
+
+  /**
+   * Import dropped or chosen files one by one, so one bad file does not hide the rest and
+   * every failure has its own message in the console.
+   */
+  async importFiles(files: Array<{ name: string; arrayBuffer(): Promise<ArrayBuffer>; type?: string }>): Promise<{ imported: number; failed: number }> {
+    if (!this.project) return { imported: 0, failed: 0 };
+    this.importing = true;
+    this.emit();
+    let imported = 0;
+    let failed = 0;
+    try {
+      for (const file of files) {
+        try {
+          const bytes = await file.arrayBuffer();
+          const result = await this.client.importAsset(this.project.id, { name: file.name, bytes, type: file.type });
+          imported += 1;
+          for (const warning of result.warnings) this.log('warning', `${result.entry.id}: ${warning}`);
+          this.log('info', `Imported ${result.entry.kind} "${result.entry.id}" (${(result.entry.bytes / 1024).toFixed(0)} KiB)`);
+        } catch (error) {
+          failed += 1;
+          this.log('error', `Could not import "${file.name}"`, describeError(error));
+        }
+      }
+      await this.refreshAssets();
+      return { imported, failed };
+    } finally {
+      this.importing = false;
+      this.emit();
+    }
+  }
+
+  /** Replace the bytes behind an asset id, keeping every scene reference intact. */
+  async replaceAsset(assetId: string, file: { name: string; arrayBuffer(): Promise<ArrayBuffer>; type?: string }): Promise<boolean> {
+    if (!this.project) return false;
+    try {
+      const bytes = await file.arrayBuffer();
+      const result = await this.client.importAsset(this.project.id, { name: file.name, bytes, type: file.type }, { replaceAssetId: assetId });
+      this.log('info', `Replaced "${assetId}" with ${file.name}`);
+      for (const warning of result.warnings) this.log('warning', `${assetId}: ${warning}`);
+      await this.refreshAssets();
+      return true;
+    } catch (error) {
+      this.log('error', `Could not replace "${assetId}"`, describeError(error));
+      return false;
+    }
+  }
+
+  async deleteAsset(assetId: string): Promise<boolean> {
+    if (!this.project) return false;
+    try {
+      await this.client.deleteAsset(this.project.id, assetId);
+      this.log('info', `Removed "${assetId}" (the file is kept in the project's recovery folder)`);
+      await this.refreshAssets();
+      return true;
+    } catch (error) {
+      if (error instanceof WorkspaceClientError && error.code === 'asset-in-use') {
+        this.log('warning', `Cannot remove "${assetId}"`, error.message);
+      } else {
+        this.log('error', `Could not remove "${assetId}"`, describeError(error));
+      }
+      return false;
     }
   }
 
@@ -198,6 +307,7 @@ export class EditorSession {
       this.store = new SceneDocumentStore(project.game, scene);
       this.sceneId = sceneId;
       this.conflict = null;
+      this.modelClips = {};
       this.unsubscribes.push(
         this.store.subscribe(() => this.emit()),
         this.selection.subscribe(() => this.emit()),

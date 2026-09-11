@@ -4,6 +4,8 @@ import { TransformControls } from 'three/addons/controls/TransformControls.js';
 import type { Entity, SceneDocument, Transform, Vec3 } from '@schema/index.js';
 import { applyMaterial, createLight, createPrimitiveMesh, RuntimeWorldError } from '@runtime/scene-graph.js';
 import { disposeSceneResources } from '@runtime/render/viewport.js';
+import { AnimationController } from '@runtime/animation.js';
+import type { ModelInstance } from '@runtime/assets/loader.js';
 
 /**
  * Editor viewport: an imperative Three.js authoring view owned by one React component.
@@ -30,6 +32,20 @@ export interface ViewportCallbacks {
   onCommitTransform(entityId: string, transform: Partial<Transform>): void;
   onDragStateChange?(dragging: boolean): void;
   onWarning?(message: string): void;
+  /** Reported after a model finishes loading so the inspector can list its clips. */
+  onModelLoaded?(entityId: string, clips: string[]): void;
+  /** Reported when a model could not be loaded, with the reason. */
+  onModelFailed?(entityId: string, message: string): void;
+}
+
+/**
+ * Supplies model instances to the viewport. The editor implements this over the workspace
+ * API; the runtime implements the same idea over its own asset cache, so an entity looks the
+ * same in both.
+ */
+export interface ViewportAssetProvider {
+  instantiate(assetId: string): Promise<ModelInstance>;
+  clipsFor(assetId: string): string[] | null;
 }
 
 export interface ViewportOptions extends ViewportCallbacks {
@@ -42,6 +58,14 @@ interface EntityProjection {
   /** Component signature last projected, so property edits rebuild only what changed. */
   signature: string;
   entity: Entity;
+  /** Loaded model instance for this entity, when it has a model component. */
+  model: ModelInstance | null;
+  /** Preview playback for the entity's animation component. */
+  animation: AnimationController | null;
+  /** Asset id the pending load belongs to, so a changed asset reloads. */
+  pendingAssetId: string | null;
+  /** True once a load failed, to avoid retrying every sync. */
+  failed: boolean;
 }
 
 const EDITOR_ONLY = 'editorOnly';
@@ -72,6 +96,9 @@ export class EditorViewport {
   private pointerDownAt: { x: number; y: number } | null = null;
   private disposed = false;
   private resizeObserver: ResizeObserver | null = null;
+  private assetProvider: ViewportAssetProvider | null = null;
+  private readonly clock = new THREE.Clock();
+  private readonly pendingLoads = new Set<string>();
 
   constructor(options: ViewportOptions) {
     this.canvas = options.canvas;
@@ -167,6 +194,7 @@ export class EditorViewport {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
+    for (const projection of this.projections.values()) this.disposeProjectionChildren(projection);
     this.stop();
     this.canvas.removeEventListener('pointerdown', this.handlePointerDown);
     this.canvas.removeEventListener('pointerup', this.handlePointerUp);
@@ -196,6 +224,7 @@ export class EditorViewport {
     }
     for (const [id, projection] of [...this.projections]) {
       if (seen.has(id)) continue;
+      this.disposeProjectionChildren(projection);
       projection.object.removeFromParent();
       disposeSceneResources(projection.object);
       this.projections.delete(id);
@@ -220,7 +249,15 @@ export class EditorViewport {
     const signature = JSON.stringify(entity.components);
     let projection = this.projections.get(entity.id);
     if (!projection) {
-      projection = { object: new THREE.Group(), signature: '', entity };
+      projection = {
+        object: new THREE.Group(),
+        signature: '',
+        entity,
+        model: null,
+        animation: null,
+        pendingAssetId: null,
+        failed: false,
+      };
       projection.object.name = entity.name;
       projection.object.userData.entityId = entity.id;
       this.projections.set(entity.id, projection);
@@ -231,14 +268,24 @@ export class EditorViewport {
     if (projection.signature !== signature) {
       // Rebuild the entity's visual children; the group itself stays put so selection and
       // transform controls are not disturbed by a property edit.
-      const children = [...projection.object.children];
-      for (const child of children) {
-        projection.object.remove(child);
-        disposeSceneResources(child);
-      }
+      this.disposeProjectionChildren(projection);
       this.projectComponents(projection.object, entity);
       projection.signature = signature;
     }
+
+    const modelComponent = entity.components.find((component) => component.type === 'model');
+    const wantedAssetId = modelComponent?.type === 'model' ? modelComponent.assetId : null;
+    if (wantedAssetId !== projection.pendingAssetId) {
+      projection.failed = false;
+    }
+    if (wantedAssetId && !projection.model && !projection.failed && projection.pendingAssetId !== wantedAssetId) {
+      this.loadModelFor(projection, wantedAssetId);
+    } else if (!wantedAssetId && projection.model) {
+      // The model component went away: drop the instance, keep everything else.
+      this.disposeProjectionModel(projection);
+    }
+
+    this.syncProjectionAnimation(projection, entity);
 
     const { position, rotation, scale } = entity.transform;
     projection.object.position.set(position[0], position[1], position[2]);
@@ -291,8 +338,21 @@ export class EditorViewport {
           object.add(outline);
           break;
         }
-        case 'model':
+        case 'model': {
+          // The instance is attached asynchronously; until then show a loading marker so the
+          // object is still selectable and its absence is visible.
+          const marker = new THREE.Mesh(
+            new THREE.BoxGeometry(0.6, 0.6, 0.6),
+            new THREE.MeshBasicMaterial({ color: 0x5b9dff, wireframe: true, transparent: true, opacity: 0.6 }),
+          );
+          marker.userData[EDITOR_ONLY] = true;
+          marker.name = 'model-loading';
+          object.add(marker);
+          break;
+        }
         case 'animation':
+          // Playback is attached once the model instance exists (see syncProjectionAnimation).
+          break;
         case 'audio':
         case 'behavior': {
           // Not runnable yet: mark the entity so the viewport still shows a placeholder
@@ -313,6 +373,96 @@ export class EditorViewport {
           break;
       }
     }
+  }
+
+  setAssetProvider(provider: ViewportAssetProvider | null): void {
+    this.assetProvider = provider;
+  }
+
+  private async loadModelFor(projection: EntityProjection, assetId: string): Promise<void> {
+    const provider = this.assetProvider;
+    projection.pendingAssetId = assetId;
+    if (!provider) return;
+    const key = `${projection.entity.id}:${assetId}`;
+    if (this.pendingLoads.has(key)) return;
+    this.pendingLoads.add(key);
+    try {
+      const instance = await provider.instantiate(assetId);
+      // The projection may have been rebuilt or removed while the load was in flight.
+      const current = this.projections.get(projection.entity.id);
+      if (!current || current !== projection || current.pendingAssetId !== assetId || this.disposed) return;
+      this.disposeProjectionModel(current);
+      current.model = instance;
+      current.object.add(instance.object);
+      const clipNames = instance.clips.map((clip, index) => clip.name || `clip-${index}`);
+      this.callbacks.onModelLoaded?.(projection.entity.id, clipNames);
+      this.syncProjectionAnimation(current, current.entity);
+    } catch (error) {
+      const current = this.projections.get(projection.entity.id);
+      if (current && current === projection) current.failed = true;
+      const message = error instanceof Error ? error.message : String(error);
+      this.callbacks.onModelFailed?.(projection.entity.id, message);
+      this.callbacks.onWarning?.(message);
+    } finally {
+      this.pendingLoads.delete(key);
+    }
+  }
+
+  private syncProjectionAnimation(projection: EntityProjection, entity: Entity): void {
+    const component = entity.components.find((candidate) => candidate.type === 'animation');
+    if (!component || component.type !== 'animation' || !projection.model) {
+      if (projection.animation && (!component || component.type !== 'animation')) {
+        projection.animation.dispose();
+        projection.animation = null;
+      }
+      return;
+    }
+    if (!projection.animation) {
+      projection.animation = new AnimationController(projection.model.object, projection.model.clips, component);
+    } else {
+      projection.animation.setPlaying(component.playing);
+      projection.animation.setLoop(component.loop);
+      projection.animation.setSpeed(component.speed);
+      if (projection.animation.currentClip !== (component.clip ?? projection.animation.clipNames[0] ?? null)) {
+        projection.animation.play(component.clip);
+      }
+    }
+  }
+
+  private disposeProjectionModel(projection: EntityProjection): void {
+    projection.animation?.dispose();
+    projection.animation = null;
+    if (!projection.model) return;
+    // The instance shares geometry and textures with the cached source; only the
+    // per-instance materials and cloned skeleton belong to this projection.
+    for (const material of projection.model.materials) material.dispose();
+    projection.model.object.traverse((object) => {
+      const skeleton = (object as THREE.SkinnedMesh).skeleton;
+      if (skeleton) skeleton.dispose();
+    });
+    projection.object.remove(projection.model.object);
+    projection.model = null;
+    projection.pendingAssetId = null;
+  }
+
+  private disposeProjectionChildren(projection: EntityProjection): void {
+    projection.animation?.dispose();
+    projection.animation = null;
+    for (const child of [...projection.object.children]) {
+      if (projection.model && child === projection.model.object) continue;
+      projection.object.remove(child);
+      disposeSceneResources(child);
+    }
+    if (projection.model) {
+      for (const material of projection.model.materials) material.dispose();
+      projection.model.object.traverse((object) => {
+        const skeleton = (object as THREE.SkinnedMesh).skeleton;
+        if (skeleton) skeleton.dispose();
+      });
+      projection.object.remove(projection.model.object);
+      projection.model = null;
+    }
+    projection.pendingAssetId = null;
   }
 
   /** Entity ids whose projection could not be built (used by tests and the console). */
@@ -499,6 +649,8 @@ export class EditorViewport {
   private renderLoop = (): void => {
     if (!this.running) return;
     this.frameHandle = requestAnimationFrame(this.renderLoop);
+    const delta = Math.min(this.clock.getDelta(), 0.1);
+    for (const projection of this.projections.values()) projection.animation?.update(delta);
     if (this.selection.length > 0) this.boxHelper.setFromObject(this.projections.get(this.selection[0]!)?.object ?? this.boxHelper);
     this.renderNow();
   };
@@ -524,6 +676,25 @@ export class EditorViewport {
 
   projectObject(entityId: string): THREE.Object3D | null {
     return this.projections.get(entityId)?.object ?? null;
+  }
+
+  /** Clip names of a loaded model instance, or null when nothing is loaded yet. */
+  clipNames(entityId: string): string[] | null {
+    const model = this.projections.get(entityId)?.model;
+    return model ? model.clips.map((clip, index) => clip.name || `clip-${index}`) : null;
+  }
+
+  /** Animation preview state, for checks and for the inspector read-out. */
+  animationState(entityId: string): ReturnType<AnimationController['getState']> | null {
+    return this.projections.get(entityId)?.animation?.getState() ?? null;
+  }
+
+  /** Whether the projection is showing a loaded model, a loading marker, or a failure. */
+  modelStatus(entityId: string): 'none' | 'loading' | 'loaded' | 'failed' {
+    const projection = this.projections.get(entityId);
+    if (!projection) return 'none';
+    if (projection.model) return 'loaded';
+    return projection.failed ? 'failed' : projection.pendingAssetId ? 'loading' : 'none';
   }
 }
 

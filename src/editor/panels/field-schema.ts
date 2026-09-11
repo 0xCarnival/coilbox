@@ -18,7 +18,9 @@ export type FieldKind =
   | 'vec3'
   | 'positive-vec3'
   | 'quaternion-degrees'
-  | 'entity-reference';
+  | 'entity-reference'
+  | 'asset-reference'
+  | 'clip-reference';
 
 export interface FieldDescriptor {
   key: string;
@@ -75,7 +77,7 @@ export const COMPONENT_DESCRIPTORS: Record<ComponentType, ComponentDescriptor> =
     singleton: true,
     summary: (component) => (component.type === 'model' ? component.assetId : ''),
     fields: [
-      { key: 'assetId', label: 'Asset', kind: 'text', help: 'Model assets arrive with the asset pipeline.' },
+      { key: 'assetId', label: 'Asset', kind: 'asset-reference', help: 'Import a .glb in the Assets tab, then choose it here.' },
       shadowField,
       { key: 'receiveShadow', label: 'Receive shadow', kind: 'boolean' },
     ],
@@ -209,7 +211,7 @@ export const COMPONENT_DESCRIPTORS: Record<ComponentType, ComponentDescriptor> =
     singleton: true,
     summary: (component) => (component.type === 'animation' ? component.clip ?? 'first clip' : ''),
     fields: [
-      { key: 'clip', label: 'Clip', kind: 'text', help: 'Empty plays the first clip in the model.' },
+      { key: 'clip', label: 'Clip', kind: 'clip-reference', help: 'Empty plays the first clip in the model.' },
       { key: 'playing', label: 'Playing', kind: 'boolean' },
       { key: 'loop', label: 'Loop', kind: 'boolean' },
       { key: 'speed', label: 'Speed', kind: 'number', min: 0, step: 0.1 },
@@ -222,7 +224,7 @@ export const COMPONENT_DESCRIPTORS: Record<ComponentType, ComponentDescriptor> =
     singleton: true,
     summary: (component) => (component.type === 'audio' ? component.assetId : ''),
     fields: [
-      { key: 'assetId', label: 'Asset', kind: 'text' },
+      { key: 'assetId', label: 'Asset', kind: 'asset-reference' },
       { key: 'volume', label: 'Volume', kind: 'number', min: 0, max: 1, step: 0.05 },
       { key: 'loop', label: 'Loop', kind: 'boolean' },
       { key: 'autoplay', label: 'Play on start', kind: 'boolean' },
