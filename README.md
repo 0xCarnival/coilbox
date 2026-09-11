@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/brand/coilbox-logo.png" alt="Coilbox" width="220">
+</p>
+
 # Coilbox
 
 A local-first, open-source game studio built around Three.js: create or generate a game,
