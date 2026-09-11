@@ -1,8 +1,8 @@
 {
   "stage": 2,
-  "generatedAt": "2026-09-11T14:48:16.997Z",
+  "generatedAt": "2026-09-11T15:22:54.129Z",
   "node": "v24.18.0",
-  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage2-PNiBoU",
+  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage2-ylBStJ",
   "steps": [
     {
       "name": "typecheck",
@@ -68,10 +68,10 @@
       "id": "clip-playback",
       "title": "The imported clip is discoverable and plays in the editor preview",
       "passed": true,
-      "detail": "clips offered: First clip, Hop; preview time advanced from 0.12390000009536743 to 0.6332999997138976",
+      "detail": "clips offered: First clip, Hop; preview time advanced from 0.11129999923706055 to 0.6112999992370606",
       "observed": {
-        "before": 0.12390000009536743,
-        "after": 0.6332999997138976,
+        "before": 0.11129999923706055,
+        "after": 0.6112999992370606,
         "clip": "Hop"
       }
     },
@@ -214,7 +214,7 @@
       "id": "play-animates",
       "title": "Play runs the runtime animation: clips advance inside the play world",
       "passed": true,
-      "detail": "Limb clip \"Wave\" advanced 0.050 -> 0.150; 2 animated entities, 2 models loaded",
+      "detail": "Limb clip \"Wave\" advanced 0.067 -> 0.150; 2 animated entities, 2 models loaded",
       "observed": {
         "ids": {
           "limbId": "box-2",
@@ -228,7 +228,7 @@
           "playing": true,
           "loop": true,
           "speed": 1,
-          "time": 0.05,
+          "time": 0.06666666666666667,
           "duration": 1
         },
         "second": {
@@ -255,13 +255,13 @@
         },
         "stats": {
           "state": "running",
-          "frames": 7,
+          "frames": 6,
           "steps": 9,
-          "fps": 26.594534063710032,
-          "frameTimeMs": 37.60171159999997,
-          "physicsTimeMs": 0.04735138899474479,
-          "droppedTime": 0.18330666666666656,
-          "clampedTime": 0.24990000000000007,
+          "fps": 20.549909833160594,
+          "frameTimeMs": 48.66201400000007,
+          "physicsTimeMs": 0.06857067875843384,
+          "droppedTime": 0.16674000000000005,
+          "clampedTime": 0.24999999999999978,
           "drawCalls": 6,
           "triangles": 1268,
           "geometries": 4,
