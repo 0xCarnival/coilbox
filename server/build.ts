@@ -107,6 +107,7 @@ export async function buildGame(options: BuildOptions): Promise<BuildResult> {
   }
   write('player bundle compiled');
 
+  await copyIcons(outDir);
   await copyProjectDocuments(projectRoot, join(outDir, 'project'), write);
 
   await writeFile(
@@ -142,7 +143,24 @@ export async function buildGame(options: BuildOptions): Promise<BuildResult> {
 }
 
 const PROJECT_DOCUMENT_FOLDERS = ['scenes', 'assets', 'scripts'];
+
 const PROJECT_DOCUMENT_FILES = ['game.json', 'README.md'];
+/** Icons the HTML pages link, copied into every export. */
+const ICON_FILES = ['favicon-32.png', 'favicon-192.png', 'apple-touch-icon.png'];
+
+/**
+ * The pages link their icons relatively, and an export is built with `publicDir: false` (an export
+ * ships the player, not the repository's public folder), so the icons the HTML asks for have to be
+ * copied next to it. Without this an exported game requests a missing icon and the browser logs a
+ * 404 for a page that is otherwise fine.
+ */
+async function copyIcons(outDir: string): Promise<void> {
+  for (const icon of ICON_FILES) {
+    const source = join(repositoryRoot, 'public', icon);
+    if (!existsSync(source)) continue;
+    await cp(source, join(outDir, icon));
+  }
+}
 
 async function copyProjectDocuments(projectRoot: string, target: string, write: (message: string) => void): Promise<void> {
   await mkdir(target, { recursive: true });
