@@ -301,7 +301,7 @@ export function Toolbar({
               <ChevronDown size={control.iconSm} />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent wide align="start">
+          <DropdownMenuContent wide align="start" hooks={[DOM.menu]}>
             <DropdownMenuLabel>Add to scene</DropdownMenuLabel>
             {CREATABLE_KINDS.map((kind: CreatableKind) => (
               <DropdownMenuItem
@@ -367,7 +367,7 @@ export function Toolbar({
               <MoreHorizontal size={control.icon} />
             </IconButton>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+          <DropdownMenuContent align="end" hooks={[DOM.menu]}>
             <DropdownMenuItem
               disabled={editorLocked}
               onSelect={() => {

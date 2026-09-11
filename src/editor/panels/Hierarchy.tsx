@@ -78,9 +78,8 @@ function entityIcon(entity: Entity) {
 const treeRow = {
   display: 'flex',
   alignItems: 'center',
-  gap: space.xs,
+  gap: space.xxs,
   height: '24px',
-  paddingInline: space.md,
   borderRadius: radius.sm,
   cursor: 'default',
 } as const;
@@ -162,8 +161,19 @@ const styles = stylex.create({
     paddingBlock: space.xs,
     paddingInline: space.xs,
   },
+  /**
+   * The trailing controls occupy a fixed 68px lane that is reserved whether or not they are painted.
+   *
+   * This is the fix for a real misclick: with the toggles simply hidden, hovering a row made them
+   * appear under the cursor, the row grew, and the click that followed landed on a toggle instead of
+   * the name — silently hiding or locking the entity and pushing an `editor:*` entry onto the undo
+   * stack after whatever edit the user had just made. Reserving the lane means revealing a control
+   * cannot move anything.
+   */
   treeRow: {
     ...treeRow,
+    paddingInlineStart: space.md,
+    paddingInlineEnd: 0,
     ':hover': {
       backgroundColor: color.wash,
     },
@@ -246,8 +256,32 @@ const styles = stylex.create({
     display: 'flex',
   },
   rowToggle: rowToggleBase,
+  /**
+   * `display: none` rather than `visibility: hidden`: a `visibility: hidden` element still
+   * participates in hit testing, so a click aimed at the row could land on an invisible control.
+   * The lane around these is reserved by `treeTrailing`, so removing one from the flow cannot move
+   * anything else.
+   */
   rowToggleHidden: {
-    visibility: 'hidden',
+    display: 'none',
+  },
+  /** The reserved trailing lane: three toggles plus the duplicate/delete pair. */
+  treeTrailing: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: space.xxs,
+    width: '112px',
+    justifyContent: 'flex-end',
+    flexShrink: 0,
+  },
+  /** The two row actions share the lane and are hidden until the row is hovered. */
+  treeTrailingActions: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: space.xxs,
+    width: '44px',
+    justifyContent: 'flex-end',
+    flexShrink: 0,
   },
   /** A toggle whose state is not the default: painted, and the row's only bright glyph. */
   rowToggleOn: {
@@ -397,7 +431,7 @@ export function Hierarchy({ locked }: { locked: boolean }): JSX.Element {
                 DOM.treeRow,
                 isSelected && DOM_STATE.selected,
               )}
-              style={{ paddingLeft: 4 + depth * 10 }}
+              style={{ paddingInlineStart: 4 + depth * 10 }}
               onClick={(event) => session.select(entity.id, { additive: event.shiftKey || event.metaKey || event.ctrlKey })}
               onDoubleClick={() => !locked && setRenaming(entity.id)}
               onMouseEnter={() => setHovered(entity.id)}
@@ -441,85 +475,93 @@ export function Hierarchy({ locked }: { locked: boolean }): JSX.Element {
                   {entity.name}
                 </span>
               )}
-              <span
-                {...stylex.props(
-                  styles.rowToggle,
-                  !isHovered && entity.editor.visible && styles.rowToggleHidden,
-                  !entity.editor.visible && styles.rowToggleOn,
-                )}
-              >
-                <IconButton
-                  label={entity.editor.visible ? 'Hide in the editor' : 'Show in the editor'}
-                  disabled={locked}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    toggleEditorState(entity, { visible: !entity.editor.visible });
-                  }}
+              {/** The reserved trailing lane: row state, then the row actions. */}
+              <span {...stylex.props(styles.treeTrailing)}>
+                <span
+                  {...stylex.props(
+                    styles.rowToggle,
+                    !isHovered && entity.editor.visible && styles.rowToggleHidden,
+                    !entity.editor.visible && styles.rowToggleOn,
+                  )}
                 >
-                  {entity.editor.visible ? <Eye size={control.iconSm} /> : <EyeOff size={control.iconSm} />}
-                </IconButton>
-              </span>
-              <span
-                {...stylex.props(
-                  styles.rowToggle,
-                  !isHovered && !entity.editor.locked && styles.rowToggleHidden,
-                  entity.editor.locked && styles.rowToggleOn,
-                )}
-              >
-                <IconButton
-                  label={entity.editor.locked ? 'Unlock' : 'Lock (prevents selection in the viewport)'}
-                  disabled={locked}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    toggleEditorState(entity, { locked: !entity.editor.locked });
-                  }}
+                  <IconButton
+                    size="row"
+                    label={entity.editor.visible ? 'Hide in the editor' : 'Show in the editor'}
+                    disabled={locked}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      toggleEditorState(entity, { visible: !entity.editor.visible });
+                    }}
+                  >
+                    {entity.editor.visible ? <Eye size={control.iconSm} /> : <EyeOff size={control.iconSm} />}
+                  </IconButton>
+                </span>
+                <span
+                  {...stylex.props(
+                    styles.rowToggle,
+                    !isHovered && !entity.editor.locked && styles.rowToggleHidden,
+                    entity.editor.locked && styles.rowToggleOn,
+                  )}
                 >
-                  {entity.editor.locked ? <Lock size={control.iconSm} /> : <LockOpen size={control.iconSm} />}
-                </IconButton>
-              </span>
-              <span
-                {...stylex.props(
-                  styles.rowToggle,
-                  !isHovered && entity.enabled && styles.rowToggleHidden,
-                  !entity.enabled && styles.rowToggleOn,
-                )}
-              >
-                <IconButton
-                  label={
-                    entity.enabled
-                      ? 'Enabled in the game — click to disable'
-                      : 'Disabled in the game — click to enable'
-                  }
-                  disabled={locked}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    session.execute({ kind: 'setEntityEnabled', entityId: entity.id, enabled: !entity.enabled });
-                  }}
+                  <IconButton
+                    size="row"
+                    label={entity.editor.locked ? 'Unlock' : 'Lock (prevents selection in the viewport)'}
+                    disabled={locked}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      toggleEditorState(entity, { locked: !entity.editor.locked });
+                    }}
+                  >
+                    {entity.editor.locked ? <Lock size={control.iconSm} /> : <LockOpen size={control.iconSm} />}
+                  </IconButton>
+                </span>
+                <span
+                  {...stylex.props(
+                    styles.rowToggle,
+                    !isHovered && entity.enabled && styles.rowToggleHidden,
+                    !entity.enabled && styles.rowToggleOn,
+                  )}
                 >
-                  {entity.enabled ? <Pause size={control.iconSm} /> : <Play size={control.iconSm} />}
-                </IconButton>
-              </span>
-              <span {...stylex.props(styles.treeActions, isHovered && styles.treeActionsVisible)}>
-                <IconButton
-                  label="Duplicate"
-                  disabled={locked}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    duplicate(entity);
-                  }}
-                >
-                  <Copy size={control.iconSm} />
-                </IconButton>
-                <IconButton
-                  label="Delete"
-                  disabled={locked}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    session.execute({ kind: 'deleteEntities', entityIds: [entity.id] });
-                  }}
-                >
-                  <Trash2 size={control.iconSm} />
-                </IconButton>
+                  <IconButton
+                    size="row"
+                    label={
+                      entity.enabled
+                        ? 'Enabled in the game — click to disable'
+                        : 'Disabled in the game — click to enable'
+                    }
+                    disabled={locked}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      session.execute({ kind: 'setEntityEnabled', entityId: entity.id, enabled: !entity.enabled });
+                    }}
+                  >
+                    {entity.enabled ? <Pause size={control.iconSm} /> : <Play size={control.iconSm} />}
+                  </IconButton>
+                </span>
+                <span {...stylex.props(styles.treeActions, isHovered && styles.treeActionsVisible)}>
+                  <IconButton
+                    size="row"
+                    label="Duplicate"
+                    disabled={locked}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      duplicate(entity);
+                    }}
+                  >
+                    <Copy size={control.iconSm} />
+                  </IconButton>
+                  <IconButton
+                    size="row"
+                    label="Delete"
+                    disabled={locked}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      session.execute({ kind: 'deleteEntities', entityIds: [entity.id] });
+                    }}
+                  >
+                    <Trash2 size={control.iconSm} />
+                  </IconButton>
+                </span>
               </span>
             </div>
           );

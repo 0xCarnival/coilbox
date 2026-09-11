@@ -270,7 +270,7 @@ async function main(): Promise<void> {
       observed: edited,
     });
 
-    await page.click('button:has-text("Save")');
+    await page.click('button[aria-label="Save"]');
     await page.waitForFunction(
       () => document.querySelector('.save-indicator')?.getAttribute('data-save-state') === 'clean',
       undefined,

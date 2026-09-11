@@ -68,10 +68,12 @@ export interface IconButtonProps extends Omit<React.ComponentPropsWithoutRef<'bu
   /** The accessible name. Required: an icon-only control has no text to fall back on. */
   label: string;
   variant?: ButtonVariant;
+  /** `row` is the 22px square for a control inside a dense list row. */
+  size?: 'sm' | 'row';
 }
 
 export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(function IconButton(
-  { label, variant = 'ghost', type = 'button', ...rest },
+  { label, variant = 'ghost', size = 'sm', type = 'button', ...rest },
   ref,
 ) {
   return (
@@ -80,7 +82,7 @@ export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(f
       type={type}
       aria-label={label}
       title={label}
-      {...stylex.props(button.iconBase, variantStyles[variant])}
+      {...stylex.props(size === 'row' ? button.rowBase : button.iconBase, variantStyles[variant])}
       {...rest}
     />
   );

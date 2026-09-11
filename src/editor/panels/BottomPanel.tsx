@@ -25,16 +25,23 @@ const styles = stylex.create({
     minHeight: 0,
   },
   /**
-   * The tab strip is a row of quiet labels with the watching status on the trailing edge. It has no
-   * bottom rule: the tabs sit directly above the content they switch, and the panel already has a
-   * border, so a rule here was drawing a second line one pixel from the first.
+   * The tab strip: a row of chips with the watching status on the trailing edge, and a hairline
+   * under the whole strip.
+   *
+   * This is the reference's panel-header shape — a 36px band, chips at `h-7`, a hairline below —
+   * rather than the text-with-an-underline it was. The chips are what make it obvious the tab set is
+   * a control rather than a row of labels.
    */
   tabs: {
     display: 'flex',
     alignItems: 'center',
     gap: space.xxs,
-    paddingBlock: space.xs,
-    paddingInline: space.sm,
+    height: '36px',
+    paddingInline: space.md,
+    borderBlockEndWidth: '1px',
+    borderBlockEndStyle: 'solid',
+    borderBlockEndColor: color.border,
+    flexShrink: 0,
   },
   /**
    * `.tabs button[role='tab'].active` was a descendant selector on the parent. The button knows
@@ -44,19 +51,24 @@ const styles = stylex.create({
    * loud element (the selected tab) instead of two (the tab and its outline).
    */
   tabButton: {
-    fontSize: fontSize.sm,
-    color: color.muted,
-    paddingBlock: space.xs,
-    paddingInline: space.sm,
+    height: '24px',
+    paddingInline: space.md,
     borderRadius: radius.md,
+    fontSize: fontSize.sm,
+    fontWeight: 500,
+    color: color.muted,
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    borderStyle: 'none',
     ':hover': {
       color: color.text,
+      backgroundColor: color.wash,
     },
   },
+  /** The active tab is the reference's `bg-accent text-foreground`: a filled chip, nothing more. */
   tabActive: {
     backgroundColor: color.surface,
-    color: color.primary,
-    fontWeight: 600,
+    color: color.text,
   },
   toolbarSpacer: {
     flex: 1,
@@ -101,7 +113,7 @@ const styles = stylex.create({
     backgroundColor: color.wash,
     borderRadius: radius.sm,
     paddingBlock: '1px',
-    paddingInline: space.xs,
+    paddingInline: space.sm,
     fontSize: fontSize.micro,
     fontWeight: 600,
     letterSpacing: '0.06em',

@@ -124,26 +124,40 @@ const menuStyles = stylex.create({
 });
 
 export interface DropdownMenuContentProps
-  extends React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content> {
+  extends Omit<React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>, 'className'> {
   /** Widens the panel. Left to the caller: the create menu wants more room than a row menu. */
   wide?: boolean;
+  /**
+   * DOM-contract hook classes, appended to the merged class list.
+   *
+   * Radix owns this element's `className`, so a hook the browser gates select on cannot be applied
+   * by the caller the usual way — a second `className` after a spread is what
+   * `coilbox/no-classname-after-spread` forbids, and here it would also clobber the atomic classes.
+   * Passing them as data keeps the hook and the style on speaking terms without either one winning.
+   */
+  hooks?: readonly string[];
 }
 
 export const DropdownMenuContent = React.forwardRef<
   React.ComponentRef<typeof DropdownMenuPrimitive.Content>,
   DropdownMenuContentProps
->(function DropdownMenuContent({ wide, sideOffset = 6, ...rest }, ref) {
+>(function DropdownMenuContent({ wide, hooks, sideOffset = 6, ...rest }, ref) {
   return (
     <DropdownMenuPrimitive.Portal>
       <DropdownMenuPrimitive.Content
         ref={ref}
         sideOffset={sideOffset}
-        className={mergedClass(
-          surface.menu,
-          menuStyles.content,
-          menuStyles.contentDefault,
-          wide && menuStyles.contentWide,
-        )}
+        className={[
+          mergedClass(
+            surface.menu,
+            menuStyles.content,
+            menuStyles.contentDefault,
+            wide && menuStyles.contentWide,
+          ),
+          ...(hooks ?? []),
+        ]
+          .filter(Boolean)
+          .join(' ')}
         {...rest}
       />
     </DropdownMenuPrimitive.Portal>

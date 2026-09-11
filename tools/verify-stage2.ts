@@ -155,14 +155,14 @@ async function main(): Promise<void> {
 
     // --- build a scene without editing code --------------------------------------
     await page.click('button:has-text("Create")');
-    await page.click('.menu button:has-text("Box")');
+    await page.click('.menu [role="menuitem"]:has-text("Box")');
     await enterName(page, 'Crate A');
     await setComponentSelect(page, 'Shape', 'Box');
     await setVector(page, 'Size (m)', [1, 1, 1]);
 
     // Model component + asset picker
     await page.click('.add-component button:has-text("Add component")');
-    await page.click('.add-menu button:has-text("Model")');
+    await page.click('.add-menu [role="menuitem"]:has-text("Model")');
     await page.waitForSelector('.section-title:has-text("Model")', { timeout: 10_000 });
     await selectField(page, 'Asset', 'spinning-crate');
 
@@ -188,7 +188,7 @@ async function main(): Promise<void> {
 
     // Animation component with a clip chosen from the loaded model
     await page.click('.add-component button:has-text("Add component")');
-    await page.click('.add-menu button:has-text("Animation")');
+    await page.click('.add-menu [role="menuitem"]:has-text("Animation")');
     await page.waitForSelector('.section-title:has-text("Animation")', { timeout: 10_000 });
     const clipOptions = await page.locator('.section:has-text("Animation") select').first().locator('option').allTextContents();
     await selectField(page, 'Clip', 'Hop', { section: 'Animation' });
@@ -213,13 +213,13 @@ async function main(): Promise<void> {
 
     // A second instance of a skinned model, animated independently in Play
     await page.click('button:has-text("Create")');
-    await page.click('.menu button:has-text("Box")');
+    await page.click('.menu [role="menuitem"]:has-text("Box")');
     await enterName(page, 'Limb');
     await page.click('.add-component button:has-text("Add component")');
-    await page.click('.add-menu button:has-text("Model")');
+    await page.click('.add-menu [role="menuitem"]:has-text("Model")');
     await selectField(page, 'Asset', 'animated-limb');
     await page.click('.add-component button:has-text("Add component")');
-    await page.click('.add-menu button:has-text("Animation")');
+    await page.click('.add-menu [role="menuitem"]:has-text("Animation")');
     await selectField(page, 'Clip', 'Wave', { section: 'Animation' });
 
     const limbLoaded = await waitForModelStatus(page, 'loaded', 30_000);
@@ -243,7 +243,7 @@ async function main(): Promise<void> {
     await setNumberField(page, 'Field of view', 42, { section: 'Camera' });
     await page.click('.tree-row:has-text("Ground")');
     await page.click('.add-component button:has-text("Add component")');
-    await page.click('.add-menu button:has-text("Material")');
+    await page.click('.add-menu [role="menuitem"]:has-text("Material")');
     await setColorField(page, 'Colour', '#2f6f4f');
 
     const inspectorEdits = await page.evaluate(() => {
@@ -389,7 +389,7 @@ async function main(): Promise<void> {
     });
 
     // --- save, reopen, revise -----------------------------------------------------
-    await page.click('button:has-text("Save")');
+    await page.click('button[aria-label="Save"]');
     await page.waitForFunction(
       () => document.querySelector('.save-indicator')?.getAttribute('data-save-state') === 'clean',
       undefined,
@@ -477,7 +477,7 @@ async function main(): Promise<void> {
     });
     await page.screenshot({ path: join(evidenceDir, 'play-with-models.png') });
 
-    await page.click('button:has-text("Stop")');
+    await page.click('button[aria-label="Stop and discard the simulation"]');
     await page.waitForSelector('.viewport-badge', { state: 'detached', timeout: 15_000 });
 
     // --- missing asset error is understandable -------------------------------------

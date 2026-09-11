@@ -28,7 +28,7 @@ import { isFiniteJsonNumber, isJsonString, jsonField } from './json-values.js';
  * would otherwise keep the old, taller console forever. Bumping the version is what makes a new
  * default actually reach an existing install.
  */
-const LAYOUT_KEY = 'coilbox.layout.v4';
+const LAYOUT_KEY = 'coilbox.layout.v5';
 
 interface Layout {
   left: number;
@@ -36,7 +36,7 @@ interface Layout {
   bottom: number;
 }
 
-const DEFAULT_LAYOUT: Layout = { left: 256, right: 320, bottom: 132 };
+const DEFAULT_LAYOUT: Layout = { left: 300, right: 320, bottom: 132 };
 
 /**
  * Shell chrome.

@@ -262,6 +262,34 @@ export const button = stylex.create({
       opacity: 0.5,
     },
   },
+  /**
+   * A 22px square, for a control that lives inside a dense list row.
+   *
+   * The tree's per-row toggles need this. A 32px control dropped into a 22px slot overflowed by
+   * 10px into the name beside it, so a click aimed at the name landed on a toggle — the row
+   * silently locked itself and pushed an `editor:*` entry onto the undo stack after whatever edit
+   * the user had just made.
+   *
+   * It is a separate style rather than a descendant override on the slot, because StyleX has no
+   * descendant selector: `& > button` fails the compiler with "Invalid pseudo or at-rule".
+   */
+  rowBase: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: '22px',
+    width: '22px',
+    paddingInline: 0,
+    borderRadius: '4px',
+    flexShrink: 0,
+    cursor: 'pointer',
+    transitionProperty: 'background-color, color',
+    transitionDuration: '120ms',
+    ':disabled': {
+      pointerEvents: 'none',
+      opacity: 0.45,
+    },
+  },
   /** A square icon-only control at the same height as `base`. */
   iconBase: {
     display: 'inline-flex',

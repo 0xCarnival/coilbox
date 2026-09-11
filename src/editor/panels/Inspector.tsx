@@ -3,7 +3,7 @@ import type { JSX } from 'react';
 import * as stylex from '@stylexjs/stylex';
 import type { AssetEntry, Component, ComponentType, Entity, JsonValue, Quat, Vec3 } from '@schema/index.js';
 import { COMPONENT_TYPES, COMPONENT_LABELS, IDENTITY_QUAT, ZERO_VEC3 } from '@schema/index.js';
-import { color, fontFamily, fontSize, radius, space, surface } from '../styles/tokens.stylex.js';
+import { color, control, fontFamily, fontSize, space } from '../styles/tokens.stylex.js';
 import { DOM, withDomClass } from '../dom-contract.js';
 import { useSession, useSessionSnapshot } from '../hooks.js';
 import {
@@ -17,8 +17,15 @@ import {
 import type { BehaviorPropertyDescriptor } from '@runtime/behaviors/types.js';
 import { componentsFor, type CreatableKind } from '../document/factory.js';
 import { isFiniteJsonNumber, isJsonString, jsonQuaternion, jsonVec3 } from '../json-values.js';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Plus } from 'lucide-react';
 import { useScrub } from '../ui/useScrub.js';
+import { Button } from '../ui/Button.js';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../ui/Menu.js';
 
 /**
  * Inspector (plan §3): only the selected object's applicable properties, with readable
@@ -270,25 +277,6 @@ const styles = stylex.create({
     paddingInline: space.xs,
     position: 'relative',
   },
-  /**
-   * The add-component menu flows inside the panel rather than floating over it, so it keeps
-   * `position: static` and a top margin. The shared surface treatment is applied at the call site.
-   */
-  addMenu: {
-    position: 'static',
-    marginTop: space.sm,
-  },
-  /** `.add-menu button` — the menu owns its buttons' chrome, so this is an intentional override. */
-  addMenuButton: {
-    backgroundColor: 'transparent',
-    borderWidth: 0,
-    borderStyle: 'none',
-    textAlign: 'left',
-    borderRadius: radius.md,
-    ':hover': {
-      backgroundColor: color.wash,
-    },
-  },
   menuHint: {
     color: color.dim,
     padding: space.sm,
@@ -319,7 +307,6 @@ export function Inspector({ locked }: { locked: boolean }): JSX.Element {
   const snapshot = useSessionSnapshot();
   const scene = session.scene;
   const entity = scene?.entities.find((candidate) => candidate.id === snapshot.primarySelection) ?? null;
-  const [addMenuOpen, setAddMenuOpen] = useState(false);
 
   if (!entity || !scene) {
     return (
@@ -400,21 +387,27 @@ export function Inspector({ locked }: { locked: boolean }): JSX.Element {
       )}
 
       <div {...withDomClass(styles.addComponent, DOM.addComponent)}>
-        <button type="button" disabled={locked} onClick={() => setAddMenuOpen((open) => !open)}>
-          + Add component
-        </button>
-        {addMenuOpen && (
-          <div {...withDomClass(surface.menu, styles.addMenu, DOM.addMenu)}>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button disabled={locked}>
+              <Plus size={control.icon} />
+              Add component
+            </Button>
+          </DropdownMenuTrigger>
+          {/**
+           * The menu is Radix's, like the toolbar's, rather than a hand-rolled popover. That is what
+           * gives it Escape, outside-click dismissal, and keyboard traversal for free — and it is
+           * why the `add-menu` hook rides along as data: Radix owns this element's `className`, so a
+           * hook the browser gates select on cannot be applied by the caller the usual way.
+           */}
+          <DropdownMenuContent align="start" hooks={[DOM.addMenu]}>
             {COMPONENT_TYPES.filter((type) => isAddable(entity, type))
               .map((type) => ({ type, component: defaultComponent(type, snapshot.assets) }))
               .filter((entry): entry is { type: ComponentType; component: Component } => entry.component !== null)
               .map(({ type, component }) => (
-                <button
+                <DropdownMenuItem
                   key={type}
-                  {...stylex.props(styles.addMenuButton)}
-                  type="button"
-                  onClick={() => {
-                    setAddMenuOpen(false);
+                  onSelect={() => {
                     // A model replaces the primitive placeholder rather than stacking a second
                     // renderable on the same entity; both changes are one undo step.
                     const replacePrimitive = type === 'model' && entity.components.some((candidate) => candidate.type === 'primitive');
@@ -429,13 +422,13 @@ export function Inspector({ locked }: { locked: boolean }): JSX.Element {
                   }}
                 >
                   {COMPONENT_LABELS[type]}
-                </button>
+                </DropdownMenuItem>
               ))}
             {snapshot.assets.filter((asset) => asset.kind === 'model').length === 0 && (
               <span {...stylex.props(styles.menuHint)}>Import a .glb in the Assets tab to add a Model component.</span>
             )}
-          </div>
-        )}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   );
