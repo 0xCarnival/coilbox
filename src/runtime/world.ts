@@ -13,7 +13,14 @@ import { GameState } from './game-state.js';
 import { Hud } from './hud/hud.js';
 import { AudioSystem } from './audio/audio.js';
 import { EmptyAssetResolver, type AssetResolver } from './assets/resolver.js';
-import type { ColliderSpec, ContactEvent, PhysicsBackend, PhysicsCounters, PhysicsWorldHandle } from './physics/types.js';
+import type {
+  ColliderSpec,
+  ContactEvent,
+  MoverCapsule,
+  PhysicsBackend,
+  PhysicsCounters,
+  PhysicsWorldHandle,
+} from './physics/types.js';
 
 /**
  * The runtime world: one fresh, disposable instance of a scene built from an authored
@@ -103,6 +110,12 @@ interface PhysicsBinding {
   moveWithPhysics: boolean;
 }
 
+/**
+ * How far a blocked character sweep stays away from the surface it hit. Box3D's mover reports the
+ * last few millimetres before a surface as free space, so a smaller skin would let a character
+ * resting against a wall creep into it a little on every tick.
+ */
+const CHARACTER_CONTACT_SKIN = 0.005;
 const previousQuat = new THREE.Quaternion();
 const currentQuat = new THREE.Quaternion();
 
@@ -433,8 +446,88 @@ export class RuntimeWorld {
     return true;
   }
 
-  readEntityVelocity(entityId: string, out: Float32Array): boolean {
-    if (!this.bindings.has(entityId)) {
+  /**
+   * Move a kinematic character to `position` without walking through walls (plan §16).
+   *
+   * The horizontal axes are swept one at a time against the world with the character's own
+   * collider, so a blocked axis stops at the contact while the free axis still moves — which is
+   * what makes a character slide along a wall instead of sticking to it. Vertical movement is left
+   * to the caller's ground probe, so landing behaviour does not change.
+   *
+   * `position` is rewritten with the resolved position.
+   */
+  moveCharacter(entityId: string, position: [number, number, number], rotation: Quat): void {
+    const capsule = this.moverCapsuleFor(entityId);
+    if (!capsule || !this.physics.readTransform(entityId, this.transformSample)) {
+      this.setKinematicTransform(entityId, position, rotation);
+      return;
+    }
+    const resolved: [number, number, number] = [this.transformSample[0], this.transformSample[1], this.transformSample[2]];
+    const desired: [number, number, number] = [position[0], position[1], position[2]];
+    // X then Z: a wall facing one axis leaves the other free, so the character keeps sliding.
+    for (const axis of [0, 2] as const) {
+      const amount = desired[axis] - resolved[axis];
+      if (Math.abs(amount) < 1e-6) continue;
+      const translation: [number, number, number] = [0, 0, 0];
+      translation[axis] = amount;
+      const { fraction } = this.physics.castMover({ origin: [...resolved], capsule, translation, excludeKey: entityId });
+      if (fraction >= 1) {
+        resolved[axis] = desired[axis];
+        continue;
+      }
+      // A blocked sweep still reports the last few millimetres before the surface as free space
+      // (Box3D allows a small contact slop). Subtracting that slop and clamping at zero is what
+      // stops a character resting against a wall from creeping into it one tick at a time.
+      const travelled = Math.abs(amount) * fraction;
+      const advance = Math.max(0, travelled - CHARACTER_CONTACT_SKIN);
+      resolved[axis] += Math.sign(amount) * advance;
+    }
+    // Vertical intent is applied as written; the caller already resolved it against the ground.
+    resolved[1] = desired[1];
+    this.setKinematicTransform(entityId, resolved, rotation);
+    position[0] = resolved[0];
+    position[1] = resolved[1];
+    position[2] = resolved[2];
+  }
+
+  /** Write a kinematic body's transform through the adapter and keep the projection in step. */
+  setKinematicTransform(entityId: string, position: [number, number, number], rotation: Quat): void {
+    this.physics.setTransform(entityId, position, rotation);
+    // Kinematic bodies are driven by gameplay, so the projected object follows the adapter
+    // rather than the render interpolation.
+    const built = this.graph.entities.get(entityId);
+    if (built) {
+      built.object.position.set(position[0], position[1], position[2]);
+      built.object.quaternion.set(rotation[0], rotation[1], rotation[2], rotation[3]);
+    }
+    const binding = this.bindings.get(entityId);
+    if (binding) {
+      binding.previous.set([position[0], position[1], position[2], rotation[0], rotation[1], rotation[2], rotation[3]]);
+      binding.current.set(binding.previous);
+    }
+  }
+
+  /** The upright capsule a character controller sweeps, in body-local space. */
+  private moverCapsuleFor(entityId: string): MoverCapsule | null {
+    const built = this.graph.entities.get(entityId);
+    if (!built) return null;
+    const collider = findComponent(built.entity, 'collider');
+    if (!collider) return null;
+    const scale = built.entity.transform.scale;
+    const uniformScale = Math.max(1e-6, Math.min(Math.abs(scale[0]), Math.abs(scale[1]), Math.abs(scale[2])));
+    const size = collider.size;
+    const radius = (size[0] / 2) * uniformScale;
+    const halfHeight = (Math.max(0, size[1] - size[0]) / 2) * uniformScale;
+    const offset = collider.offset;
+    const centerY = offset[1] * uniformScale;
+    return {
+      center1: [offset[0] * uniformScale, centerY - halfHeight, offset[2] * uniformScale],
+      center2: [offset[0] * uniformScale, centerY + halfHeight, offset[2] * uniformScale],
+      radius,
+    };
+  }
+
+  readEntityVelocity(entityId: string, out: Float32Array): boolean {    if (!this.bindings.has(entityId)) {
       out[0] = 0;
       out[1] = 0;
       out[2] = 0;
@@ -548,26 +641,13 @@ export class RuntimeWorld {
       findById: (entityId) => (world.graph.entities.has(entityId) ? entityId : null),
       readTransform: (entityId, out) => world.readEntityTransform(entityId, out),
       readVelocity: (entityId, out) => world.readEntityVelocity(entityId, out),
-      setKinematicTransform: (entityId, position, rotation) => {
-        world.physics.setTransform(entityId, position, rotation);
-        // Kinematic bodies are driven by gameplay, so the projected object follows the
-        // adapter rather than the render interpolation.
-        const built = world.graph.entities.get(entityId);
-        if (built) {
-          built.object.position.set(position[0], position[1], position[2]);
-          built.object.quaternion.set(rotation[0], rotation[1], rotation[2], rotation[3]);
-        }
-        const binding = world.bindings.get(entityId);
-        if (binding) {
-          binding.previous.set([position[0], position[1], position[2], rotation[0], rotation[1], rotation[2], rotation[3]]);
-          binding.current.set(binding.previous);
-        }
-      },
+      setKinematicTransform: (entityId, position, rotation) => world.setKinematicTransform(entityId, position, rotation),
       setBodyEnabled: (entityId, enabled) => {
         world.physics.setBodyEnabled(entityId, enabled);
         const built = world.graph.entities.get(entityId);
         if (built) built.object.visible = enabled && built.entity.editor.visible;
       },
+      moveCharacter: (entityId, position, rotation) => world.moveCharacter(entityId, position, rotation),
       setBodyType: (entityId, type) => world.physics.setBodyType(entityId, type),
       isPhysicsBody: (entityId) => world.physics.hasBody(entityId),
       requestScene: (sceneId) => options.onRequestScene?.(sceneId),

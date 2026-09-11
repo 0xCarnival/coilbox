@@ -300,6 +300,128 @@ async function main(): Promise<void> {
       observed: snapApplied,
     });
 
+    // --- keyboard focus (plan §16) ------------------------------------------------
+    // Typing in a field must not reach the editor's shortcuts: W/E/R switch tools and Delete
+    // removes the selection, so a rename that triggered them would silently edit the scene.
+    await page.click('.tree-row:has-text("Crate A")');
+    await page.locator('.toolbar-group[aria-label="Transform tool"] button:has-text("Move")').click();
+    const nameField = page.locator('.inspector-title .name-field');
+    await nameField.click();
+    await nameField.press('End');
+    await nameField.press('w');
+    await nameField.press('e');
+    await nameField.press('r');
+    await nameField.press('Delete');
+    const focusState = await page.evaluate(() => {
+      const session = (window as unknown as {
+        __STUDIO__?: {
+          session: { scene: { entities: Array<{ id: string; name: string }> } | null; snapshot(): { primarySelection: string | null } };
+        };
+      }).__STUDIO__?.session;
+      const tool = document.querySelector('.toolbar-group[aria-label="Transform tool"] button.active')?.textContent ?? null;
+      const active = document.activeElement as HTMLElement | null;
+      return {
+        tool,
+        focused: active?.className ?? null,
+        name: session?.scene?.entities.find((entity) => entity.name.startsWith('Crate A'))?.name ?? null,
+        entityCount: session?.scene?.entities.length ?? 0,
+      };
+    });
+    await nameField.fill('Crate A');
+    await nameField.blur();
+    record({
+      id: 'keyboard-focus',
+      title: 'Typing in a text field does not trigger the editor keyboard shortcuts',
+      passed: focusState.tool === 'Move' && (focusState.name ?? '').includes('wer') && focusState.entityCount >= 4,
+      detail: `typed "wer" into the name field: tool stayed ${String(focusState.tool)}, name is "${String(focusState.name)}", ${focusState.entityCount} entities still present`,
+      observed: focusState,
+    });
+
+    // --- drag cancellation (plan §16) ---------------------------------------------
+    // Start a real transform drag, abandon it with Escape, and release: the authored document and
+    // the undo history must be exactly what they were before the drag started.
+    await page.locator('.toolbar-group[aria-label="Transform tool"] button:has-text("Move")').click();
+    const crateId = await page.evaluate(
+      () => (window as unknown as { __STUDIO__?: { session: { selection: { primary: string | null } } } }).__STUDIO__?.session.selection.primary ?? null,
+    );
+    const readCrate = () =>
+      page.evaluate((id: string | null) => {
+        const studio = (window as unknown as {
+          __STUDIO__?: {
+            session: {
+              scene: { entities: Array<{ id: string; name: string; transform: { position: number[] } }> } | null;
+              snapshot(): { undoLabel: string | null; canUndo: boolean };
+            };
+            viewport?: () => { project(id: string): [number, number, number] | null; isDragging(): boolean } | null;
+          };
+        }).__STUDIO__;
+        const entity = studio?.session.scene?.entities.find((candidate) => candidate.id === id);
+        return {
+          id,
+          name: entity?.name ?? null,
+          document: entity?.transform.position ?? null,
+          projected: id ? studio?.viewport?.()?.project(id) ?? null : null,
+          dragging: studio?.viewport?.()?.isDragging() ?? null,
+          undoLabel: studio?.session.snapshot().undoLabel ?? null,
+          canUndo: studio?.session.snapshot().canUndo ?? null,
+        };
+      }, crateId);
+    const canvasBox = await page.locator('#editor-canvas').boundingBox();
+    const beforeDrag = await readCrate();
+    let grabbed = false;
+    if (canvasBox && crateId) {
+      const centre = { x: canvasBox.x + canvasBox.width / 2, y: canvasBox.y + canvasBox.height / 2 };
+      // Recentre the view on the selection through the viewport handle rather than by clicking the
+      // canvas: a click would re-pick whatever is under the cursor and the probe could grab a
+      // different entity's gizmo. The translate gizmo then sits at the centre of the canvas; the
+      // four arrow directions are probed so a camera orientation change cannot quietly skip this.
+      for (const [dx, dy] of [
+        [64, 0],
+        [-64, 0],
+        [0, 64],
+        [0, -64],
+        [64, 64],
+      ] as Array<[number, number]>) {
+        await page.evaluate(() =>
+          (window as unknown as { __STUDIO__?: { viewport?: () => { focusSelection(): void } | null } }).__STUDIO__?.viewport?.()?.focusSelection(),
+        );
+        await page.waitForTimeout(150);
+        await page.mouse.move(centre.x + dx, centre.y + dy);
+        await page.mouse.down();
+        await page.mouse.move(centre.x + dx * 1.8, centre.y + dy * 1.8, { steps: 5 });
+        const probed = await readCrate();
+        grabbed = probed.dragging === true && probed.id === crateId;
+        if (grabbed) break;
+        await page.mouse.up();
+        await page.waitForTimeout(100);
+      }
+    }
+    const duringDrag = await readCrate();
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(120);
+    const afterEscape = await readCrate();
+    await page.mouse.up();
+    await page.waitForTimeout(200);
+    const afterRelease = await readCrate();
+    const samePosition = (a: number[] | null, b: number[] | null): boolean =>
+      Array.isArray(a) && Array.isArray(b) && a.length === 3 && b.length === 3 && a.every((value, index) => Math.abs(value - b[index]!) < 1e-6);
+    record({
+      id: 'drag-cancellation',
+      title: 'A transform drag abandoned with Escape changes nothing and records nothing',
+      passed:
+        grabbed &&
+        duringDrag.dragging === true &&
+        !samePosition(duringDrag.projected, duringDrag.document) &&
+        samePosition(duringDrag.document, beforeDrag.document) &&
+        afterEscape.dragging === false &&
+        samePosition(afterEscape.projected, beforeDrag.document) &&
+        samePosition(afterRelease.document, beforeDrag.document) &&
+        afterRelease.undoLabel === beforeDrag.undoLabel &&
+        afterRelease.canUndo === beforeDrag.canUndo,
+      detail: `grabbed=${grabbed}; during the drag the projection moved to ${JSON.stringify(duringDrag.projected)} while the document stayed ${JSON.stringify(duringDrag.document)}; after Escape the projection is ${JSON.stringify(afterEscape.projected)} and the undo label is still ${String(afterRelease.undoLabel)}`,
+      observed: { beforeDrag, duringDrag, afterEscape, afterRelease, grabbed },
+    });
+
     // --- save, reopen, revise -----------------------------------------------------
     await page.click('button:has-text("Save")');
     await page.waitForFunction(

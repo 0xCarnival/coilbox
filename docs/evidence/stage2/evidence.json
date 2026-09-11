@@ -1,8 +1,8 @@
 {
   "stage": 2,
-  "generatedAt": "2026-09-11T14:16:43.499Z",
+  "generatedAt": "2026-09-11T14:40:21.087Z",
   "node": "v24.18.0",
-  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage2-yoFtG2",
+  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage2-dbEts0",
   "steps": [
     {
       "name": "typecheck",
@@ -11,6 +11,11 @@
     },
     {
       "name": "unit tests",
+      "ok": true,
+      "detail": "exit 0"
+    },
+    {
+      "name": "production build",
       "ok": true,
       "detail": "exit 0"
     }
@@ -63,10 +68,10 @@
       "id": "clip-playback",
       "title": "The imported clip is discoverable and plays in the editor preview",
       "passed": true,
-      "detail": "clips offered: First clip, Hop; preview time advanced from 0.13819999980926512 to 0.6260999999046326",
+      "detail": "clips offered: First clip, Hop; preview time advanced from 0.11759999990463257 to 0.618",
       "observed": {
-        "before": 0.13819999980926512,
-        "after": 0.6260999999046326,
+        "before": 0.11759999990463257,
+        "after": 0.618,
         "clip": "Hop"
       }
     },
@@ -98,6 +103,95 @@
       "observed": true
     },
     {
+      "id": "keyboard-focus",
+      "title": "Typing in a text field does not trigger the editor keyboard shortcuts",
+      "passed": true,
+      "detail": "typed \"wer\" into the name field: tool stayed Move, name is \"Crate Awer\", 6 entities still present",
+      "observed": {
+        "tool": "Move",
+        "focused": "name-field",
+        "name": "Crate Awer",
+        "entityCount": 6
+      }
+    },
+    {
+      "id": "drag-cancellation",
+      "title": "A transform drag abandoned with Escape changes nothing and records nothing",
+      "passed": true,
+      "detail": "grabbed=true; during the drag the projection moved to [-0.5,1,0] while the document stayed [0,1,0]; after Escape the projection is [0,1,0] and the undo label is still Rename Crate Awer to Crate A",
+      "observed": {
+        "beforeDrag": {
+          "id": "box",
+          "name": "Crate A",
+          "document": [
+            0,
+            1,
+            0
+          ],
+          "projected": [
+            0,
+            1,
+            0
+          ],
+          "dragging": false,
+          "undoLabel": "Rename Crate Awer to Crate A",
+          "canUndo": true
+        },
+        "duringDrag": {
+          "id": "box",
+          "name": "Crate A",
+          "document": [
+            0,
+            1,
+            0
+          ],
+          "projected": [
+            -0.5,
+            1,
+            0
+          ],
+          "dragging": true,
+          "undoLabel": "Rename Crate Awer to Crate A",
+          "canUndo": true
+        },
+        "afterEscape": {
+          "id": "box",
+          "name": "Crate A",
+          "document": [
+            0,
+            1,
+            0
+          ],
+          "projected": [
+            0,
+            1,
+            0
+          ],
+          "dragging": false,
+          "undoLabel": "Rename Crate Awer to Crate A",
+          "canUndo": true
+        },
+        "afterRelease": {
+          "id": "box",
+          "name": "Crate A",
+          "document": [
+            0,
+            1,
+            0
+          ],
+          "projected": [
+            0,
+            1,
+            0
+          ],
+          "dragging": false,
+          "undoLabel": "Rename Crate Awer to Crate A",
+          "canUndo": true
+        },
+        "grabbed": true
+      }
+    },
+    {
       "id": "save-scene-with-assets",
       "title": "The scene with models and clips saves and reopens",
       "passed": true,
@@ -120,7 +214,7 @@
       "id": "play-animates",
       "title": "Play runs the runtime animation: clips advance inside the play world",
       "passed": true,
-      "detail": "Limb clip \"Wave\" advanced 0.050 -> 0.167; 2 animated entities, 2 models loaded",
+      "detail": "Limb clip \"Wave\" advanced 0.050 -> 0.133; 2 animated entities, 2 models loaded",
       "observed": {
         "ids": {
           "limbId": "box-2",
@@ -145,7 +239,7 @@
           "playing": true,
           "loop": true,
           "speed": 1,
-          "time": 0.16666666666666666,
+          "time": 0.13333333333333333,
           "duration": 1
         },
         "crate": {
@@ -156,18 +250,18 @@
           "playing": true,
           "loop": true,
           "speed": 1,
-          "time": 0.16666666666666666,
+          "time": 0.13333333333333333,
           "duration": 0.800000011920929
         },
         "stats": {
           "state": "running",
-          "frames": 8,
-          "steps": 10,
-          "fps": 28.09870693107936,
-          "frameTimeMs": 35.58882629200001,
-          "physicsTimeMs": 0.07611072059840071,
-          "droppedTime": 0.18327866666666676,
-          "clampedTime": 0.23329999999999995,
+          "frames": 5,
+          "steps": 8,
+          "fps": 19.174881825203336,
+          "frameTimeMs": 52.15155999999993,
+          "physicsTimeMs": 0.06727367908059599,
+          "droppedTime": 0.18330666666666656,
+          "clampedTime": 0.26660000000000017,
           "drawCalls": 6,
           "triangles": 1268,
           "geometries": 4,

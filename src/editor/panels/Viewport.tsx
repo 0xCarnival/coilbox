@@ -30,6 +30,10 @@ export interface ViewportHandle {
   setColliderOutlines(visible: boolean): void;
   /** World position of an entity in the editor projection, for checks and debugging. */
   project(entityId: string): [number, number, number] | null;
+  /** Whether a transform drag is in progress in the editor viewport. */
+  isDragging(): boolean;
+  /** Cancel the drag in progress, restoring the authored transform. False when nothing is dragged. */
+  cancelDrag(): boolean;
   /** Read the play canvas after forcing a render (the drawing buffer is not preserved). */
   samplePlayPixels(): { width: number; height: number; distinctColors: number; nonBackgroundPixels: number } | null;
   /** Runtime statistics of the live play world, or null when stopped. */
@@ -261,6 +265,8 @@ export function Viewport({ handleRef, tool, snap, onPlayStateChange, onStatus }:
         const position = viewportRef.current?.entityWorldPosition(entityId);
         return position ? [position.x, position.y, position.z] : null;
       },
+      isDragging: () => viewportRef.current?.isDragging() ?? false,
+      cancelDrag: () => viewportRef.current?.cancelDrag(session.scene) ?? false,
       samplePlayPixels: () => {
         const canvas = playCanvasRef.current;
         const world = sessionRef2.current?.current ?? null;

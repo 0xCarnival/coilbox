@@ -100,6 +100,8 @@ context.findEntityById(id)        // EntityId | null
 context.readTransform(id, out)    // boolean
 context.readVelocity(id, out)     // boolean (3 components)
 context.moveKinematic(id, position, rotation)   // kinematic bodies only
+context.moveCharacter(id, position, rotation)   // kinematic characters: sweeps walls, slides
+  // `position` is rewritten with where the character actually got to
 context.applyImpulse(id, impulse, point?)
 context.setLinearVelocity(id, velocity)
 context.isPhysicsBody(id)
@@ -162,6 +164,10 @@ text. `group` labels a set of related fields.
   build rotations with the wrong one.
 - **Physics owns dynamic transforms.** Write to kinematic bodies through `moveKinematic`; never set
   a dynamic body's transform directly and expect it to stick.
+- **Characters move with `moveCharacter`, not `moveKinematic`, when walls matter.** It sweeps the
+  entity's collider horizontally against the world, so a wall stops the character and a diagonal
+  push slides along it. Sensors (triggers) are passed through, and the position you pass in is
+  rewritten with the resolved result — use that, not the value you asked for.
 - **Do not allocate per tick.** Use `context.scratch`; the loop runs 60 times a second for every
   entity.
 - **Never throw out of a hook.** A throwing behavior is reported against its entity and skipped, but

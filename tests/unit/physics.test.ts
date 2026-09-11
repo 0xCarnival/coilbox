@@ -380,6 +380,91 @@ describe('Box3D adapter', () => {
     expect(backend.getWorldCount()).toBe(before);
   });
 
+  it('sweeps a character capsule through open space, walls, and sensors', () => {
+    const world = createWorld();
+    const staticBox = (key: string, position: [number, number, number], halfExtents: [number, number, number], isSensor = false) => {
+      world.createBody({
+        key,
+        bodyType: 'static',
+        position,
+        rotation: [0, 0, 0, 1],
+        gravityScale: 1,
+        linearDamping: 0,
+        angularDamping: 0,
+        continuous: false,
+        lockRotation: false,
+        colliders: [
+          {
+            shape: { kind: 'box', halfExtents },
+            offset: [0, 0, 0],
+            rotation: [0, 0, 0, 1],
+            density: 1,
+            friction: 0.6,
+            restitution: 0,
+            isSensor,
+            reportContacts: false,
+            reportHits: true,
+          },
+        ],
+      });
+    };
+    staticBox('floor', [0, -0.25, 0], [8, 0.25, 8]);
+    staticBox('wall', [0, 1, 8], [8, 1, 0.25]);
+    // A gem-like trigger sits in the path: triggers are not obstacles.
+    staticBox('gem', [0, 0.6, 0], [0.6, 0.6, 0.6], true);
+
+    world.createBody({
+      key: 'player',
+      bodyType: 'kinematic',
+      position: [0, 0, -6],
+      rotation: [0, 0, 0, 1],
+      gravityScale: 1,
+      linearDamping: 0,
+      angularDamping: 0,
+      continuous: false,
+      lockRotation: true,
+      colliders: [
+        {
+          shape: { kind: 'capsule', radius: 0.35, halfHeight: 0.55 },
+          offset: [0, 0.9, 0],
+          rotation: [0, 0, 0, 1],
+          density: 1,
+          friction: 0.6,
+          restitution: 0,
+          isSensor: false,
+          reportContacts: false,
+          reportHits: true,
+        },
+      ],
+    });
+    world.step();
+
+    const capsule = {
+      center1: [0, 0.35, 0] as [number, number, number],
+      center2: [0, 1.45, 0] as [number, number, number],
+      radius: 0.35,
+    };
+    const toward = (origin: [number, number, number], translation: [number, number, number]) =>
+      world.castMover({ origin, capsule, translation, excludeKey: 'player' });
+
+    // Open space: the whole translation is available, and nothing blocks it.
+    const open = toward([0, 0, -6], [0, 0, -2]);
+    expect(open.fraction).toBe(1);
+    expect(open.keys).not.toContain('wall');
+    expect(open.keys).not.toContain('gem');
+
+    // The wall stops the capsule 0.35 m (its radius) in front of its inner face at z = 7.75.
+    const blocked = toward([0, 0, -6], [0, 0, 20]);
+    expect(blocked.fraction).toBeLessThan(1);
+    expect(blocked.fraction * 20).toBeGreaterThan(13.3);
+    expect(blocked.fraction * 20).toBeLessThan(13.5);
+    // The gem in the path and the capsule's own body are not considered at all: triggers are
+    // passed through, and a shape the capsule starts inside never stops it.
+    expect(blocked.keys).toContain('wall');
+    expect(blocked.keys).not.toContain('gem');
+    expect(blocked.keys).not.toContain('player');
+  });
+
   it('refuses a second body with the same key', () => {
     const world = createWorld();
     const spec = {

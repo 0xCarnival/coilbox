@@ -74,6 +74,15 @@ export interface BehaviorContext {
   readVelocity(entityId: EntityId, out: Float32Array): boolean;
   /** Move a kinematic body through the physics adapter, never around it. */
   moveKinematic(entityId: EntityId, position: [number, number, number], rotation: [number, number, number, number]): void;
+  /**
+   * Move a kinematic character to `position`, sweeping its collider against the world first so a
+   * wall stops it instead of letting it pass through. Movement is resolved one horizontal axis at
+   * a time, so a diagonal push slides along a wall rather than stopping dead.
+   *
+   * `position` is updated in place to wherever the character actually got to, which is what the
+   * caller should keep using as its own position.
+   */
+  moveCharacter(entityId: EntityId, position: [number, number, number], rotation: [number, number, number, number]): void;
   applyImpulse(entityId: EntityId, impulse: [number, number, number], point?: [number, number, number]): void;
   setLinearVelocity(entityId: EntityId, velocity: [number, number, number]): void;
   raycast(origin: [number, number, number], direction: [number, number, number], maxDistance: number): RaycastSummary;

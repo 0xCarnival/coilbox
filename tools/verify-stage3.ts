@@ -165,6 +165,40 @@ async function main(): Promise<void> {
       observed: { beforeWalk, afterWalk, walked, grounded },
     });
 
+    // Walk into the far wall (plan §16: "character-wall contact"). The room's south wall has its
+    // inner face at z = 7.75 and the character capsule has a 0.35 m radius, so a mover that is not
+    // blocked ends up beyond z = 8 and, if it is sinking, keeps creeping for the whole hold.
+    await collect.keyboard.down('KeyW');
+    await collect.waitForTimeout(3000);
+    const atWall = await readPlayer(collect);
+    await collect.waitForTimeout(1500);
+    const stillAtWall = await readPlayer(collect);
+    // Keep walking forward and add "right": the wall should pin the forward axis while the
+    // character slides along it, which is what makes a room feel solid rather than sticky.
+    await collect.keyboard.down('KeyD');
+    await collect.waitForTimeout(900);
+    const slid = await readPlayer(collect);
+    await collect.keyboard.up('KeyD');
+    await collect.keyboard.up('KeyW');
+    const approachGap = stillAtWall.z - atWall.z;
+    const slideDistance = Math.abs(slid.x - stillAtWall.x);
+    const pinned = Math.abs(slid.z - stillAtWall.z) < 0.05;
+    record({
+      id: 'collect-room-wall-contact',
+      title: 'A wall stops the character, and a diagonal push slides along it',
+      passed:
+        atWall.z > 6.4 &&
+        atWall.z < 7.8 &&
+        stillAtWall.z < 7.8 &&
+        Math.abs(approachGap) < 0.05 &&
+        slideDistance > 0.5 &&
+        pinned &&
+        slid.y > -0.25 &&
+        slid.y < 0.6,
+      detail: `walked into the wall at z=7.75: stopped at (${atWall.x.toFixed(2)}, ${atWall.y.toFixed(2)}, ${atWall.z.toFixed(2)}); 1.5 s later z=${stillAtWall.z.toFixed(3)} (moved ${approachGap.toFixed(4)} m); walking forward and right slid ${slideDistance.toFixed(2)} m along the wall to x=${slid.x.toFixed(2)} at z=${slid.z.toFixed(3)}`,
+      observed: { atWall, stillAtWall, slid, approachGap, slideDistance, pinned },
+    });
+
     // Collect every gem by moving it onto the player (an ordinary authored transform change
     // through the physics adapter), then check the score.
     const gemTargets = await collect.evaluate(() =>

@@ -28,6 +28,8 @@ export interface BehaviorHost {
   readTransform(entityId: EntityId, out: Float32Array): boolean;
   readVelocity(entityId: EntityId, out: Float32Array): boolean;
   setKinematicTransform(entityId: EntityId, position: [number, number, number], rotation: [number, number, number, number]): void;
+  /** Swept move for a kinematic character; see BehaviorContext.moveCharacter. */
+  moveCharacter(entityId: EntityId, position: [number, number, number], rotation: [number, number, number, number]): void;
   setBodyEnabled(entityId: EntityId, enabled: boolean): void;
   setBodyType(entityId: EntityId, type: 'static' | 'dynamic' | 'kinematic'): void;
   isPhysicsBody(entityId: EntityId): boolean;
@@ -204,6 +206,7 @@ export class BehaviorRuntime {
       readTransform: (id, out) => host.readTransform(id, out),
       readVelocity: (id, out) => host.readVelocity(id, out),
       moveKinematic: (id, position, rotation) => host.setKinematicTransform(id, position, rotation),
+      moveCharacter: (id, position, rotation) => host.moveCharacter(id, position, rotation),
       applyImpulse: (id, impulse, point) => host.physics.applyImpulse(id, impulse, point),
       setLinearVelocity: (id, velocity) => host.physics.setLinearVelocity(id, velocity),
       raycast: (origin, direction, maxDistance) => {

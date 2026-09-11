@@ -1,8 +1,8 @@
 {
   "stage": 1,
-  "generatedAt": "2026-09-11T14:16:27.182Z",
+  "generatedAt": "2026-09-11T14:40:01.264Z",
   "node": "v24.18.0",
-  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage1-3uOBlu",
+  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage1-QedRl8",
   "steps": [
     {
       "name": "typecheck",
@@ -17,7 +17,7 @@
     {
       "name": "production build",
       "ok": true,
-      "detail": "skipped (--skip-build)"
+      "detail": "exit 0"
     }
   ],
   "checks": [
@@ -85,7 +85,7 @@
       "id": "play-runs",
       "title": "Play builds a fresh runtime world and simulates it",
       "passed": true,
-      "detail": "726 distinct colours, 45.8% rendered, 90 fixed steps, 1 physics bodies",
+      "detail": "726 distinct colours, 45.8% rendered, 107 fixed steps, 1 physics bodies",
       "observed": {
         "pixels": {
           "width": 858,
@@ -95,13 +95,13 @@
         },
         "stats": {
           "state": "running",
-          "frames": 88,
-          "steps": 90,
-          "fps": 59.98761236828101,
-          "frameTimeMs": 16.6701083860567,
-          "physicsTimeMs": 0.04081699190067175,
-          "droppedTime": 0.14994066666666658,
-          "clampedTime": 0,
+          "frames": 101,
+          "steps": 107,
+          "fps": 60.00534154974705,
+          "frameTimeMs": 16.665183034929587,
+          "physicsTimeMs": 0.060166787576582885,
+          "droppedTime": 0.2833,
+          "clampedTime": 0.016700000000000048,
           "drawCalls": 4,
           "triangles": 1112,
           "geometries": 2,
@@ -145,16 +145,16 @@
       "id": "export-produces-build",
       "title": "Export Game produces a standalone player plus the project documents",
       "passed": true,
-      "detail": "index.html and project documents present in /var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage1-3uOBlu/stage1-room/.coilbox/export",
+      "detail": "index.html and project documents present in /var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage1-QedRl8/stage1-room/.coilbox/export",
       "observed": {
-        "exportDir": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage1-3uOBlu/stage1-room/.coilbox/export"
+        "exportDir": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage1-QedRl8/stage1-room/.coilbox/export"
       }
     },
     {
       "id": "export-runs-standalone",
       "title": "The export runs with the editor and workspace service switched off",
       "passed": true,
-      "detail": "running at http://127.0.0.1:56492/games/stage1/ — 37.9% rendered, 799 colours, 0 failed requests",
+      "detail": "running at http://127.0.0.1:58825/games/stage1/ — 37.9% rendered, 799 colours, 0 failed requests",
       "observed": {
         "requests": 7,
         "failures": 0

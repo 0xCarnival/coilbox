@@ -1,9 +1,9 @@
 {
   "stage": 4,
-  "generatedAt": "2026-09-11T14:17:42.950Z",
+  "generatedAt": "2026-09-11T14:41:29.495Z",
   "node": "v24.18.0",
   "agentGame": "gem-rush",
-  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage4-0b7Rpl",
+  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage4-nPbH1Z",
   "steps": [
     {
       "name": "typecheck",
@@ -12,6 +12,11 @@
     },
     {
       "name": "unit tests",
+      "ok": true,
+      "detail": "exit 0"
+    },
+    {
+      "name": "production build",
       "ok": true,
       "detail": "exit 0"
     },
@@ -26,12 +31,12 @@
       "id": "agent-docs",
       "title": "The agent-facing documentation exists and covers the contract, the format, and the SDK",
       "passed": true,
-      "detail": "AGENTS.md (4648 B), docs/agent-contract.md (7741 B), docs/project-format.md (7854 B), docs/engine-sdk.md (8128 B)",
+      "detail": "AGENTS.md (4720 B), docs/agent-contract.md (7741 B), docs/project-format.md (7854 B), docs/engine-sdk.md (8660 B)",
       "observed": {
-        "AGENTS.md": 4648,
+        "AGENTS.md": 4720,
         "docs/agent-contract.md": 7741,
         "docs/project-format.md": 7854,
-        "docs/engine-sdk.md": 8128
+        "docs/engine-sdk.md": 8660
       }
     },
     {
@@ -264,7 +269,7 @@
       "id": "archive-restore",
       "title": "Archiving is recoverable: the project comes back intact",
       "passed": true,
-      "detail": "archived as gem-rush-copy-2026-09-11t14-17-36-429z, restored as gem-rush-copy (1 scene(s))"
+      "detail": "archived as gem-rush-copy-2026-09-11t14-41-22-801z, restored as gem-rush-copy (1 scene(s))"
     },
     {
       "id": "demo-games-still-pass",

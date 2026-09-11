@@ -88,6 +88,34 @@ export interface RaycastHit {
   normal: Vec3;
 }
 
+/** An upright capsule in body-local space; its centres are offsets from the body origin. */
+export interface MoverCapsule {
+  center1: Vec3;
+  center2: Vec3;
+  radius: number;
+}
+
+export interface MoverCastRequest {
+  /** Body origin the capsule offsets are measured from (the entity's transform position). */
+  origin: Vec3;
+  capsule: MoverCapsule;
+  /** How far the capsule would like to travel. */
+  translation: Vec3;
+  /** Entity key of the moving body, so its own shape cannot be reported as an obstacle. */
+  excludeKey?: string;
+}
+
+export interface MoverCastResult {
+  /** Fraction of the translation the capsule can travel before it first touches anything. */
+  fraction: number;
+  /**
+   * Entity keys of the shapes the sweep considered, in the order the broad phase reported them.
+   * This is a filter trace, not a contact list: a considered shape may sit beside the path rather
+   * than block it. Sensors are excluded, because the sweep passes through triggers.
+   */
+  keys: string[];
+}
+
 export interface PhysicsWorldHandle {
   readonly id: number;
   readonly disposed: boolean;
@@ -111,6 +139,12 @@ export interface PhysicsWorldHandle {
   /** Drain physics events accumulated since the previous drain. */
   drainEvents(): ContactEvent[];
   raycastClosest(origin: Vec3, direction: Vec3, maxDistance: number): RaycastHit;
+  /**
+   * Sweep an upright capsule along a translation and report how far it can travel before it
+   * first touches something. Shapes that already overlap the capsule at the start are ignored,
+   * which is what lets a character controller sweep its own body without hitting itself.
+   */
+  castMover(request: MoverCastRequest): MoverCastResult;
   getCounters(): PhysicsCounters;
   dispose(): void;
 }

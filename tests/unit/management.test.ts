@@ -320,7 +320,12 @@ describe('external change watching', () => {
   });
 });
 
-async function waitFor(predicate: () => boolean, timeoutMs = 4000): Promise<void> {
+/**
+ * `fs.watch` delivery is asynchronous and can lag well behind the write when the machine is busy
+ * (the gates run this suite next to a production build). The bound is generous on purpose: it only
+ * decides how long a *failing* wait takes, never how long a passing one does.
+ */
+async function waitFor(predicate: () => boolean, timeoutMs = 15000): Promise<void> {
   const started = Date.now();
   while (!predicate()) {
     if (Date.now() - started > timeoutMs) throw new Error('timed out waiting for the expected event');

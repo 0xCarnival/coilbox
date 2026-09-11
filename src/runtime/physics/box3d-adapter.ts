@@ -34,6 +34,8 @@ import type {
   PhysicsBodyType,
   PhysicsCounters,
   PhysicsWorldHandle,
+  MoverCastRequest,
+  MoverCastResult,
   PhysicsWorldOptions,
   RaycastHit,
 } from './types.js';
@@ -107,6 +109,7 @@ class Box3DWorld implements PhysicsWorldHandle {
   private readonly bodies = new Map<string, b3BodyId>();
   private readonly bodyKeys = new Map<string, string>();
   private readonly shapeKeys = new Map<string, string>();
+  private readonly sensorShapes = new Set<string>();
 
   // Reusable scratch values: the adapter must not allocate on the hot path.
   private readonly scratchVec: [number, number, number] = [0, 0, 0];
@@ -187,6 +190,8 @@ class Box3DWorld implements PhysicsWorldHandle {
       shapeDef.enableHitEvents = collider.reportHits && !collider.isSensor;
       const shape = this.createShape(body, shapeDef, collider.shape, collider.offset, collider.rotation);
       this.shapeKeys.set(shapeKeyOf(shape), spec.key);
+      // A sensor is a trigger, not an obstacle: the mover cast has to be told to pass through it.
+      if (collider.isSensor) this.sensorShapes.add(shapeKeyOf(shape));
     }
   }
 
@@ -249,7 +254,10 @@ class Box3DWorld implements PhysicsWorldHandle {
     this.bodies.delete(key);
     this.bodyKeys.delete(bodyKeyOf(body));
     for (const [sk, value] of this.shapeKeys) {
-      if (value === key) this.shapeKeys.delete(sk);
+      if (value === key) {
+        this.shapeKeys.delete(sk);
+        this.sensorShapes.delete(sk);
+      }
     }
   }
 
@@ -422,6 +430,42 @@ class Box3DWorld implements PhysicsWorldHandle {
     };
   }
 
+  /**
+   * Sweep an upright capsule along a translation (Box3D's mover cast).
+   *
+   * Measured with box3d.js@0.1.1: the return value is the fraction of the translation the capsule
+   * can travel before its first touch — not a hit count — and the callback is handed the shape id
+   * of every shape the broad phase considered. Shapes the capsule already overlaps at the start
+   * (its own body, most importantly) do not stop the sweep, which is why this can drive a
+   * character without the character colliding with itself.
+   */
+  castMover(request: MoverCastRequest): MoverCastResult {
+    if (this.isDisposed) return { fraction: 1, keys: [] };
+    const m = this.module;
+    const keys: string[] = [];
+    const sensorShapes = this.sensorShapes;
+    const filter = m.b3DefaultQueryFilter();
+    const fraction = m.b3World_CastMover(
+      this.worldId,
+      [request.origin[0], request.origin[1], request.origin[2]],
+      {
+        center1: [request.capsule.center1[0], request.capsule.center1[1], request.capsule.center1[2]],
+        center2: [request.capsule.center2[0], request.capsule.center2[1], request.capsule.center2[2]],
+        radius: request.capsule.radius,
+      },
+      [request.translation[0], request.translation[1], request.translation[2]],
+      filter,
+      (shapeId: b3ShapeId) => {
+        if (sensorShapes.has(shapeKeyOf(shapeId))) return false;
+        const key = this.keyForShape(shapeId);
+        if (request.excludeKey !== undefined && key === request.excludeKey) return false;
+        if (key) keys.push(key);
+        return true;
+      },
+    );
+    return { fraction: Number.isFinite(fraction) ? Math.min(1, Math.max(0, fraction)) : 1, keys };
+  }
+
   getCounters(): PhysicsCounters {
     if (this.isDisposed) {
       return { bodyCount: 0, shapeCount: 0, contactCount: 0, jointCount: 0, islandCount: 0, awakeBodyCount: 0, byteCount: 0 };
@@ -446,6 +490,7 @@ class Box3DWorld implements PhysicsWorldHandle {
     this.bodies.clear();
     this.bodyKeys.clear();
     this.shapeKeys.clear();
+    this.sensorShapes.clear();
   }
 
   get disposed(): boolean {

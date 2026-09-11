@@ -20,8 +20,8 @@ rules.
 
 - `pnpm verify:stage0` — 14/14 checks (runtime, physics, teardown, WASM delivery)
 - `pnpm verify:stage1` — 11/11 checks (authoring loop end to end)
-- `pnpm verify:stage2` — 13/13 checks (assets, clips, property controls, understandable errors)
-- `pnpm verify:stage3` — 13/13 checks (both demo games played end to end, tuning editable)
+- `pnpm verify:stage2` — 15/15 checks (assets, clips, property controls, keyboard focus, drag cancellation)
+- `pnpm verify:stage3` — 14/14 checks (both demo games played end to end, wall contact, tuning editable)
 - `pnpm verify:stage4` — 18/18 checks (agent-built game, human edit, independence, management)
 - `pnpm verify:stage5` — 23/23 checks (compatibility, resource ownership, reference-scene
   performance, the release acceptance session, and an export served with the service shut down)

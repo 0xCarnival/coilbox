@@ -218,7 +218,9 @@ export const playerMover: BehaviorDefinition = {
         yaw += difference * Math.min(1, turnSpeed * delta);
       }
       const half = yaw / 2;
-      context.moveKinematic(context.entityId, position, [0, Math.sin(half), 0, Math.cos(half)]);
+      // Swept move: a wall stops the character instead of letting it walk through, and a diagonal
+      // push slides along the wall. `position` comes back resolved, so nothing drifts.
+      context.moveCharacter(context.entityId, position, [0, Math.sin(half), 0, Math.cos(half)]);
     };
 
     return {

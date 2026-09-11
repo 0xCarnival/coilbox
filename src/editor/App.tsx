@@ -106,6 +106,9 @@ function StudioShell(): JSX.Element {
         return;
       }
       if (event.key === 'Escape') {
+        // A drag in progress is abandoned instead of committed (plan §16 "drag cancellation");
+        // otherwise Escape recentres the view on the selection.
+        if (viewportRef.current?.cancelDrag()) return;
         const primary = session.selection.primary;
         if (primary && session.scene) viewportRef.current?.focusSelection();
         return;

@@ -97,6 +97,7 @@ class HarnessHost implements BehaviorHost {
   logs: Array<{ level: string; message: string }> = [];
   clipPlays: Array<{ entityId: string; clip: string | null }> = [];
   soundPlays: string[] = [];
+  characterMoves: Array<[number, number, number]> = [];
 
   constructor(entities: EntityFixture[]) {
     this.input = input;
@@ -134,6 +135,12 @@ class HarnessHost implements BehaviorHost {
 
   setKinematicTransform(entityId: string, position: [number, number, number], rotation: [number, number, number, number]): void {
     world.setTransform(entityId, position, rotation);
+  }
+
+  /** The harness world has no obstacles, so a swept move is the same as a direct one. */
+  moveCharacter(entityId: string, position: [number, number, number], rotation: [number, number, number, number]): void {
+    world.setTransform(entityId, position, rotation);
+    this.characterMoves.push([...position]);
   }
 
   setBodyEnabled(entityId: string, enabled: boolean): void {

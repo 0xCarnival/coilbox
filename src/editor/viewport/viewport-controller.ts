@@ -91,6 +91,9 @@ export class EditorViewport {
   private frameHandle: number | null = null;
   private running = false;
   private dragging = false;
+  /** Set while a cancelled drag waits for its release, so the release records nothing. */
+  private cancelPending = false;
+  private pointerId = 1;
   private selection: string[] = [];
   private snap: SnapSettings = { enabled: false, translate: 0.5, rotateDegrees: 15, scale: 0.25 };
   private pointerDownAt: { x: number; y: number } | null = null;
@@ -554,6 +557,11 @@ export class EditorViewport {
   };
 
   private handleTransformCommit = (): void => {
+    // A cancelled drag still ends with a release; it must not become an undoable command.
+    if (this.cancelPending) {
+      this.cancelPending = false;
+      return;
+    }
     const entityId = this.selection[0];
     if (!entityId) return;
     const object = this.projections.get(entityId)?.object;
@@ -565,8 +573,35 @@ export class EditorViewport {
     });
   };
 
-  /** Restore the projected transform from the document (drag cancellation). */
-  cancelDrag(scene: SceneDocument, entityId: string): void {
+  /**
+   * Cancel the drag in progress (Escape, plan §16 "drag cancellation").
+   *
+   * The projected transform returns to the authored document and the release that follows records
+   * nothing, so an abandoned drag cannot leave a command behind. The transform controls are sent a
+   * synthetic release as well, otherwise a pointer that keeps travelling before its real release
+   * would move the object again.
+   *
+   * Returns false when no drag is in progress, so the caller can fall back to its own Escape action.
+   */
+  cancelDrag(scene: SceneDocument | null): boolean {
+    if (!this.dragging) return false;
+    this.cancelPending = true;
+    this.transform.reset();
+    const entityId = this.selection[0];
+    if (scene && entityId) this.restoreProjection(scene, entityId);
+    try {
+      this.canvas.dispatchEvent(new PointerEvent('pointerup', { pointerId: this.pointerId, button: 0, bubbles: true }));
+    } catch {
+      // The pointer may already be gone; the drag is cancelled either way.
+    }
+    this.dragging = false;
+    this.orbit.enabled = true;
+    this.callbacks.onDragStateChange?.(false);
+    return true;
+  }
+
+  /** Put the projected object back where the document says it is. */
+  private restoreProjection(scene: SceneDocument, entityId: string): void {
     const entity = scene.entities.find((candidate) => candidate.id === entityId);
     const object = this.projections.get(entityId)?.object;
     if (!entity || !object) return;
@@ -579,6 +614,7 @@ export class EditorViewport {
 
   private handlePointerDown = (event: PointerEvent): void => {
     this.pointerDownAt = { x: event.clientX, y: event.clientY };
+    this.pointerId = event.pointerId;
   };
 
   private handlePointerCancel = (): void => {

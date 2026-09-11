@@ -8,8 +8,8 @@ gaps that are knowingly left open.
 |---|---|---|
 | 0. Compatibility probe | complete | `pnpm verify:stage0` — 14/14 checks |
 | 1. End-to-end authoring loop | complete | `pnpm verify:stage1` — 11/11 checks |
-| 2. Comfortable scene editing | complete | `pnpm verify:stage2` — 13/13 checks |
-| 3. Actual games | complete | `pnpm verify:stage3` — 13/13 checks |
+| 2. Comfortable scene editing | complete | `pnpm verify:stage2` — 15/15 checks |
+| 3. Actual games | complete | `pnpm verify:stage3` — 14/14 checks |
 | 4. Agent and management workflow | complete | `pnpm verify:stage4` — 18/18 checks |
 | 5. Reliability and release | complete | `pnpm verify:stage5` — 23/23 checks |
 
@@ -203,6 +203,8 @@ pnpm fixtures          # regenerate the binary test fixtures from code
 | Snapping | The snap toggle reaches the transform controls |
 | Save/reopen | The scene with two model entities saves at revision 1 and reloads after a full page reload |
 | Runtime animation | Play advances both clips inside the play world (≥2 animated entities, models loaded) |
+| Keyboard focus | Typing `wer` into the name field left the tool on Move and the entity alive: text fields own the keyboard, so W/E/R and Delete do not reach the editor's shortcuts |
+| Drag cancellation | A real gizmo drag moved the projection to `[-0.5, 1, 0]` while the document stayed at `[0, 1, 0]`; Escape put the projection back, ended the drag, and left the undo label unchanged |
 | Missing asset | Deleting the file behind a manifest entry makes the entity report `failed` with a fetch error in the console instead of rendering nothing |
 | Console | No unexpected page errors while building and revising the scene |
 
@@ -237,6 +239,10 @@ evidence in `docs/evidence/stage2/evidence.json`.
    gate now uses the native setter before dispatching.
 4. Adding a Model component to an entity that still had a primitive produced an invalid document;
    the editor now replaces the primitive inside one undo step.
+5. Escape during a transform drag recentred the camera and then committed the drag on release, so
+   the "drag cancellation" promised in the viewport header did not exist. Escape now cancels the
+   drag in progress: the projection returns to the authored transform, the interaction ends, and
+   the release records no command.
 
 ### Known gaps at this stage
 
@@ -269,12 +275,13 @@ pnpm studio test collect-room      # validate + export + play one game, bounded
 | Requirement | Observed |
 |---|---|
 | Behaviors registered | `collect-room`: 7 instances across `player.mover`, `game.collectible`, `game.exit-zone`, `camera.follow`, `game.rules` |
-| Player input | The player walked 5.38 m from `(0, -6.0)` to `(0, -0.6)` under simulated key input |
+| Player input | The player walked 5.54 m from `(0, -6.0)` to `(0, -0.5)` under simulated key input |
 | Triggers and score | Visiting three gems left `score 3`, `collectiblesRemaining 0` |
 | Win condition | `won=true`, the objective text updated, and the win overlay became visible |
 | Restart | After restart the player is back at its spawn and `score=0`, `won=false` |
-| Physics game | `physics-targets`: 5 targets knocked down by 7 launches, `score 5` |
-| Editable tuning | Move speed is exposed in the inspector; raising it to 12 made the player cover 10.47 m in 1.2 s instead of about 5 m |
+| Wall contact | Walking into a wall at `z=7.75` stopped the character at `z=7.400` (the face minus its 0.35 m capsule radius), it did not creep in over the next 1.5 s, and walking forward plus right slid it 2.80 m along the wall while staying pinned at `z=7.400` |
+| Physics game | `physics-targets`: 5 targets knocked down by 8 launches, `score 5` |
+| Editable tuning | Move speed is exposed in the inspector; raising it to 12 made the player cover 10.86 m in 1.2 s instead of about 5 m |
 | Console | No page errors during either session |
 
 Screenshots: `docs/evidence/stage3/collect-room-win.png`, `physics-targets.png`,
@@ -289,6 +296,9 @@ Screenshots: `docs/evidence/stage3/collect-room-win.png`, `physics-targets.png`,
   declarative metadata that drives the inspector.
 - **Player layer**: action-based input, HUD (counters, labels, overlays), game state with
   `initialGameState`, scene transitions, and a player entry point that shares the editor's runtime.
+- **Character movement** (`context.moveCharacter` + `PhysicsWorldHandle.castMover`): the character
+  capsule is swept against the world one horizontal axis at a time, so walls stop it and diagonal
+  input slides along them. Vertical movement stays with the mover's own ground probe.
 - **Games as documents** (`tools/write-games.ts`): `collect-room` and `physics-targets` are
   generated from code, so the committed scenes can always be reproduced.
 
@@ -299,6 +309,11 @@ Screenshots: `docs/evidence/stage3/collect-room-win.png`, `physics-targets.png`,
 2. Trigger behaviors fired on sensor-*end* events; they now fire on sensor-begin only.
 3. The follow camera did not turn with the character, and an object authored facing `+Z` rendered
    backwards.
+4. The character walked straight through walls: the mover wrote a teleported kinematic transform
+   every tick without ever asking the world what was in the way. Characters now move with a swept
+   mover cast (`context.moveCharacter`), which stops them at the contact and slides them along a
+   wall. The sweep passes through sensors, so triggers still work, and ignoring the caster's own
+   collider is what keeps a character from colliding with itself.
 
 ### Known gaps at this stage
 
@@ -379,7 +394,7 @@ pnpm verify                        # every gate in order
 
 `tools/verify-stage5.ts` passes 23/23 checks (22 with `--skip-clean-clone`, which drops the
 clean-checkout check). `pnpm verify` runs every gate in order and reports 6/6 passing:
-`14/14`, `11/11`, `13/13`, `13/13`, `18/18`, `23/23`. The measured and observed results:
+`14/14`, `11/11`, `15/15`, `14/14`, `18/18`, `23/23`. The measured and observed results:
 
 | Requirement | Observed |
 |---|---|
@@ -407,6 +422,9 @@ Screenshots: `docs/evidence/stage5/acceptance-play.png`, `narrow-viewport.png`; 
   start, so the editor, the player, and an export get working audio without the host remembering.
 - **Play/Stop ownership**: the player handle exposes live `session`/`game`/`scene` getters rather
   than a frozen snapshot, which the 20-cycle audit depends on.
+- **Mover casts** (`PhysicsWorldHandle.castMover`): the vendored `b3World_CastMover` sweep, with
+  sensors excluded and the caster's own body filtered out, covered by a Node test alongside the
+  real WASM.
 - **Release documentation**: `docs/runbook.md` (start, recovery, exports, limits) plus this status.
 
 ### Bugs this stage found (each fixed and covered by a test)

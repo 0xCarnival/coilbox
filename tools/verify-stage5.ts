@@ -74,8 +74,15 @@ async function run(name: string, command: string, commandArgs: string[], cwd = r
     return true;
   } catch (error) {
     const failure = error as { stdout?: string; stderr?: string; code?: number };
-    process.stdout.write(`${`${failure.stdout ?? ''}${failure.stderr ?? ''}`.trim().split('\n').slice(-25).join('\n')}\n`);
-    steps.push({ name, ok: false, detail: `exit ${failure.code ?? 'unknown'}` });
+    const output = `${failure.stdout ?? ''}${failure.stderr ?? ''}`.trim();
+    process.stdout.write(`${output.split('\n').slice(-25).join('\n')}\n`);
+    // Name the failing test as well as the exit code: "exit 1" alone cannot be acted on later.
+    const failing = [...output.matchAll(/^\s*(?:FAIL|×|✗)\s+(.+)$/gm)].map((match) => match[1]!.trim());
+    steps.push({
+      name,
+      ok: false,
+      detail: `exit ${failure.code ?? 'unknown'}${failing.length > 0 ? ` — ${[...new Set(failing)].slice(0, 3).join('; ')}` : ''}`,
+    });
     return false;
   }
 }
