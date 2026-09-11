@@ -111,11 +111,19 @@ export async function testGame(options: GameTestOptions): Promise<GameTestResult
     const behaviors = await page.evaluate(() => window.__PLAYER__!.behaviorList());
     record('behaviors-registered', behaviors.length > 0, `${behaviors.length} behavior instance(s): ${[...new Set(behaviors.map((entry) => entry.behaviorId))].join(', ') || 'none'}`);
 
-    // Dismiss the start overlay when the game has one, then let it run.
+    // Dismiss the start overlay when the game has one, then let it run for the requested amount of
+    // *simulated* time. Waiting on the wall clock instead would make this test measure the machine:
+    // the loop is fixed-step and drops a backlog by design, so a slow machine takes fewer steps in
+    // the same second and a passing game would be reported as broken.
     await page
       .click('.coilbox-hud .hud-overlay[data-hud-id="start-overlay"] button', { timeout: 3000 })
       .catch(() => undefined);
-    await page.waitForTimeout(seconds * 1000);
+    const targetSteps = Math.round(seconds * 60);
+    await page
+      .waitForFunction((target: number) => (window.__PLAYER__?.stats()?.steps ?? 0) >= target, targetSteps, {
+        timeout: Math.max(30_000, seconds * 10_000),
+      })
+      .catch(() => undefined);
 
     const after = await page.evaluate(() => {
       const player = window.__PLAYER__!;
@@ -126,7 +134,11 @@ export async function testGame(options: GameTestOptions): Promise<GameTestResult
     // while no session is running; the page's global type only promises `unknown`.
     const stats = after.stats as PlayerStats | null;
     const steps = stats?.steps ?? 0;
-    record('simulates', steps > seconds * 30, `${steps} fixed steps in ${seconds}s, ${stats?.drawCalls ?? 0} draw calls`);
+    record(
+      'simulates',
+      steps >= targetSteps,
+      `${steps} of ${targetSteps} fixed steps (${seconds}s of simulated time), ${stats?.drawCalls ?? 0} draw calls`,
+    );
     record('renders', (stats?.drawCalls ?? 0) > 0, `${stats?.drawCalls ?? 0} draw calls in the final frame`);
 
     const failedRequests = staticServer.requests.filter((entry) => entry.status >= 400);

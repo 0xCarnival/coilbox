@@ -382,7 +382,11 @@ async function main(): Promise<void> {
       const frames: number[] = [];
       const physics: number[] = [];
       const start = performance.now();
-      while (performance.now() - start < 4000) {
+      // A fixed number of frames rather than a fixed number of seconds: the percentiles have to
+      // come from a complete sample, and a software rasteriser on a shared runner renders far fewer
+      // frames per second than a development machine. The wall-clock bound only stops a stalled
+      // renderer from hanging the gate.
+      while (frames.length < 120 && performance.now() - start < 60_000) {
         await new Promise((resolve) => requestAnimationFrame(() => resolve(undefined)));
         const sample = player?.stats() as { frameTimeMs: number; physicsTimeMs: number } | null;
         if (sample) {
@@ -416,7 +420,7 @@ async function main(): Promise<void> {
     record({
       id: 'reference-performance',
       title: 'The reference scene renders on the declared conditions and the numbers are recorded',
-      passed: perf.entities >= 200 && perf.physicsBodies >= 25 && perf.drawCalls > 0 && perf.frames > 60,
+      passed: perf.entities >= 200 && perf.physicsBodies >= 25 && perf.drawCalls > 0 && perf.frames >= 100,
       detail: `${perf.entities} entities, ${perf.physicsBodies} bodies, ${perf.drawCalls} draw calls, ${perf.triangles} triangles; median frame ${perf.medianFrameMs.toFixed(2)} ms, p95 ${perf.p95FrameMs.toFixed(2)} ms, physics ${perf.medianPhysicsMs.toFixed(2)} ms (software rasteriser, not the M1 Pro target)`,
       observed: perf,
     });

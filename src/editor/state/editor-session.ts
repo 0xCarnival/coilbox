@@ -329,7 +329,10 @@ export class EditorSession {
     const projectId = this.project.id;
     const events = new EventSource(`/api/projects/${encodeURIComponent(projectId)}/events`);
     this.events = events;
-    this.watching = true;
+    // `watching` means the service has confirmed the stream, not that a connection object exists:
+    // an external edit made before the service is listening is a missed event, and the status bar
+    // (and the gates) should not claim otherwise.
+    this.watching = false;
     this.emit();
 
     events.addEventListener('ready', () => {

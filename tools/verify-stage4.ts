@@ -312,6 +312,13 @@ async function main(): Promise<void> {
     // ------------------------------------------------------------ external change
     // Simulate an agent editing the same file while the editor holds it. The editor must be told,
     // not silently overwritten, and an unsaved local edit must survive.
+    //
+    // Wait for the service to confirm the event stream first: an edit made before the watcher is
+    // listening is a missed event, not a conflict the editor ignored, and on a slow machine that
+    // race is the difference between this check passing and failing.
+    await page.waitForFunction(() => window.__STUDIO__?.session.snapshot().watching === true, undefined, {
+      timeout: 20_000,
+    });
     const before = await page.evaluate(() => {
       const session = window.__STUDIO__?.session;
       return session?.scene?.entities.find((entity) => entity.id === 'player')?.name ?? null;
