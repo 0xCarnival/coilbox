@@ -1,5 +1,6 @@
 import type { Component, ComponentType, Entity, EntityId, JsonValue, SceneDocument, Transform } from '@schema/index.js';
 import { validateSceneRelationships, type ValidationIssue } from '@schema/index.js';
+import { jsonField } from '../json-values.js';
 
 /**
  * The single command interface every committed authored change goes through (plan §8).
@@ -203,13 +204,15 @@ function planUnchecked(scene: SceneDocument, command: EditorCommand): PlanResult
       if (index < 0) {
         return fail('missing-component', `entity "${entity.name}" has no ${command.componentType} component`);
       }
-      const component = entity.components[index] as Component;
+      const component = entity.components[index];
       if (!(command.property in component)) {
         return fail(
           'unknown-property',
           `${command.componentType} has no property "${command.property}"`,
         );
       }
+      // SAFETY: `command.property` was checked to exist on this component, and a component field is
+      // either a scalar, a vector, or the behavior property bag — all of which `JsonValue` covers.
       const nextComponent = { ...component, [command.property]: command.value } as Component;
       if (componentEquals(component, nextComponent)) return fail('no-op', 'the property is unchanged');
       const components = [...entity.components];
@@ -222,7 +225,7 @@ function planUnchecked(scene: SceneDocument, command: EditorCommand): PlanResult
           entityId: entity.id,
           componentType: command.componentType,
           property: command.property,
-          value: (component as unknown as Record<string, JsonValue>)[command.property] ?? null,
+          value: jsonField(component, command.property),
         },
         label: `${entity.name}: ${command.property}`,
         affected: [entity.id],
@@ -239,7 +242,7 @@ function planUnchecked(scene: SceneDocument, command: EditorCommand): PlanResult
       if (!component) {
         return fail('missing-behavior', `entity "${entity.name}" has no "${command.behaviorId}" behavior`);
       }
-      const previous = (component.properties[command.property] ?? null) as JsonValue;
+      const previous = component.properties[command.property] ?? null;
       if (JSON.stringify(previous) === JSON.stringify(command.value)) return fail('no-op', 'the property is unchanged');
       const components = entity.components.map((candidate) =>
         candidate === component

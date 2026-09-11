@@ -1,8 +1,8 @@
 {
   "stage": 3,
-  "generatedAt": "2026-09-11T15:48:39.980Z",
+  "generatedAt": "2026-09-11T17:31:43.714Z",
   "node": "v24.18.0",
-  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage3-bqhfiS",
+  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage3-YI879H",
   "steps": [
     {
       "name": "typecheck",
@@ -78,19 +78,19 @@
       "id": "collect-room-input",
       "title": "Keyboard input drives the character mover, and it stays on the floor",
       "passed": true,
-      "detail": "player moved 5.38 m from (0.0, -6.0) to (0.0, -0.6); y went 0.00 → -0.00",
+      "detail": "player moved 5.63 m from (0.0, -6.0) to (0.0, -0.4); y went -0.00 → 0.00",
       "observed": {
         "beforeWalk": {
           "x": 0,
-          "y": 7.947287272713766e-9,
+          "y": -3.973641860000043e-9,
           "z": -6
         },
         "afterWalk": {
           "x": 0,
-          "y": -3.973640971821624e-9,
-          "z": -0.6249790191650391
+          "y": 7.947288160892185e-9,
+          "z": -0.37498635053634644
         },
-        "walked": 5.375020980834961,
+        "walked": 5.625013649463654,
         "grounded": true
       }
     },
@@ -98,25 +98,25 @@
       "id": "collect-room-wall-contact",
       "title": "A wall stops the character, and a diagonal push slides along it",
       "passed": true,
-      "detail": "walked into the wall at z=7.75: stopped at (0.00, -0.00, 7.40); 1.5 s later z=7.400 (moved 0.0000 m); walking forward and right slid 2.80 m along the wall to x=2.80 at z=7.400",
+      "detail": "walked into the wall at z=7.75: stopped at (0.00, -0.00, 7.40); 1.5 s later z=7.400 (moved 0.0000 m); walking forward and right slid 2.74 m along the wall to x=2.74 at z=7.400",
       "observed": {
         "atWall": {
           "x": 0,
-          "y": -1.5894567440000174e-8,
+          "y": -9.934103317732479e-9,
           "z": 7.400000095367432
         },
         "stillAtWall": {
           "x": 0,
-          "y": -1.5894567440000174e-8,
+          "y": 1.986826037025935e-9,
           "z": 7.400000095367432
         },
         "slid": {
-          "x": 2.799133062362671,
-          "y": -3.973637863197155e-9,
+          "x": 2.7402334213256836,
+          "y": 1.9868267031597497e-9,
           "z": 7.400000095367432
         },
         "approachGap": 0,
-        "slideDistance": 2.799133062362671,
+        "slideDistance": 2.7402334213256836,
         "pinned": true
       }
     },
@@ -156,7 +156,7 @@
       "detail": "player at (0.0, -0.00, -6.0) after restart",
       "observed": {
         "x": 0,
-        "y": -1.5894570992713852e-8,
+        "y": -9.934105982267738e-9,
         "z": -6
       }
     },
@@ -217,15 +217,15 @@
       "id": "targets-physics",
       "title": "Clicking launches the ball and knocking targets down updates the score",
       "passed": true,
-      "detail": "5 targets knocked down, score 5, launches 5",
+      "detail": "4 targets knocked down, score 4, launches 8",
       "observed": {
-        "knocked": 5,
+        "knocked": 4,
         "boardState": {
-          "score": 5,
-          "targetsDown": 5,
-          "launches": 5,
-          "timeRemaining": 54.1,
-          "won": true,
+          "score": 4,
+          "targetsDown": 4,
+          "launches": 8,
+          "timeRemaining": 50.77,
+          "won": false,
           "lost": false,
           "scoreTarget": 5,
           "objective": "Knock every target down",
@@ -258,18 +258,18 @@
       "id": "editor-tuning-affects-play",
       "title": "The edited tuning value changes how the game plays",
       "passed": true,
-      "detail": "with move speed 12 the player covered 10.07 m in 1.2 s (about 5 m at the default speed)",
+      "detail": "with move speed 12 the player covered 10.47 m in 1.2 s (about 5 m at the default speed)",
       "observed": {
-        "studioWalked": 10.073841094970703,
+        "studioWalked": 10.465864658355713,
         "before": {
           "x": 0,
-          "y": 7.947287272713766e-9,
+          "y": -1.5894570992713852e-8,
           "z": -6
         },
         "after": {
           "x": 0,
-          "y": -1.5894569216357013e-8,
-          "z": 4.073841094970703
+          "y": -3.973640971821624e-9,
+          "z": 4.465864658355713
         }
       }
     },

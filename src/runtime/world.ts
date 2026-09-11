@@ -119,6 +119,25 @@ const CHARACTER_CONTACT_SKIN = 0.005;
 const previousQuat = new THREE.Quaternion();
 const currentQuat = new THREE.Quaternion();
 
+/**
+ * Copy an authored vector for the physics backend.
+ *
+ * The adapter keeps the array it is handed for the lifetime of the body, so handing it a tuple
+ * that lives inside the scene document would let a physics write reach back into the document.
+ */
+function copyVec3(value: Vec3): Vec3 {
+  return [value[0], value[1], value[2]];
+}
+
+/** Copy an authored quaternion, for the same reason as `copyVec3`. */
+function copyQuat(value: Quat): Quat {
+  return [value[0], value[1], value[2], value[3]];
+}
+
+/** True for a non-empty string. A game-state value only names a scene when it has content. */
+const isNonEmptyString = (value: JsonValue | undefined): value is string =>
+  typeof value === 'string' && value.length > 0;
+
 export class RuntimeWorld {
   readonly game: GameDocument;
   readonly scene: SceneDocument;
@@ -190,7 +209,10 @@ export class RuntimeWorld {
     this.onRequestRestart = options.onRequestRestart;
     this.autoResize = options.autoResize ?? true;
     this.warnings = [...graph.warnings];
-    this.gameState = new GameState(options.game.settings.initialGameState as Record<string, never>);
+    // SAFETY: the project schema's `initialGameState` is a recursive JSON-object field, so it
+    // accepts only JsonValue members; Zod reports that schema's output as `unknown`, and the
+    // document was parsed against it before this world was built.
+    this.gameState = new GameState(options.game.settings.initialGameState as Record<string, JsonValue>);
     // Keyboard events go to whatever has focus, so they are captured at the window; pointer
     // events belong to the canvas. Listening for keys on the canvas alone would silently
     // ignore input whenever the canvas was not focused.
@@ -568,7 +590,13 @@ export class RuntimeWorld {
     if (this.behaviors) return;
     this.behaviors = new BehaviorRuntime({
       registry: this.behaviorRegistry,
-      host: this.createBehaviorHost({} as RuntimeWorldOptions),
+      // The session wires both of these when it builds the world; dropping them here would make
+      // `context.requestScene()` and `context.requestRestart()` silently do nothing, which is what
+      // the documented behavior-context API promises they do.
+      host: this.createBehaviorHost({
+        onRequestScene: this.onRequestScene,
+        onRequestRestart: this.onRequestRestart,
+      }),
       behaviorsByEntity: this.behaviorSpecs,
     });
   }
@@ -605,7 +633,7 @@ export class RuntimeWorld {
         break;
       case 'nextScene': {
         const next = this.gameState.get<string>('nextScene');
-        if (typeof next === 'string' && next.length > 0) this.onRequestScene?.(next);
+        if (isNonEmptyString(next)) this.onRequestScene?.(next);
         else this.onRequestRestart?.();
         break;
       }
@@ -622,8 +650,9 @@ export class RuntimeWorld {
     }
   }
 
-  private createBehaviorHost(options: RuntimeWorldOptions): BehaviorHost {
-    const world = this;
+  private createBehaviorHost(
+    options: Pick<RuntimeWorldOptions, 'onRequestScene' | 'onRequestRestart'>,
+  ): BehaviorHost {
     return {
       input: {
         isActionDown: (action) => this.input.isActionDown(action),
@@ -635,42 +664,42 @@ export class RuntimeWorld {
       state: this.gameState,
       physics: this.physics,
       hud: this.hud,
-      entityIds: () => [...world.graph.entities.keys()],
-      entityName: (entityId) => world.graph.entities.get(entityId)?.entity.name ?? null,
-      findByName: (name) => world.entityNames.get(name) ?? null,
-      findById: (entityId) => (world.graph.entities.has(entityId) ? entityId : null),
-      readTransform: (entityId, out) => world.readEntityTransform(entityId, out),
-      readVelocity: (entityId, out) => world.readEntityVelocity(entityId, out),
-      setKinematicTransform: (entityId, position, rotation) => world.setKinematicTransform(entityId, position, rotation),
+      entityIds: () => [...this.graph.entities.keys()],
+      entityName: (entityId) => this.graph.entities.get(entityId)?.entity.name ?? null,
+      findByName: (name) => this.entityNames.get(name) ?? null,
+      findById: (entityId) => (this.graph.entities.has(entityId) ? entityId : null),
+      readTransform: (entityId, out) => this.readEntityTransform(entityId, out),
+      readVelocity: (entityId, out) => this.readEntityVelocity(entityId, out),
+      setKinematicTransform: (entityId, position, rotation) => this.setKinematicTransform(entityId, position, rotation),
       setBodyEnabled: (entityId, enabled) => {
-        world.physics.setBodyEnabled(entityId, enabled);
-        const built = world.graph.entities.get(entityId);
+        this.physics.setBodyEnabled(entityId, enabled);
+        const built = this.graph.entities.get(entityId);
         if (built) built.object.visible = enabled && built.entity.editor.visible;
       },
-      moveCharacter: (entityId, position, rotation) => world.moveCharacter(entityId, position, rotation),
-      setBodyType: (entityId, type) => world.physics.setBodyType(entityId, type),
-      isPhysicsBody: (entityId) => world.physics.hasBody(entityId),
+      moveCharacter: (entityId, position, rotation) => this.moveCharacter(entityId, position, rotation),
+      setBodyType: (entityId, type) => this.physics.setBodyType(entityId, type),
+      isPhysicsBody: (entityId) => this.physics.hasBody(entityId),
       requestScene: (sceneId) => options.onRequestScene?.(sceneId),
       requestRestart: () => options.onRequestRestart?.(),
       log: (level, message, entityId) => {
-        const prefix = entityId ? `${world.graph.entities.get(entityId)?.entity.name ?? entityId}: ` : '';
-        world.warnings.push(`${level}: ${prefix}${message}`);
+        const prefix = entityId ? `${this.graph.entities.get(entityId)?.entity.name ?? entityId}: ` : '';
+        this.warnings.push(`${level}: ${prefix}${message}`);
       },
-      requestAction: (action) => world.handleHudAction(action),
+      requestAction: (action) => this.handleHudAction(action),
       playClip: (entityId, clip, clipOptions) => {
-        const controller = world.graph.entities.get(entityId)?.animation ?? null;
+        const controller = this.graph.entities.get(entityId)?.animation ?? null;
         if (!controller) return false;
         controller.play(clip, clipOptions);
         return true;
       },
       playSound: (entityId, soundOptions) => {
-        const assetId = world.audioAssetFor(entityId);
+        const assetId = this.audioAssetFor(entityId);
         if (!assetId) return false;
-        return world.audio.play(assetId, { volume: soundOptions?.volume ?? 1, loop: soundOptions?.loop ?? false });
+        return this.audio.play(assetId, { volume: soundOptions?.volume ?? 1, loop: soundOptions?.loop ?? false });
       },
       prepareAudio: (entityId) => {
-        const assetId = world.audioAssetFor(entityId);
-        if (assetId) world.audio.prepare(assetId);
+        const assetId = this.audioAssetFor(entityId);
+        if (assetId) this.audio.prepare(assetId);
       },
     };
   }
@@ -794,8 +823,8 @@ export class RuntimeWorld {
       this.physics.createBody({
         key: entity.id,
         bodyType: rigidBody.bodyType,
-        position: [...entity.transform.position] as Vec3,
-        rotation: [...entity.transform.rotation] as Quat,
+        position: copyVec3(entity.transform.position),
+        rotation: copyQuat(entity.transform.rotation),
         gravityScale: rigidBody.gravityScale,
         linearDamping: rigidBody.linearDamping,
         angularDamping: rigidBody.angularDamping,
@@ -828,7 +857,7 @@ export class RuntimeWorld {
     const collider = findComponent(entity, 'collider');
     if (!collider) {
       const primitive = findComponent(entity, 'primitive');
-      const size: Vec3 = primitive ? ([...primitive.size] as Vec3) : [1, 1, 1];
+      const size: Vec3 = primitive ? copyVec3(primitive.size) : [1, 1, 1];
       this.warnings.push(
         `entity "${entity.name}" has a rigid body but no collider; using a bounds-fitted box of ${size.join(' x ')} m`,
       );
@@ -861,7 +890,7 @@ export class RuntimeWorld {
     spec.isSensor = collider.isSensor;
     spec.reportContacts = collider.reportContacts;
     spec.reportHits = true;
-    spec.rotation = [...collider.localRotation] as Quat;
+    spec.rotation = copyQuat(collider.localRotation);
     return [spec];
   }
 
@@ -1000,8 +1029,8 @@ function baseCollider(
 ): ColliderSpec {
   return {
     shape,
-    offset: [offset[0] * uniformScale, offset[1] * uniformScale, offset[2] * uniformScale] as Vec3,
-    rotation: [0, 0, 0, 1] as Quat,
+    offset: [offset[0] * uniformScale, offset[1] * uniformScale, offset[2] * uniformScale],
+    rotation: [0, 0, 0, 1],
     density: 1,
     friction: 0.6,
     restitution: 0,
@@ -1023,6 +1052,9 @@ function findComponent<T extends Component['type']>(
   return entity.components.find((component): component is Extract<Component, { type: T }> => component.type === type);
 }
 
+const isBehaviorComponent = (component: Component): component is Extract<Component, { type: 'behavior' }> =>
+  component.type === 'behavior';
+
 /** Behavior components per entity, in document order. */
 function collectBehaviorComponents(
   scene: SceneDocument,
@@ -1030,12 +1062,12 @@ function collectBehaviorComponents(
   const result = new Map<string, Array<{ behaviorId: string; properties: Record<string, JsonValue> }>>();
   for (const entity of scene.entities) {
     if (!entity.enabled) continue;
-    const behaviors = entity.components
-      .filter((component) => component.type === 'behavior')
-      .map((component) => ({
-        behaviorId: (component as Extract<typeof component, { type: 'behavior' }>).behaviorId,
-        properties: (component as Extract<typeof component, { type: 'behavior' }>).properties as Record<string, JsonValue>,
-      }));
+    const behaviors = entity.components.filter(isBehaviorComponent).map((component) => ({
+      behaviorId: component.behaviorId,
+      // SAFETY: the behavior component's `properties` is the schema's JSON-object field, which
+      // accepts only JsonValue members; Zod types that field's output as `unknown`.
+      properties: component.properties as Record<string, JsonValue>,
+    }));
     if (behaviors.length > 0) result.set(entity.id, behaviors);
   }
   return result;

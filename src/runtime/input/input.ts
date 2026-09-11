@@ -39,6 +39,24 @@ export interface InputOptions {
   bindings?: InputBindings;
 }
 
+/**
+ * The event each registered listener type delivers.
+ *
+ * `EventTarget.addEventListener` is string-keyed, so the payload type is not part of its
+ * signature. Naming the pairing here type-checks every handler at its registration site and
+ * leaves exactly one place — `addListener` — where the DOM's guarantee is written down.
+ */
+interface InputEventMap {
+  keydown: KeyboardEvent;
+  keyup: KeyboardEvent;
+  blur: Event;
+  pointerdown: PointerEvent;
+  pointerup: PointerEvent;
+  pointermove: PointerEvent;
+  pointerleave: PointerEvent;
+  contextmenu: MouseEvent;
+}
+
 export class InputSystem {
   private readonly bindings: Map<string, Set<string>>;
   private readonly down = new Set<string>();
@@ -63,14 +81,14 @@ export class InputSystem {
     this.target = options.target;
     this.canvas = options.canvas ?? (options.target instanceof HTMLElement ? options.target : null);
 
-    this.addListener(this.target, 'keydown', (event) => this.handleKey(event as KeyboardEvent, true));
-    this.addListener(this.target, 'keyup', (event) => this.handleKey(event as KeyboardEvent, false));
+    this.addListener(this.target, 'keydown', (event) => this.handleKey(event, true));
+    this.addListener(this.target, 'keyup', (event) => this.handleKey(event, false));
     // A window that loses focus must not leave keys stuck down.
     this.addListener(this.target, 'blur', () => this.clear());
     if (this.canvas) {
-      this.addListener(this.canvas, 'pointerdown', (event) => this.handlePointer(event as PointerEvent, 'down'));
-      this.addListener(this.canvas, 'pointerup', (event) => this.handlePointer(event as PointerEvent, 'up'));
-      this.addListener(this.canvas, 'pointermove', (event) => this.handlePointer(event as PointerEvent, 'move'));
+      this.addListener(this.canvas, 'pointerdown', (event) => this.handlePointer(event, 'down'));
+      this.addListener(this.canvas, 'pointerup', (event) => this.handlePointer(event, 'up'));
+      this.addListener(this.canvas, 'pointermove', (event) => this.handlePointer(event, 'move'));
       this.addListener(this.canvas, 'pointerleave', () => this.clearPointer());
       this.addListener(this.canvas, 'contextmenu', (event) => event.preventDefault());
     }
@@ -200,9 +218,16 @@ export class InputSystem {
     return false;
   }
 
-  private addListener(target: EventTarget, type: string, handler: EventListener): void {
-    target.addEventListener(type, handler);
-    this.listeners.push({ target, type, handler });
+  private addListener<K extends keyof InputEventMap>(
+    target: EventTarget,
+    type: K,
+    handler: (event: InputEventMap[K]) => void,
+  ): void {
+    // SAFETY: the DOM delivers the event interface that belongs to the registered type, which is
+    // exactly the pairing `InputEventMap` records; a browser never dispatches any other shape.
+    const listener: EventListener = (event) => handler(event as InputEventMap[K]);
+    target.addEventListener(type, listener);
+    this.listeners.push({ target, type, handler: listener });
   }
 }
 

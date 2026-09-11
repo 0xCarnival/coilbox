@@ -5,6 +5,7 @@ import {
   parseScene,
   type AssetManifest,
   type GameDocument,
+  type JsonValue,
   type SceneDocument,
   type ValidationIssue,
 } from '@schema/index.js';
@@ -49,7 +50,7 @@ export interface LoadProjectOptions {
   fetchImpl?: typeof fetch;
 }
 
-async function fetchJson(url: string, fetchImpl: typeof fetch): Promise<unknown> {
+async function fetchJson(url: string, fetchImpl: typeof fetch): Promise<JsonValue> {
   let response: Response;
   try {
     response = await fetchImpl(url, { headers: { accept: 'application/json' } });
@@ -61,7 +62,9 @@ async function fetchJson(url: string, fetchImpl: typeof fetch): Promise<unknown>
   }
   const text = await response.text();
   try {
-    return JSON.parse(text) as unknown;
+    // SAFETY: `JSON.parse` produces exactly the JSON value shapes — objects, arrays, strings,
+    // booleans, finite numbers, and null — or throws; it cannot fabricate a live JS value.
+    return JSON.parse(text) as JsonValue;
   } catch (cause) {
     throw new ProjectLoadError(url, `invalid JSON: ${String(cause)}`);
   }

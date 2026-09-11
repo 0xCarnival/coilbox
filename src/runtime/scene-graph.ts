@@ -37,7 +37,8 @@ export interface BuiltEntity {
   object: THREE.Object3D;
   /** Visual child, when the entity renders something. */
   visual: THREE.Object3D | null;
-  mesh: THREE.Mesh | null;
+  /** Primitive mesh, when the entity has a primitive component; its material is always a standard one. */
+  mesh: THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial> | null;
   light: THREE.Light | null;
   camera: THREE.PerspectiveCamera | null;
   hasPhysics: boolean;
@@ -116,7 +117,7 @@ export function buildSceneGraph(scene: SceneDocument, options: BuildSceneOptions
             warnings.push(`entity "${entity.name}" has a material component but nothing to apply it to yet`);
             break;
           }
-          applyMaterial(built.mesh.material as THREE.MeshStandardMaterial, component);
+          applyMaterial(built.mesh.material, component);
           break;
         }
         case 'light': {
@@ -277,7 +278,9 @@ export function createPrimitiveMaterial(component: PrimitiveComponent): THREE.Me
 }
 
 /** Shared by the runtime and the editor viewport so a primitive looks the same in both. */
-export function createPrimitiveMesh(component: PrimitiveComponent): THREE.Mesh {
+export function createPrimitiveMesh(
+  component: PrimitiveComponent,
+): THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial> {
   const geometry = createPrimitiveGeometry(component);
   const material = createPrimitiveMaterial(component);
   const mesh = new THREE.Mesh(geometry, material);

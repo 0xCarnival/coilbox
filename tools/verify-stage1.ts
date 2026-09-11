@@ -109,7 +109,7 @@ async function main(): Promise<void> {
     page.on('pageerror', (error) => consoleErrors.push(String(error)));
 
     await page.goto(editorServer.url, { waitUntil: 'load' });
-    await page.waitForFunction(() => (window as unknown as { __STUDIO__?: unknown }).__STUDIO__ !== undefined, undefined, {
+    await page.waitForFunction(() => window.__STUDIO__ !== undefined, undefined, {
       timeout: 30_000,
     });
 
@@ -139,12 +139,7 @@ async function main(): Promise<void> {
     await page.waitForTimeout(300);
 
     const moveResult = await page.evaluate(() => {
-      const studio = (window as unknown as {
-        __STUDIO__?: {
-          session: { scene: { entities: Array<{ id: string; transform: { position: number[] } }> } | null };
-          viewport?: () => { project(id: string): [number, number, number] | null } | null;
-        };
-      }).__STUDIO__;
+      const studio = window.__STUDIO__;
       const player = studio?.session.scene?.entities.find((entity) => entity.id === 'player');
       return {
         document: player ? player.transform.position : null,
@@ -207,7 +202,7 @@ async function main(): Promise<void> {
 
     // --- reopen: the saved document is what loads -----------------------------
     await page.reload({ waitUntil: 'load' });
-    await page.waitForFunction(() => (window as unknown as { __STUDIO__?: unknown }).__STUDIO__ !== undefined, undefined, {
+    await page.waitForFunction(() => window.__STUDIO__ !== undefined, undefined, {
       timeout: 30_000,
     });
     await page.click('.card:has-text("Stage 1 Room") button:has-text("Open")');
@@ -230,16 +225,15 @@ async function main(): Promise<void> {
     await page.waitForTimeout(1600);
 
     const playState = await page.evaluate(() => {
-      const studio = (window as unknown as {
-        __STUDIO__?: {
-          viewport?: () => {
-            samplePlayPixels(): { width: number; height: number; distinctColors: number; nonBackgroundPixels: number } | null;
-            playStats(): { steps: number; physicsBodies: number; entities: number; state: string } | null;
-          } | null;
-        };
-      }).__STUDIO__;
-      const viewport = studio?.viewport?.();
-      return { pixels: viewport?.samplePlayPixels() ?? null, stats: viewport?.playStats() ?? null };
+      const viewport = window.__STUDIO__?.viewport?.();
+      const pixels = viewport?.samplePlayPixels() ?? null;
+      const stats = (viewport?.playStats() ?? null) as {
+        steps: number;
+        physicsBodies: number;
+        entities: number;
+        state: string;
+      } | null;
+      return { pixels, stats };
     });
     const playRendered = playState.pixels
       ? playState.pixels.nonBackgroundPixels / (playState.pixels.width * playState.pixels.height)
@@ -259,12 +253,7 @@ async function main(): Promise<void> {
     // Pause and Step must advance exactly the tick that was asked for, and nothing while paused
     // (plan §16). Reading the play world's step counter is the only honest way to say that.
     const stepCount = () =>
-      page.evaluate(
-        () =>
-          (window as unknown as { __STUDIO__?: { viewport?: () => { playStats(): { steps: number } | null } | null } }).__STUDIO__
-            ?.viewport?.()
-            ?.playStats()?.steps ?? -1,
-      );
+      page.evaluate(() => (window.__STUDIO__?.viewport?.()?.playStats() as { steps: number } | null)?.steps ?? -1);
     await page.click('button:has-text("Pause")');
     await page.waitForTimeout(300);
     const pausedSteps = await stepCount();
@@ -327,16 +316,21 @@ async function main(): Promise<void> {
       const exportPage = await context.newPage();
       exportPage.on('pageerror', (error) => consoleErrors.push(`export: ${String(error)}`));
       await exportPage.goto(exportServer.url, { waitUntil: 'load' });
-      await exportPage.waitForFunction(() => (window as unknown as { __PLAYER__?: unknown }).__PLAYER__ !== undefined, undefined, {
+      await exportPage.waitForFunction(() => window.__PLAYER__ !== undefined, undefined, {
         timeout: 30_000,
       });
-      await exportPage.evaluate(
-        () => (window as unknown as { __PLAYER__: { ready: Promise<void> } }).__PLAYER__.ready,
-      );
+      await exportPage.evaluate(() => window.__PLAYER__?.ready);
       await exportPage.waitForTimeout(2000);
       const exportState = await exportPage.evaluate(() => {
-        const player = (window as unknown as { __PLAYER__: { state(): unknown; samplePixels(): { nonBackgroundPixels: number; distinctColors: number; width: number; height: number } } }).__PLAYER__;
-        return { state: player.state(), pixels: player.samplePixels() };
+        const player = window.__PLAYER__;
+        if (!player) throw new Error('no player');
+        const pixels = player.samplePixels() as {
+          nonBackgroundPixels: number;
+          distinctColors: number;
+          width: number;
+          height: number;
+        };
+        return { state: player.state(), pixels };
       });
       const rendered = exportState.pixels.nonBackgroundPixels / (exportState.pixels.width * exportState.pixels.height);
       await exportPage.screenshot({ path: join(evidenceDir, 'export.png') });
@@ -401,10 +395,7 @@ async function readSceneFromDisk(path: string): Promise<{ revision: number; enti
 
 async function currentPosition(page: Page): Promise<number | null> {
   return page.evaluate(() => {
-    const studio = (window as unknown as {
-      __STUDIO__?: { session: { scene: { entities: Array<{ id: string; transform: { position: number[] } }> } | null } };
-    }).__STUDIO__;
-    const player = studio?.session.scene?.entities.find((entity) => entity.id === 'player');
+    const player = window.__STUDIO__?.session.scene?.entities.find((entity) => entity.id === 'player');
     return player ? player.transform.position[0] : null;
   });
 }

@@ -40,13 +40,13 @@ class StubInput {
     return this.released.has(action);
   }
 
-  moveAxis(): { x: number; y: number } {
+  moveAxis() {
     const x = (this.isActionDown('right') ? 1 : 0) - (this.isActionDown('left') ? 1 : 0);
     const y = (this.isActionDown('forward') ? 1 : 0) - (this.isActionDown('back') ? 1 : 0);
     return { x, y };
   }
 
-  pointer(): { x: number; y: number; clientX: number; clientY: number; down: boolean; justPressed: boolean; justReleased: boolean } {
+  pointer() {
     return { x: 0, y: 0, clientX: 0, clientY: 0, down: this.isActionDown('primary'), justPressed: this.wasActionPressed('primary'), justReleased: false };
   }
 
@@ -182,7 +182,7 @@ class HarnessHost implements BehaviorHost {
   prepareAudio(): void {}
 }
 
-function buildRuntime(entities: EntityFixture[]): { runtime: BehaviorRuntime; host: HarnessHost } {
+function buildRuntime(entities: EntityFixture[]) {
   for (const entity of entities) {
     if (!entity.physics) continue;
     world.createBody({

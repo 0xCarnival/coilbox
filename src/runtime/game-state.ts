@@ -9,6 +9,8 @@ import type { JsonValue } from '@schema/index.js';
 
 export type GameStateListener = (key: string, value: JsonValue) => void;
 
+const isJsonNumber = (value: JsonValue | undefined): value is number => typeof value === 'number';
+
 export class GameState {
   private values: Record<string, JsonValue>;
   private readonly listeners = new Set<GameStateListener>();
@@ -18,6 +20,8 @@ export class GameState {
   }
 
   get<T extends JsonValue = JsonValue>(key: string): T | undefined {
+    // SAFETY: `values` is written only by `set`, which accepts nothing but JsonValue, so the entry
+    // is always one of the JSON shapes; `T` extends JsonValue and names the shape the caller stored.
     return this.values[key] as T | undefined;
   }
 
@@ -29,7 +33,7 @@ export class GameState {
 
   increment(key: string, delta = 1): number {
     const current = this.values[key];
-    const next = (typeof current === 'number' ? current : 0) + delta;
+    const next = (isJsonNumber(current) ? current : 0) + delta;
     this.set(key, next);
     return next;
   }
@@ -38,7 +42,13 @@ export class GameState {
     return key in this.values;
   }
 
-  snapshot(): Record<string, JsonValue> {
+  /**
+   * A detached copy of every value, for HUD bindings and debug output.
+   *
+   * The return type is deliberately inferred: the keys are dynamic, and the inferred
+   * `{ [key: string]: JsonValue }` already states the contract this copy satisfies.
+   */
+  snapshot() {
     return { ...this.values };
   }
 

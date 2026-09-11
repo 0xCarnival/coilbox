@@ -1,3 +1,4 @@
+import type { JsonValue } from '@schema/index.js';
 import type { BehaviorDefinition, BehaviorEntry, BehaviorPropertyDescriptor, BehaviorPropertyType } from './types.js';
 
 /**
@@ -26,6 +27,14 @@ export class BehaviorRegistrationError extends Error {
   }
 }
 
+const isJsonNumber = (value: JsonValue | undefined): value is number => typeof value === 'number';
+
+/**
+ * A registration can arrive from a registry document that was only checked at build time, so the
+ * factory is verified at runtime even though `BehaviorDefinition` declares it as required.
+ */
+const isBehaviorFactory = (value: unknown): value is BehaviorDefinition['create'] => typeof value === 'function';
+
 export function validateBehaviorDefinition(definition: BehaviorDefinition): string[] {
   const issues: string[] = [];
   if (!/^[a-z0-9][a-z0-9._-]*$/.test(definition.id)) {
@@ -43,18 +52,24 @@ export function validateBehaviorDefinition(definition: BehaviorDefinition): stri
       issues.push(`enum property "${property.key}" of "${definition.id}" needs at least one option`);
     }
     if (
-      (property.type === 'number') &&
-      typeof property.default === 'number' &&
+      property.type === 'number' &&
+      isJsonNumber(property.default) &&
       property.min !== undefined &&
       property.default < property.min
     ) {
       issues.push(`default of "${property.key}" is below its minimum`);
     }
   }
-  if (typeof definition.create !== 'function') {
+  if (!isBehaviorFactory(definition.create)) {
     issues.push(`behavior "${definition.id}" is missing a create() factory`);
   }
   return issues;
+}
+
+/** The declarative registry document written to `scripts/registry.json`. */
+export interface BehaviorRegistryDocument {
+  schemaVersion: number;
+  behaviors: Array<Omit<BehaviorEntry, 'definition' | 'source'>>;
 }
 
 export class BehaviorRegistry {
@@ -120,14 +135,14 @@ export class BehaviorRegistry {
   }
 
   /** Default property values for a behavior, used by the inspector and by templates. */
-  defaults(id: string): Record<string, unknown> {
+  defaults(id: string): Record<string, JsonValue> {
     const entry = this.entries.get(id);
     if (!entry) return {};
     return Object.fromEntries(entry.properties.map((property: BehaviorPropertyDescriptor) => [property.key, property.default]));
   }
 
   /** The declarative registry document written to `scripts/registry.json`. */
-  toJSON(): { schemaVersion: number; behaviors: Array<Omit<BehaviorEntry, 'definition' | 'source'>> } {
+  toJSON(): BehaviorRegistryDocument {
     return {
       schemaVersion: 1,
       behaviors: this.list().map((entry) => ({

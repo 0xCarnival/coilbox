@@ -25,6 +25,22 @@ export interface WebGL2Capability {
   vendor?: string;
 }
 
+/** Renderer counters read from `renderer.info`, refreshed by `RuntimeViewport.getStats`. */
+export interface ViewportStats {
+  drawCalls: number;
+  triangles: number;
+  geometries: number;
+  textures: number;
+  programs: number;
+}
+
+/**
+ * True for a three.js texture, tested by the library's own duck-type flag. Materials store `null`
+ * in unused slots, so this is only ever asked about values that survived a truthiness check.
+ */
+const isTextureValue = (value: unknown): value is THREE.Texture =>
+  typeof value === 'object' && value !== null && 'isTexture' in value && value.isTexture === true;
+
 /** Probe WebGL2 support without constructing the full renderer. */
 export function checkWebGL2Capability(): WebGL2Capability {
   if (typeof document === 'undefined') {
@@ -33,7 +49,7 @@ export function checkWebGL2Capability(): WebGL2Capability {
   const canvas = document.createElement('canvas');
   let gl: WebGL2RenderingContext | null = null;
   try {
-    gl = canvas.getContext('webgl2', { failIfMajorPerformanceCaveat: false }) as WebGL2RenderingContext | null;
+    gl = canvas.getContext('webgl2', { failIfMajorPerformanceCaveat: false });
   } catch (cause) {
     return { supported: false, reason: `WebGL2 context creation threw: ${String(cause)}` };
   }
@@ -123,7 +139,7 @@ export class RuntimeViewport {
     this.renderer.render(this.scene, camera);
   }
 
-  getStats(): { drawCalls: number; triangles: number; geometries: number; textures: number; programs: number } {
+  getStats(): ViewportStats {
     const info = this.renderer.info;
     return {
       drawCalls: info.render.calls,
@@ -174,23 +190,22 @@ export function disposeSceneResources(root: THREE.Object3D): void {
   const skeletons = new Set<THREE.Skeleton>();
 
   root.traverse((object) => {
-    const mesh = object as Partial<THREE.Mesh> & Partial<THREE.SkinnedMesh> & THREE.Object3D;
-    if (mesh.geometry) geometries.add(mesh.geometry as THREE.BufferGeometry);
-    const material = mesh.material as THREE.Material | THREE.Material[] | undefined;
+    // SAFETY: the traversal sees every object in the scene; the three fields read here are
+    // optional on purpose — a plain Object3D has none of them and each read is guarded below.
+    const mesh = object as THREE.Mesh & { skeleton?: THREE.Skeleton };
+    if (mesh.geometry) geometries.add(mesh.geometry);
+    const material = mesh.material;
     if (Array.isArray(material)) {
       for (const entry of material) materials.add(entry);
     } else if (material) {
       materials.add(material);
     }
-    if ((object as THREE.SkinnedMesh).isSkinnedMesh) {
-      const skeleton = (object as THREE.SkinnedMesh).skeleton;
-      if (skeleton) skeletons.add(skeleton);
-    }
+    if (mesh.skeleton) skeletons.add(mesh.skeleton);
   });
 
   for (const material of materials) {
-    for (const value of Object.values(material as unknown as Record<string, unknown>)) {
-      if (value && (value as THREE.Texture).isTexture) textures.add(value as THREE.Texture);
+    for (const value of Object.values(material)) {
+      if (isTextureValue(value)) textures.add(value);
     }
     material.dispose();
   }

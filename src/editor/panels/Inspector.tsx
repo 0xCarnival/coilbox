@@ -1,7 +1,10 @@
 import { useState } from 'react';
 import type { JSX } from 'react';
-import type { AssetEntry, Component, ComponentType, Entity, JsonValue, Vec3 } from '@schema/index.js';
-import { COMPONENT_TYPES, COMPONENT_LABELS } from '@schema/index.js';
+import * as stylex from '@stylexjs/stylex';
+import type { AssetEntry, Component, ComponentType, Entity, JsonValue, Quat, Vec3 } from '@schema/index.js';
+import { COMPONENT_TYPES, COMPONENT_LABELS, IDENTITY_QUAT, ZERO_VEC3 } from '@schema/index.js';
+import { color, fontSize, radius, space } from '../styles/tokens.stylex.js';
+import { DOM, withDomClass } from '../dom-contract.js';
 import { useSession, useSessionSnapshot } from '../hooks.js';
 import {
   COMPONENT_DESCRIPTORS,
@@ -13,12 +16,226 @@ import {
 } from './field-schema.js';
 import type { BehaviorPropertyDescriptor } from '@runtime/behaviors/types.js';
 import { componentsFor, type CreatableKind } from '../document/factory.js';
+import { isFiniteJsonNumber, isJsonString, jsonQuaternion, jsonVec3 } from '../json-values.js';
 
 /**
  * Inspector (plan §3): only the selected object's applicable properties, with readable
  * labels and advanced fields collapsed. Every edit goes through a command, so it is
  * validated and undoable like any other authored change.
  */
+
+/**
+ * Inspector chrome.
+ *
+ * Two rules shape this block. StyleX has no descendant selector, so every treatment the stylesheet
+ * used to reach through a parent — `.field input[type='number']`, `.field.checkbox span`,
+ * `.axis span`, `.axis input`, `.advanced button`, `.component-actions button` — now sits on the
+ * child that wears it. And where the stylesheet already styles the bare `button`/`input` elements,
+ * a converted class declares only what the original class declared: an atomic class would otherwise
+ * win by specificity over the element rule and silently change every control's padding or border.
+ *
+ * The class names the browser gates query ride along through `withDomClass`, so a hook class and
+ * StyleX's atomic classes coexist on the same element instead of one replacing the other.
+ */
+const styles = stylex.create({
+  inspector: {
+    overflow: 'auto',
+    height: '100%',
+    paddingBottom: '20px',
+    position: 'relative',
+  },
+  inspectorTitle: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    padding: '8px',
+    borderBlockEndWidth: '1px',
+    borderBlockEndStyle: 'solid',
+    borderBlockEndColor: color.line,
+  },
+  nameField: {
+    flex: 1,
+    fontWeight: 600,
+  },
+  enabledToggle: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: space.xs,
+    color: color.muted,
+    whiteSpace: 'nowrap',
+  },
+  section: {
+    borderBlockEndWidth: '1px',
+    borderBlockEndStyle: 'solid',
+    borderBlockEndColor: color.line,
+  },
+  /**
+   * `.section-header` declared the whole chrome of the button it sits on — background, border,
+   * radius, and padding included — so all of it is translated rather than left to the element rule.
+   */
+  sectionHeader: {
+    width: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    gap: space.sm,
+    backgroundColor: color['panel-2'],
+    borderWidth: 0,
+    borderStyle: 'none',
+    borderRadius: 0,
+    paddingBlock: space.sm,
+    paddingInline: '8px',
+    textAlign: 'left',
+  },
+  sectionTitle: {
+    fontWeight: 600,
+  },
+  sectionSubtitle: {
+    color: color.muted,
+    marginInlineStart: 'auto',
+    fontSize: fontSize.xs,
+  },
+  sectionBody: {
+    paddingBlockStart: space.sm,
+    paddingInline: '8px',
+    paddingBlockEnd: space.md,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: space.sm,
+  },
+  field: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  /** `.field.checkbox` — the tighter gap of a checkbox row. */
+  fieldCheckbox: {
+    gap: space.sm,
+  },
+  fieldLabel: {
+    flexGrow: 0,
+    flexShrink: 0,
+    flexBasis: '108px',
+    color: color.muted,
+  },
+  /**
+   * `.field input[type='number']`, `.field input[type='text']`, and `.field select` were one
+   * descendant rule; the flex now lives on the controls themselves. `input[type='color']` is
+   * deliberately left alone because the original rule never covered it.
+   */
+  fieldControl: {
+    flex: 1,
+  },
+  /** `.field.checkbox span` — the label text carries its own colour instead of inheriting it. */
+  checkboxText: {
+    color: color.text,
+  },
+  vectorField: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    width: '100%',
+  },
+  vectorInputs: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(3, 1fr)',
+    gap: space.xs,
+    flex: 1,
+  },
+  axis: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '3px',
+  },
+  /**
+   * `.axis span`. 10px is off the type scale, so the pixel value is kept rather than snapped to
+   * `fontSize.xs` (11px), which would quietly resize the axis letters.
+   */
+  axisLabel: {
+    color: color.muted,
+    fontSize: '10px',
+  },
+  /** `.axis input` — the width moves onto the input itself. */
+  axisInput: {
+    width: '100%',
+  },
+  /**
+   * `.advanced button`: the disclosure row's own chrome. The class declared padding and border in
+   * full, so overriding the button element rule here is intended.
+   */
+  advancedToggle: {
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    borderStyle: 'none',
+    color: color.muted,
+    paddingBlock: space.xxs,
+    paddingInline: 0,
+  },
+  componentActions: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+  },
+  /** `.component-actions button` — moved onto the button. */
+  componentActionButton: {
+    fontSize: fontSize.xs,
+    color: color.muted,
+  },
+  addComponent: {
+    padding: '8px',
+    position: 'relative',
+  },
+  /**
+   * `.add-menu` inherits the shared `.menu` block and is then overridden to `position: static` with
+   * a top margin, so the menu flows inside the panel instead of floating over it. The shared block's
+   * offsets are kept for fidelity; they are inert while the position is static.
+   */
+  addMenu: {
+    position: 'static',
+    zIndex: 20,
+    top: 'calc(100% + 4px)',
+    left: 0,
+    marginTop: space.sm,
+    backgroundColor: color['panel-2'],
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: color.line,
+    borderRadius: radius.lg,
+    padding: space.xs,
+    display: 'flex',
+    flexDirection: 'column',
+    minWidth: '170px',
+    boxShadow: '0 12px 28px rgba(0, 0, 0, 0.45)',
+  },
+  /** `.add-menu button` — the menu owns its buttons' chrome, so this is an intentional override. */
+  addMenuButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    borderStyle: 'none',
+    textAlign: 'left',
+    borderRadius: radius.sm,
+    ':hover': {
+      backgroundColor: '#212838',
+    },
+  },
+  menuHint: {
+    color: color.muted,
+    padding: space.sm,
+    maxWidth: '220px',
+    fontSize: fontSize.xs,
+  },
+  /** `.muted` also carried `margin: 0` from the shared `.home-header p, .muted` rule. */
+  muted: {
+    color: color.muted,
+    margin: 0,
+  },
+  warn: {
+    color: color.warn,
+  },
+  empty: {
+    color: color.muted,
+    padding: '14px',
+    textAlign: 'center',
+  },
+});
 
 export function Inspector({ locked }: { locked: boolean }): JSX.Element {
   const session = useSession();
@@ -29,8 +246,10 @@ export function Inspector({ locked }: { locked: boolean }): JSX.Element {
 
   if (!entity || !scene) {
     return (
-      <div className="inspector">
-        <div className="panel-empty">Select an object to see its properties</div>
+      <div {...withDomClass(styles.inspector, DOM.inspector)}>
+        <div {...withDomClass(styles.empty, DOM.panelEmpty)}>
+          Select an object to see its properties
+        </div>
       </div>
     );
   }
@@ -47,16 +266,16 @@ export function Inspector({ locked }: { locked: boolean }): JSX.Element {
   };
 
   return (
-    <div className="inspector">
-      <div className="inspector-title">
+    <div {...withDomClass(styles.inspector, DOM.inspector)}>
+      <div {...withDomClass(styles.inspectorTitle, DOM.inspectorTitle)}>
         <input
-          className="name-field"
+          {...withDomClass(styles.nameField, DOM.nameField)}
           value={entity.name}
           disabled={locked}
           aria-label="Object name"
           onChange={(event) => session.execute({ kind: 'renameEntity', entityId: entity.id, name: event.target.value }, { coalesceKey: `name:${entity.id}` })}
         />
-        <label className="enabled-toggle" title="Whether this object exists in the game">
+        <label {...stylex.props(styles.enabledToggle)} title="Whether this object exists in the game">
           <input
             type="checkbox"
             checked={entity.enabled}
@@ -73,7 +292,7 @@ export function Inspector({ locked }: { locked: boolean }): JSX.Element {
           value={entity.transform.position}
           step={0.1}
           disabled={locked}
-          onChange={(value) => setTransform({ position: value as Vec3 })}
+          onChange={(value) => setTransform({ position: value })}
         />
         <RotationField
           value={entity.transform.rotation}
@@ -85,7 +304,7 @@ export function Inspector({ locked }: { locked: boolean }): JSX.Element {
           value={entity.transform.scale}
           step={0.05}
           disabled={locked}
-          onChange={(value) => setTransform({ scale: value as Vec3 })}
+          onChange={(value) => setTransform({ scale: value })}
         />
       </Section>
 
@@ -103,18 +322,19 @@ export function Inspector({ locked }: { locked: boolean }): JSX.Element {
         ),
       )}
 
-      <div className="add-component">
+      <div {...withDomClass(styles.addComponent, DOM.addComponent)}>
         <button type="button" disabled={locked} onClick={() => setAddMenuOpen((open) => !open)}>
           + Add component
         </button>
         {addMenuOpen && (
-          <div className="add-menu">
+          <div {...withDomClass(styles.addMenu, DOM.addMenu)}>
             {COMPONENT_TYPES.filter((type) => isAddable(entity, type))
               .map((type) => ({ type, component: defaultComponent(type, snapshot.assets) }))
               .filter((entry): entry is { type: ComponentType; component: Component } => entry.component !== null)
               .map(({ type, component }) => (
                 <button
                   key={type}
+                  {...stylex.props(styles.addMenuButton)}
                   type="button"
                   onClick={() => {
                     setAddMenuOpen(false);
@@ -135,7 +355,7 @@ export function Inspector({ locked }: { locked: boolean }): JSX.Element {
                 </button>
               ))}
             {snapshot.assets.filter((asset) => asset.kind === 'model').length === 0 && (
-              <span className="menu-hint">Import a .glb in the Assets tab to add a Model component.</span>
+              <span {...stylex.props(styles.menuHint)}>Import a .glb in the Assets tab to add a Model component.</span>
             )}
           </div>
         )}
@@ -166,11 +386,11 @@ function isAddable(entity: Entity, type: ComponentType): boolean {
 function defaultComponent(type: ComponentType, assets: readonly AssetEntry[]): Component | null {
   switch (type) {
     case 'primitive':
-      return componentsFor('box')[0] as Component;
+      return componentsFor('box')[0];
     case 'camera':
-      return componentsFor('camera')[0] as Component;
+      return componentsFor('camera')[0];
     case 'light':
-      return componentsFor('directionalLight')[0] as Component;
+      return componentsFor('directionalLight')[0];
     case 'model': {
       const asset = assets.find((candidate) => candidate.kind === 'model');
       return asset ? { type: 'model', assetId: asset.id, castShadow: true, receiveShadow: true } : null;
@@ -212,7 +432,7 @@ function BehaviorSection({ entity, component, locked }: { entity: Entity; compon
   const session = useSession();
   const descriptor = session.behaviorRegistry.get(component.behaviorId);
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const properties = component.properties as Record<string, JsonValue>;
+  const properties = component.properties;
   const fields = descriptor?.properties ?? [];
   const basic = fields.filter((field) => !field.advanced);
   const advanced = fields.filter((field) => field.advanced);
@@ -228,11 +448,11 @@ function BehaviorSection({ entity, component, locked }: { entity: Entity; compon
   return (
     <Section title={descriptor?.name ?? component.behaviorId} subtitle={component.behaviorId} defaultOpen>
       {!descriptor && (
-        <p className="warn">
+        <p {...stylex.props(styles.warn)}>
           “{component.behaviorId}” is not declared in scripts/registry.json, so its properties cannot be edited here.
         </p>
       )}
-      {descriptor?.description && <p className="muted">{descriptor.description}</p>}
+      {descriptor?.description && <p {...stylex.props(styles.muted)}>{descriptor.description}</p>}
       {basic.map((field) => (
         <Field
           key={field.key}
@@ -253,8 +473,8 @@ function BehaviorSection({ entity, component, locked }: { entity: Entity; compon
         />
       ))}
       {advanced.length > 0 && (
-        <div className="advanced">
-          <button type="button" onClick={() => setAdvancedOpen((open) => !open)}>
+        <div>
+          <button {...stylex.props(styles.advancedToggle)} type="button" onClick={() => setAdvancedOpen((open) => !open)}>
             {advancedOpen ? '− Hide advanced' : `+ ${advanced.length} advanced`}
           </button>
           {advancedOpen &&
@@ -279,8 +499,8 @@ function BehaviorSection({ entity, component, locked }: { entity: Entity; compon
             ))}
         </div>
       )}
-      <div className="component-actions">
-        <button type="button" disabled={locked} onClick={() => session.execute({ kind: 'removeComponent', entityId: entity.id, componentType: 'behavior' })}>
+      <div {...stylex.props(styles.componentActions)}>
+        <button {...stylex.props(styles.componentActionButton)} type="button" disabled={locked} onClick={() => session.execute({ kind: 'removeComponent', entityId: entity.id, componentType: 'behavior' })}>
           Remove
         </button>
       </div>
@@ -323,7 +543,10 @@ function ComponentSection({
   const session = useSession();
   const advanced = descriptor.fields.filter((field) => field.advanced);
   const basic = descriptor.fields.filter((field) => !field.advanced);
-  const values = component as unknown as Record<string, JsonValue>;
+  // Every authored component field is JSON by construction: the scene schema validates each
+  // component, and the only free-form field (`behavior.properties`) is a `jsonObject`. Reading the
+  // component through that view is what lets one descriptor-driven form serve every component type.
+  const values: Record<string, JsonValue> = component;
 
   return (
     <Section title={componentLabel(component)} subtitle={descriptor.summary(component)} defaultOpen>
@@ -338,8 +561,8 @@ function ComponentSection({
         />
       ))}
       {advanced.length > 0 && (
-        <div className="advanced">
-          <button type="button" onClick={() => setAdvancedOpen((open) => !open)}>
+        <div>
+          <button {...stylex.props(styles.advancedToggle)} type="button" onClick={() => setAdvancedOpen((open) => !open)}>
             {advancedOpen ? '− Hide advanced' : `+ ${advanced.length} advanced`}
           </button>
           {advancedOpen &&
@@ -355,8 +578,9 @@ function ComponentSection({
             ))}
         </div>
       )}
-      <div className="component-actions">
+      <div {...stylex.props(styles.componentActions)}>
         <button
+          {...stylex.props(styles.componentActionButton)}
           type="button"
           disabled={locked}
           onClick={() => session.execute({ kind: 'removeComponent', entityId: entity.id, componentType: component.type })}
@@ -388,18 +612,18 @@ function Field({
   switch (field.kind) {
     case 'boolean':
       return (
-        <label className="field checkbox">
+        <label {...stylex.props(styles.field, styles.fieldCheckbox)}>
           <input type="checkbox" checked={Boolean(value)} disabled={disabled} onChange={(event) => onChange(event.target.checked)} />
-          <span>{field.label}</span>
+          <span {...stylex.props(styles.checkboxText)}>{field.label}</span>
         </label>
       );
     case 'color':
       return (
-        <label className="field">
-          <span className="field-label">{field.label}</span>
+        <label {...withDomClass(styles.field, DOM.field)}>
+          <span {...withDomClass(styles.fieldLabel, DOM.fieldLabel)}>{field.label}</span>
           <input
             type="color"
-            value={typeof value === 'string' ? value : '#ffffff'}
+            value={isJsonString(value) ? value : '#ffffff'}
             disabled={disabled}
             onChange={(event) => onChange(event.target.value)}
           />
@@ -407,9 +631,14 @@ function Field({
       );
     case 'enum':
       return (
-        <label className="field">
-          <span className="field-label">{field.label}</span>
-          <select value={String(value ?? '')} disabled={disabled} onChange={(event) => onChange(coerceEnum(field, event.target.value))}>
+        <label {...withDomClass(styles.field, DOM.field)}>
+          <span {...withDomClass(styles.fieldLabel, DOM.fieldLabel)}>{field.label}</span>
+          <select
+            {...stylex.props(styles.fieldControl)}
+            value={String(value ?? '')}
+            disabled={disabled}
+            onChange={(event) => onChange(coerceEnum(field, event.target.value))}
+          >
             {(field.options ?? []).map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
@@ -421,26 +650,26 @@ function Field({
     case 'vec3':
     case 'positive-vec3':
       return (
-        <div className="field">
-          <span className="field-label">{field.label}</span>
+        <div {...withDomClass(styles.field, DOM.field)}>
+          <span {...withDomClass(styles.fieldLabel, DOM.fieldLabel)}>{field.label}</span>
           <VectorField
             label=""
-            value={(Array.isArray(value) ? value : [0, 0, 0]) as number[]}
+            value={jsonVec3(value) ?? ZERO_VEC3}
             step={field.step ?? 0.1}
             disabled={disabled}
             positive={field.kind === 'positive-vec3'}
-            onChange={(next) => onChange(next as unknown as JsonValue)}
+            onChange={(next) => onChange(next)}
           />
         </div>
       );
     case 'quaternion-degrees':
       return (
-        <div className="field">
-          <span className="field-label">{field.label}</span>
+        <div {...withDomClass(styles.field, DOM.field)}>
+          <span {...withDomClass(styles.fieldLabel, DOM.fieldLabel)}>{field.label}</span>
           <RotationField
-            value={(Array.isArray(value) ? value : [0, 0, 0, 1]) as [number, number, number, number]}
+            value={jsonQuaternion(value) ?? IDENTITY_QUAT}
             disabled={disabled}
-            onChange={(next) => onChange(next as unknown as JsonValue)}
+            onChange={(next) => onChange(next)}
           />
         </div>
       );
@@ -448,16 +677,21 @@ function Field({
       const kind = field.key === 'assetId' && entity.components.some((component) => component.type === 'audio') ? 'audio' : 'model';
       const options = snapshot.assets.filter((asset) => asset.kind === kind);
       return (
-        <label className="field">
-          <span className="field-label">{field.label}</span>
-          <select value={typeof value === 'string' ? value : ''} disabled={disabled} onChange={(event) => onChange(event.target.value)}>
+        <label {...withDomClass(styles.field, DOM.field)}>
+          <span {...withDomClass(styles.fieldLabel, DOM.fieldLabel)}>{field.label}</span>
+          <select
+            {...stylex.props(styles.fieldControl)}
+            value={isJsonString(value) ? value : ''}
+            disabled={disabled}
+            onChange={(event) => onChange(event.target.value)}
+          >
             <option value="">None</option>
             {options.map((asset) => (
               <option key={asset.id} value={asset.id}>
                 {asset.id}
               </option>
             ))}
-            {typeof value === 'string' && value.length > 0 && !options.some((asset) => asset.id === value) && (
+            {isJsonString(value) && value.length > 0 && !options.some((asset) => asset.id === value) && (
               <option value={value}>{value} (missing)</option>
             )}
           </select>
@@ -467,10 +701,11 @@ function Field({
     case 'clip-reference': {
       const clips = snapshot.modelClips[entity.id] ?? [];
       return (
-        <label className="field">
-          <span className="field-label">{field.label}</span>
+        <label {...withDomClass(styles.field, DOM.field)}>
+          <span {...withDomClass(styles.fieldLabel, DOM.fieldLabel)}>{field.label}</span>
           <select
-            value={typeof value === 'string' ? value : ''}
+            {...stylex.props(styles.fieldControl)}
+            value={isJsonString(value) ? value : ''}
             disabled={disabled || clips.length === 0}
             onChange={(event) => onChange(event.target.value === '' ? null : event.target.value)}
           >
@@ -486,9 +721,14 @@ function Field({
     }
     case 'entity-reference':
       return (
-        <label className="field">
-          <span className="field-label">{field.label}</span>
-          <select value={typeof value === 'string' ? value : ''} disabled={disabled} onChange={(event) => onChange(event.target.value || null)}>
+        <label {...withDomClass(styles.field, DOM.field)}>
+          <span {...withDomClass(styles.fieldLabel, DOM.fieldLabel)}>{field.label}</span>
+          <select
+            {...stylex.props(styles.fieldControl)}
+            value={isJsonString(value) ? value : ''}
+            disabled={disabled}
+            onChange={(event) => onChange(event.target.value || null)}
+          >
             <option value="">None</option>
             {(scene?.entities ?? [])
               .filter((candidate) => candidate.id !== entity.id)
@@ -502,11 +742,12 @@ function Field({
       );
     case 'number':
       return (
-        <label className="field">
-          <span className="field-label">{field.label}</span>
+        <label {...withDomClass(styles.field, DOM.field)}>
+          <span {...withDomClass(styles.fieldLabel, DOM.fieldLabel)}>{field.label}</span>
           <input
+            {...stylex.props(styles.fieldControl)}
             type="number"
-            value={typeof value === 'number' && Number.isFinite(value) ? value : ''}
+            value={isFiniteJsonNumber(value) ? value : ''}
             step={field.step ?? 0.1}
             min={field.min}
             max={field.max}
@@ -523,9 +764,10 @@ function Field({
     case 'text':
     default:
       return (
-        <label className="field">
-          <span className="field-label">{field.label}</span>
+        <label {...withDomClass(styles.field, DOM.field)}>
+          <span {...withDomClass(styles.fieldLabel, DOM.fieldLabel)}>{field.label}</span>
           <input
+            {...stylex.props(styles.fieldControl)}
             type="text"
             value={value === null || value === undefined ? '' : String(value)}
             disabled={disabled}
@@ -564,20 +806,21 @@ function VectorField({
   onChange,
 }: {
   label: string;
-  value: readonly number[];
+  value: Vec3;
   step: number;
   disabled: boolean;
   positive?: boolean;
-  onChange(value: [number, number, number] | number[]): void;
+  onChange(value: Vec3): void;
 }): JSX.Element {
   return (
-    <div className="vector-field">
-      {label && <span className="field-label">{label}</span>}
-      <div className="vector-inputs">
+    <div {...withDomClass(styles.vectorField, DOM.vectorField)}>
+      {label && <span {...withDomClass(styles.fieldLabel, DOM.fieldLabel)}>{label}</span>}
+      <div {...stylex.props(styles.vectorInputs)}>
         {(['X', 'Y', 'Z'] as const).map((axis, index) => (
-          <label key={axis} className="axis">
-            <span>{axis}</span>
+          <label key={axis} {...stylex.props(styles.axis)}>
+            <span {...stylex.props(styles.axisLabel)}>{axis}</span>
             <input
+              {...stylex.props(styles.axisInput)}
               type="number"
               step={step}
               disabled={disabled}
@@ -585,7 +828,7 @@ function VectorField({
               onChange={(event) => {
                 const parsed = Number(event.target.value);
                 if (!Number.isFinite(parsed)) return;
-                const next = [...value];
+                const next: Vec3 = [value[0], value[1], value[2]];
                 next[index] = positive ? Math.max(0.001, Math.abs(parsed)) : parsed;
                 onChange(next);
               }}
@@ -602,19 +845,20 @@ function RotationField({
   disabled,
   onChange,
 }: {
-  value: readonly number[];
+  value: Quat;
   disabled: boolean;
-  onChange(value: [number, number, number, number]): void;
+  onChange(value: Quat): void;
 }): JSX.Element {
   const degrees = quaternionToEulerDegrees(value);
   return (
-    <div className="vector-field">
-      <span className="field-label">Rotation (°)</span>
-      <div className="vector-inputs">
+    <div {...withDomClass(styles.vectorField, DOM.vectorField)}>
+      <span {...withDomClass(styles.fieldLabel, DOM.fieldLabel)}>Rotation (°)</span>
+      <div {...stylex.props(styles.vectorInputs)}>
         {(['X', 'Y', 'Z'] as const).map((axis, index) => (
-          <label key={axis} className="axis">
-            <span>{axis}</span>
+          <label key={axis} {...stylex.props(styles.axis)}>
+            <span {...stylex.props(styles.axisLabel)}>{axis}</span>
             <input
+              {...stylex.props(styles.axisInput)}
               type="number"
               step={1}
               disabled={disabled}
@@ -622,7 +866,7 @@ function RotationField({
               onChange={(event) => {
                 const parsed = Number(event.target.value);
                 if (!Number.isFinite(parsed)) return;
-                const next = [...degrees];
+                const next: Vec3 = [degrees[0], degrees[1], degrees[2]];
                 next[index] = parsed;
                 onChange(eulerDegreesToQuaternion(next));
               }}
@@ -647,13 +891,13 @@ function Section({
 }): JSX.Element {
   const [open, setOpen] = useState(Boolean(defaultOpen));
   return (
-    <section className="section">
-      <button type="button" className="section-header" onClick={() => setOpen((value) => !value)} aria-expanded={open}>
-        <span className="section-caret">{open ? '▾' : '▸'}</span>
-        <span className="section-title">{title}</span>
-        {subtitle && <span className="section-subtitle">{subtitle}</span>}
+    <section {...withDomClass(styles.section, DOM.section)}>
+      <button {...stylex.props(styles.sectionHeader)} type="button" onClick={() => setOpen((value) => !value)} aria-expanded={open}>
+        <span>{open ? '▾' : '▸'}</span>
+        <span {...withDomClass(styles.sectionTitle, DOM.sectionTitle)}>{title}</span>
+        {subtitle && <span {...stylex.props(styles.sectionSubtitle)}>{subtitle}</span>}
       </button>
-      {open && <div className="section-body">{children}</div>}
+      {open && <div {...stylex.props(styles.sectionBody)}>{children}</div>}
     </section>
   );
 }

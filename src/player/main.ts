@@ -1,7 +1,8 @@
 import wasmUrl from 'virtual:box3d-wasm-url';
 import { RuntimeSession } from '@runtime/session.js';
 import { loadProjectFromUrl, ProjectLoadError } from '@runtime/project/loader.js';
-import type { GameDocument, SceneDocument } from '@schema/index.js';
+import { formatIssues, parseScene, type GameDocument, type JsonValue, type SceneDocument } from '@schema/index.js';
+import type { RuntimeStats } from '@runtime/world.js';
 
 /**
  * Standalone game entry point (`player.html`).
@@ -67,9 +68,13 @@ export async function startPlayer(options: PlayerOptions): Promise<PlayerHandle>
           if (!entry) throw new Error(`game.json does not list a scene "${sceneId}"`);
           const response = await fetch(new URL(entry.path, base).href);
           if (!response.ok) throw new Error(`scene "${sceneId}" returned HTTP ${response.status}`);
-          const document_ = (await response.json()) as SceneDocument;
-          sceneCache.set(sceneId, document_);
-          return document_;
+          const raw: JsonValue = await response.json();
+          // The scene a running game switches to is parsed like any other document: a file that is
+          // not a scene must fail loudly here rather than half-load as a world with missing fields.
+          const parsed = parseScene(raw);
+          if (!parsed.value) throw new Error(`scene "${sceneId}" is not a valid scene document: ${formatIssues(parsed.issues)}`);
+          sceneCache.set(sceneId, parsed.value);
+          return parsed.value;
         },
         assets: project.resolver,
         wasmLocateFile: () => wasmUrl,
@@ -122,21 +127,34 @@ export async function startPlayer(options: PlayerOptions): Promise<PlayerHandle>
 
 declare const __COILBOX_PROJECT__: string | undefined;
 
-/** Exported games bake the project location in at build time. */
-const bakedProjectBase = typeof __COILBOX_PROJECT__ === 'string' ? __COILBOX_PROJECT__ : undefined;
+/**
+ * Exported games bake the project location in at build time.
+ *
+ * The probe tests for absence, not for a string: the dev player build never injects the identifier,
+ * and `typeof` is the one form that can ask about a binding that may not exist at all.
+ */
+const bakedProjectBase = typeof __COILBOX_PROJECT__ === 'undefined' ? undefined : __COILBOX_PROJECT__;
 
 const params = new URLSearchParams(globalThis.location.search);
 const canvasElement = document.getElementById('game-canvas');
 const canvas = canvasElement instanceof HTMLCanvasElement ? canvasElement : null;
 const statusLine = document.getElementById('player-status');
 
+/** Framebuffer sample the exported player reports for automated checks. */
+interface PlayerPixelSample {
+  width: number;
+  height: number;
+  nonBackgroundPixels: number;
+  distinctColors: number;
+}
+
 declare global {
   interface Window {
     __PLAYER__?: PlayerHandle & {
-      samplePixels: () => unknown;
-      gameState: () => Record<string, unknown> | null;
+      samplePixels: () => PlayerPixelSample;
+      gameState: () => Record<string, JsonValue> | null;
       behaviorList: () => Array<{ entityId: string; behaviorId: string }>;
-      stats: () => unknown;
+      stats: () => RuntimeStats | null;
       projectBaseUrl: string;
     };
   }
@@ -152,9 +170,18 @@ if (canvas) {
       state.errors.length > 0 ? `load errors: ${state.errors.join(' | ')}` : `${state.projectName} — ${state.sceneName}`;
   }
   // Spread would freeze `session`, `game`, and `scene` at their start-up values (null, because the
-  // project is still loading), so the live ones are defined as getters.
-  const exposed = {
+  // project is still loading), so the live ones are getters.
+  const exposed: NonNullable<Window['__PLAYER__']> = {
     ready: handle.ready,
+    get session() {
+      return handle.session;
+    },
+    get game() {
+      return handle.game;
+    },
+    get scene() {
+      return handle.scene;
+    },
     start: () => handle.start(),
     stop: () => handle.stop(),
     restart: () => handle.restart(),
@@ -184,10 +211,5 @@ if (canvas) {
       return { width, height, nonBackgroundPixels: width * height - backgroundCount, distinctColors: counts.size };
     },
   };
-  Object.defineProperties(exposed, {
-    session: { get: () => handle.session, enumerable: true },
-    game: { get: () => handle.game, enumerable: true },
-    scene: { get: () => handle.scene, enumerable: true },
-  });
-  window.__PLAYER__ = exposed as unknown as Window['__PLAYER__'];
+  window.__PLAYER__ = exposed;
 }

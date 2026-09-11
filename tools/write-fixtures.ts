@@ -31,7 +31,7 @@ const fixturesRoot = join(root, 'tests', 'fixtures');
 class FileReaderShim {
   result: ArrayBuffer | string | null = null;
   onloadend: (() => void) | null = null;
-  onerror: ((error: unknown) => void) | null = null;
+  onerror: ((error: Error) => void) | null = null;
 
   readAsArrayBuffer(blob: Blob): void {
     blob.arrayBuffer().then(
@@ -54,13 +54,13 @@ class FileReaderShim {
   }
 }
 
-(globalThis as unknown as { FileReader: unknown }).FileReader ??= FileReaderShim;
+(globalThis as { FileReader?: unknown }).FileReader ??= FileReaderShim;
 
-async function write(relativePath: string, contents: Uint8Array | string): Promise<void> {
+async function write(relativePath: string, contents: Uint8Array): Promise<void> {
   const target = join(fixturesRoot, relativePath);
   await mkdir(dirname(target), { recursive: true });
   await writeFile(target, contents);
-  process.stdout.write(`wrote ${relativePath} (${typeof contents === 'string' ? contents.length : contents.byteLength} bytes)\n`);
+  process.stdout.write(`wrote ${relativePath} (${contents.byteLength} bytes)\n`);
 }
 
 async function exportGlb(root3d: THREE.Object3D, animations: THREE.AnimationClip[]): Promise<Uint8Array> {
@@ -74,8 +74,14 @@ async function exportGlb(root3d: THREE.Object3D, animations: THREE.AnimationClip
   return new Uint8Array(result);
 }
 
+/** A generated fixture: the object graph to export and the clip that animates it. */
+interface BuiltFixture {
+  scene: THREE.Object3D;
+  clip: THREE.AnimationClip;
+}
+
 /** A two-bone skinned limb: the case where instances must not share skeleton state. */
-function buildSkinnedLimb(): { scene: THREE.Object3D; clip: THREE.AnimationClip } {
+function buildSkinnedLimb(): BuiltFixture {
   const geometry = new THREE.CylinderGeometry(0.15, 0.15, 1, 8, 8);
   geometry.translate(0, 0.5, 0);
   const position = geometry.attributes.position as THREE.BufferAttribute;
@@ -117,7 +123,7 @@ function buildSkinnedLimb(): { scene: THREE.Object3D; clip: THREE.AnimationClip 
 }
 
 /** A plain crate with a movement clip: the simple, non-skinned animation case. */
-function buildSpinningCrate(): { scene: THREE.Object3D; clip: THREE.AnimationClip } {
+function buildSpinningCrate(): BuiltFixture {
   const mesh = new THREE.Mesh(
     new THREE.BoxGeometry(1, 1, 1),
     new THREE.MeshStandardMaterial({ color: 0xd98b5b, roughness: 0.5 }),
@@ -233,7 +239,9 @@ function declareRequiredExtension(glb: Uint8Array, extension: string): Uint8Arra
   const binLength = view.getUint32(binHeaderStart, true);
   const binStart = binHeaderStart + 8;
 
-  const json = JSON.parse(new TextDecoder().decode(glb.subarray(jsonStart, jsonStart + jsonLength)).trim()) as Record<string, unknown>;
+  const json = JSON.parse(
+    new TextDecoder().decode(glb.subarray(jsonStart, jsonStart + jsonLength)).trim(),
+  ) as { extensionsRequired?: string[]; extensionsUsed?: string[] };
   json.extensionsRequired = [extension];
   json.extensionsUsed = [extension];
 

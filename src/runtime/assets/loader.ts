@@ -66,7 +66,8 @@ export interface AssetCacheOptions {
   onWarning?: (message: string) => void;
 }
 
-const UNSUPPORTED_EXTENSION_MESSAGES: Record<string, string> = {
+/** glTF extensions this version cannot decode, with the message the user is shown. */
+const UNSUPPORTED_EXTENSION_MESSAGES = {
   KHR_draco_mesh_compression:
     'Draco-compressed geometry needs the Draco decoder, which this version does not bundle. Re-export without Draco compression.',
   EXT_meshopt_compression:
@@ -74,6 +75,19 @@ const UNSUPPORTED_EXTENSION_MESSAGES: Record<string, string> = {
   KHR_texture_basisu:
     'Basis Universal textures need the KTX2 decoder, which this version does not bundle. Re-export with PNG or JPEG textures.',
 };
+
+type UnsupportedExtension = keyof typeof UNSUPPORTED_EXTENSION_MESSAGES;
+
+/** Own keys only: a manifest value like `toString` must not resolve to an inherited function. */
+const isUnsupportedExtension = (extension: string): extension is UnsupportedExtension =>
+  Object.hasOwn(UNSUPPORTED_EXTENSION_MESSAGES, extension);
+
+/**
+ * True for a three.js texture, tested by the library's own duck-type flag. Materials store
+ * `null` in unused slots, so this is only ever asked about values that survived a truthiness check.
+ */
+const isTextureValue = (value: unknown): value is THREE.Texture =>
+  typeof value === 'object' && value !== null && 'isTexture' in value && value.isTexture === true;
 
 export class AssetCache {
   private readonly resolver: AssetResolver;
@@ -97,9 +111,9 @@ export class AssetCache {
   loadModel(assetId: AssetId): Promise<LoadedModel> {
     const cached = this.models.get(assetId);
     if (cached) return cached;
-    const promise = this.loadModelUncached(assetId).catch((error: unknown) => {
+    const promise = this.loadModelUncached(assetId).catch((cause: unknown) => {
       this.models.delete(assetId);
-      throw error;
+      throw cause;
     });
     this.models.set(assetId, promise);
     return promise;
@@ -109,8 +123,9 @@ export class AssetCache {
     const entry = this.describeEntry?.(assetId);
     if (entry) {
       for (const extension of entry.requires) {
-        const message = UNSUPPORTED_EXTENSION_MESSAGES[extension];
-        if (message) throw new UnsupportedAssetError(assetId, `"${assetId}": ${message}`);
+        if (isUnsupportedExtension(extension)) {
+          throw new UnsupportedAssetError(assetId, `"${assetId}": ${UNSUPPORTED_EXTENSION_MESSAGES[extension]}`);
+        }
       }
     }
     const url = this.resolver.resolveUrl(assetId);
@@ -138,19 +153,18 @@ export class AssetCache {
     }
 
     const loader = new GLTFLoader();
+    // `GLTF` carries the two fields the runtime keeps (a scene root and its clips) plus loader
+    // internals this module never touches, so the promise asks for exactly the part it uses.
     const gltf = await new Promise<{ scene: THREE.Group; animations: THREE.AnimationClip[] }>((resolve, reject) => {
-      loader.parse(
-        buffer,
-        '',
-        (result) => resolve(result as unknown as { scene: THREE.Group; animations: THREE.AnimationClip[] }),
-        (error) => reject(error),
-      );
+      loader.parse(buffer, '', (result) => resolve(result), (error) => reject(error));
     }).catch((cause: unknown) => {
       throw new UnsupportedAssetError(assetId, `"${assetId}" could not be parsed as glTF: ${String(cause)}`);
     });
 
     let skinned = false;
     gltf.scene.traverse((object) => {
+      // SAFETY: three.js tags every SkinnedMesh — and only a SkinnedMesh — with `isSkinnedMesh`,
+      // and the loader builds the graph with this module's own three.js classes.
       if ((object as THREE.SkinnedMesh).isSkinnedMesh) skinned = true;
     });
     if (gltf.animations.length === 0) {
@@ -190,17 +204,12 @@ export class AssetCache {
       const texture = await new THREE.TextureLoader().loadAsync(url);
       texture.colorSpace = THREE.SRGBColorSpace;
       return texture;
-    })().catch((error: unknown) => {
+    })().catch((cause: unknown) => {
       this.textures.delete(assetId);
-      throw error;
+      throw cause;
     });
     this.textures.set(assetId, promise);
     return promise;
-  }
-
-  /** Clip names for an already-loaded model, or an empty list when it is not loaded. */
-  knownClipNames(assetId: AssetId): string[] {
-    return this.models.get(assetId)?.valueOf === undefined ? [] : [];
   }
 
   /** Release cached data and per-instance resources. */
@@ -223,6 +232,8 @@ export class AssetCache {
 function cloneMaterialsForInstance(root: THREE.Object3D): THREE.Material[] {
   const cloned: THREE.Material[] = [];
   root.traverse((object) => {
+    // SAFETY: three.js tags every Mesh — and only a Mesh — with `isMesh`; the flag is an exact
+    // runtime test for the `material` slot this reads.
     const mesh = object as THREE.Mesh;
     if (!mesh.isMesh) return;
     const material = mesh.material;
@@ -252,6 +263,8 @@ function cloneMaterialsForInstance(root: THREE.Object3D): THREE.Material[] {
 export function disposeInstance(instance: ModelInstance): void {
   for (const material of instance.materials) material.dispose();
   instance.object.traverse((object) => {
+    // SAFETY: only a SkinnedMesh carries a `skeleton`, so the duck-type read is undefined for
+    // every other object and the guard below skips it.
     const skeleton = (object as THREE.SkinnedMesh).skeleton;
     if (skeleton) skeleton.dispose();
   });
@@ -264,16 +277,18 @@ export function disposeObject(root: THREE.Object3D): void {
   const materials = new Set<THREE.Material>();
   const textures = new Set<THREE.Texture>();
   root.traverse((object) => {
+    // SAFETY: the traversal sees every object in the asset; the three fields read here are
+    // optional on purpose — a plain Object3D has none of them and each read is guarded below.
     const mesh = object as THREE.Mesh & { skeleton?: THREE.Skeleton };
     if (mesh.geometry) geometries.add(mesh.geometry);
-    const material = mesh.material as THREE.Material | THREE.Material[] | undefined;
+    const material = mesh.material;
     if (Array.isArray(material)) for (const entry of material) materials.add(entry);
     else if (material) materials.add(material);
     if (mesh.skeleton) mesh.skeleton.dispose();
   });
   for (const material of materials) {
-    for (const value of Object.values(material as unknown as Record<string, unknown>)) {
-      if (value && (value as THREE.Texture).isTexture) textures.add(value as THREE.Texture);
+    for (const value of Object.values(material)) {
+      if (isTextureValue(value)) textures.add(value);
     }
     material.dispose();
   }

@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { Workspace, PROJECT_FILES, writeFileAtomic } from '../../server/workspace.js';
+import { parseJson } from '../../server/json.js';
 import { parseGame, parseScene } from '@schema/index.js';
 
 /**
@@ -77,8 +78,9 @@ describe('compatibility fixtures', () => {
     expect(codes).toContain('parent-cycle');
     expect(await readFile(path, 'utf8')).toBe(before);
 
-    // The same document is refused by the write path rather than being persisted.
-    const scene = JSON.parse(before) as unknown;
+    // The same document is refused by the write path rather than being persisted. It is read back
+    // through the JSON boundary, so the value reaching `writeScene` is JSON rather than asserted.
+    const scene = parseJson(before);
     await expect(workspace.writeScene('compat-invalid', 'main', scene, { expectedRevision: 0 })).rejects.toThrow(
       /refusing to write an invalid scene document/,
     );

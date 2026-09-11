@@ -1,6 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import stylex from '@stylexjs/unplugin/vite';
 import { box3dWasmPlugin } from './tools/vite-plugin-box3d-wasm.js';
 
 const resolvePath = (relative: string) => fileURLToPath(new URL(relative, import.meta.url));
@@ -24,7 +25,7 @@ export const aliases = {
  */
 export default defineConfig({
   base: './',
-  plugins: [box3dWasmPlugin(), react()],
+  plugins: [box3dWasmPlugin(), stylex(), react()],
   resolve: {
     alias: aliases,
   },

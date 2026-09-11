@@ -121,6 +121,7 @@ Exported games need no editor, no workspace service, and no development server.
 ## Checking your work
 
 ```bash
+pnpm lint             # architectural + low-evidence rules; also the first gate in `pnpm verify`
 pnpm typecheck        # types
 pnpm test             # unit tests, including the real physics WASM
 pnpm studio validate <game>   # one project: structure, relationships, behaviors, assets

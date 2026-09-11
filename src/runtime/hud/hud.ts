@@ -25,6 +25,10 @@ export interface HudOptions {
   callbacks: HudCallbacks;
 }
 
+const isJsonNumber = (value: JsonValue | undefined): value is number => typeof value === 'number';
+const isJsonString = (value: JsonValue | undefined): value is string => typeof value === 'string';
+const isJsonBoolean = (value: JsonValue | undefined): value is boolean => typeof value === 'boolean';
+
 export class Hud {
   private readonly root: HTMLElement;
   private readonly state: GameState;
@@ -101,6 +105,8 @@ export class Hud {
 
     const text = documentRef.createElement(element.type === 'button' ? 'button' : 'div');
     if (element.type === 'button') {
+      // SAFETY: the ternary above created a <button> exactly when this element is a button, so the
+      // node is an HTMLButtonElement in this branch.
       (text as HTMLButtonElement).type = 'button';
       text.textContent = element.label;
       text.addEventListener('click', () => this.callbacks.onAction(element.action));
@@ -176,9 +182,9 @@ function positionClass(element: HudElement): string {
 
 function formatValue(value: JsonValue | undefined): string {
   if (value === undefined || value === null) return '0';
-  if (typeof value === 'number') return Number.isInteger(value) ? String(value) : value.toFixed(2);
-  if (typeof value === 'boolean') return value ? 'yes' : 'no';
-  if (typeof value === 'string') return value;
+  if (isJsonNumber(value)) return Number.isInteger(value) ? String(value) : value.toFixed(2);
+  if (isJsonBoolean(value)) return value ? 'yes' : 'no';
+  if (isJsonString(value)) return value;
   return JSON.stringify(value);
 }
 

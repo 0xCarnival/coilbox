@@ -1,12 +1,15 @@
 import { randomBytes } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
+import type { AddressInfo } from 'node:net';
+import type { JsonValue } from '@schema/index.js';
 import { Workspace, WorkspaceError } from './workspace.js';
 import { buildGame } from './build.js';
 import { AssetService } from './assets.js';
 import { ProjectManager } from './management.js';
 import { ProjectWatcher } from './watcher.js';
 import { UnsafePathError } from './paths.js';
+import { isJsonNumber, isJsonObject, parseJson, type JsonObject } from './json.js';
 
 /**
  * Local workspace API (plan §13).
@@ -172,8 +175,10 @@ export async function startApiServer(options: ApiServerOptions): Promise<ApiServ
 
       const requiresToken = request.method !== 'GET';
       if (requiresToken) {
+        // A header sent twice arrives as an array, which is not one token and is refused.
         const presented = request.headers['x-coilbox-token'];
-        if (typeof presented !== 'string' || !timingSafeEqual(presented, token)) {
+        const tokenValue = Array.isArray(presented) ? undefined : presented;
+        if (tokenValue === undefined || !timingSafeEqual(tokenValue, token)) {
           sendJson(response, 401, { error: 'unauthorized', message: 'a valid session token is required for writes' });
           return;
         }
@@ -205,12 +210,8 @@ export async function startApiServer(options: ApiServerOptions): Promise<ApiServ
           return;
         }
         if (request.method === 'POST') {
-          const body = await readJsonBody(request, maxBodyBytes);
-          const project = await workspace.createProject({
-            id: String(body.id ?? ''),
-            name: String(body.name ?? body.id ?? ''),
-            template: body.template === undefined ? undefined : String(body.template),
-          });
+          const input = parseCreateProjectRequest(await readJsonBody(request, maxBodyBytes));
+          const project = await workspace.createProject(input);
           sendJson(response, 201, { project });
           return;
         }
@@ -229,17 +230,14 @@ export async function startApiServer(options: ApiServerOptions): Promise<ApiServ
         }
         // --- project management ------------------------------------------------
         if (route[2] === 'duplicate' && route.length === 3 && request.method === 'POST') {
-          const body = await readJsonBody(request, maxBodyBytes);
-          const result = await managerFor().duplicate(projectId, {
-            newId: String(body.newId ?? `${projectId}-copy`),
-            newName: body.newName === undefined ? undefined : String(body.newName),
-          });
+          const input = parseDuplicateRequest(await readJsonBody(request, maxBodyBytes), projectId);
+          const result = await managerFor().duplicate(projectId, input);
           sendJson(response, 201, result);
           return;
         }
         if (route[2] === 'archive' && route.length === 3 && request.method === 'POST') {
-          const body = await readJsonBody(request, maxBodyBytes);
-          sendJson(response, 200, await managerFor().archive(projectId, { reason: body.reason === undefined ? undefined : String(body.reason) }));
+          const input = parseArchiveRequest(await readJsonBody(request, maxBodyBytes));
+          sendJson(response, 200, await managerFor().archive(projectId, input));
           return;
         }
         if (route[2] === 'export-source' && route.length === 3 && request.method === 'GET') {
@@ -255,8 +253,8 @@ export async function startApiServer(options: ApiServerOptions): Promise<ApiServ
         }
 
         if (route.length === 2 && request.method === 'PATCH') {
-          const body = await readJsonBody(request, maxBodyBytes);
-          sendJson(response, 200, { project: await workspace.renameProject(projectId, String(body.name ?? '')) });
+          const input = parseRenameRequest(await readJsonBody(request, maxBodyBytes));
+          sendJson(response, 200, { project: await workspace.renameProject(projectId, input.name) });
           return;
         }
         if (route[2] === 'thumbnail' && route.length === 3) {
@@ -350,10 +348,10 @@ export async function startApiServer(options: ApiServerOptions): Promise<ApiServ
             return;
           }
           if (request.method === 'PUT') {
-            const body = await readJsonBody(request, maxBodyBytes);
-            const expectedRevision =
-              typeof body.expectedRevision === 'number' ? body.expectedRevision : undefined;
-            const written = await workspace.writeScene(projectId, sceneId, body.scene, { expectedRevision });
+            const input = parseSceneWriteRequest(await readJsonBody(request, maxBodyBytes));
+            const written = await workspace.writeScene(projectId, sceneId, input.scene, {
+              expectedRevision: input.expectedRevision,
+            });
             sendJson(response, 200, written);
             return;
           }
@@ -362,8 +360,8 @@ export async function startApiServer(options: ApiServerOptions): Promise<ApiServ
       }
 
       sendJson(response, 404, { error: 'not-found', message: `no route for ${request.method} ${url.pathname}` });
-    } catch (error) {
-      handleError(response, error, logger);
+    } catch (cause) {
+      handleError(response, cause, logger);
     }
   }
 
@@ -371,7 +369,7 @@ export async function startApiServer(options: ApiServerOptions): Promise<ApiServ
     server.once('error', rejectPort);
     server.listen(options.port ?? 0, host, () => {
       const address = server.address();
-      if (address === null || typeof address === 'string') {
+      if (!isAddressInfo(address)) {
         rejectPort(new Error('api server did not report a port'));
         return;
       }
@@ -424,7 +422,7 @@ function checkRequestSecurity(request: IncomingMessage, expectedHost: string, ex
   }
 
   const origin = request.headers.origin;
-  if (typeof origin === 'string' && origin.length > 0 && origin !== 'null') {
+  if (origin !== undefined && origin.length > 0 && origin !== 'null') {
     if (!isAllowedOrigin(origin, extraOrigins)) {
       return {
         ok: false,
@@ -447,10 +445,18 @@ export function isAllowedOrigin(origin: string, extraOrigins: Set<string> = new 
   }
 }
 
-async function readBinaryBody(request: IncomingMessage, maxBytes: number): Promise<Uint8Array> {
+/** `server.address()` is `null` before it is listening, and a string for a pipe or Unix socket. */
+function isAddressInfo(address: AddressInfo | string | null): address is AddressInfo {
+  return address !== null && typeof address === 'object';
+}
+
+/** Read the whole request body, refusing anything over the limit before more of it is buffered. */
+async function readBody(request: IncomingMessage, maxBytes: number): Promise<Buffer> {
   const chunks: Buffer[] = [];
   let size = 0;
   for await (const chunk of request) {
+    // SAFETY: an IncomingMessage is a binary Readable, so its async iterator yields Buffers;
+    // node:http only hands back strings once an encoding has been set on the stream.
     const buffer = chunk as Buffer;
     size += buffer.length;
     if (size > maxBytes) {
@@ -458,7 +464,11 @@ async function readBinaryBody(request: IncomingMessage, maxBytes: number): Promi
     }
     chunks.push(buffer);
   }
-  return new Uint8Array(Buffer.concat(chunks));
+  return Buffer.concat(chunks);
+}
+
+async function readBinaryBody(request: IncomingMessage, maxBytes: number): Promise<Uint8Array> {
+  return new Uint8Array(await readBody(request, maxBytes));
 }
 
 function contentTypeFor(path: string): string {
@@ -474,32 +484,109 @@ function contentTypeFor(path: string): string {
   return 'application/octet-stream';
 }
 
-async function readJsonBody(request: IncomingMessage, maxBytes: number): Promise<Record<string, unknown>> {
-  const chunks: Buffer[] = [];
-  let size = 0;
-  for await (const chunk of request) {
-    const buffer = chunk as Buffer;
-    size += buffer.length;
-    if (size > maxBytes) {
-      throw new WorkspaceError('body-too-large', `request body exceeds ${maxBytes} bytes`, 413);
-    }
-    chunks.push(buffer);
-  }
-  if (size === 0) return {};
-  const text = Buffer.concat(chunks).toString('utf8');
+/**
+ * Read a JSON object body. An empty body is `{}`, and malformed JSON or a non-object body is
+ * refused with the codes and statuses this API has always used.
+ */
+async function readJsonBody(request: IncomingMessage, maxBytes: number): Promise<JsonObject> {
+  const body = await readBody(request, maxBytes);
+  if (body.length === 0) return {};
+  let parsed: JsonValue;
   try {
-    const parsed = JSON.parse(text) as unknown;
-    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
-      throw new WorkspaceError('invalid-body', 'the request body must be a JSON object', 400);
-    }
-    return parsed as Record<string, unknown>;
+    parsed = parseJson(body.toString('utf8'));
   } catch (cause) {
-    if (cause instanceof WorkspaceError) throw cause;
     throw new WorkspaceError('invalid-json', `request body is not valid JSON: ${String(cause)}`, 400);
   }
+  if (!isJsonObject(parsed)) {
+    throw new WorkspaceError('invalid-body', 'the request body must be a JSON object', 400);
+  }
+  return parsed;
 }
 
-function sendJson(response: ServerResponse, status: number, payload: unknown): void {
+/**
+ * Request bodies, parsed field by field into the shape each route uses.
+ *
+ * The coercion is the HTTP contract these routes have always had: `String(value)` for any field
+ * that is present (`{"id": 5}` has always created a project named `5`), and the fallback only when
+ * the key is absent or holds JSON `null`. Parsing is not trusting: an id still has to satisfy
+ * `assertSafeSegment` and a document still has to satisfy the schema, so a bad shape keeps
+ * producing exactly the status and message it produced before.
+ */
+
+/** `POST /api/projects`: the id, display name, and optional template of the project to create. */
+interface CreateProjectRequest {
+  id: string;
+  name: string;
+  template: string | undefined;
+}
+
+function parseCreateProjectRequest(body: JsonObject): CreateProjectRequest {
+  const id = textField(body, 'id', '');
+  return { id, name: textField(body, 'name', id), template: optionalTextField(body, 'template') };
+}
+
+/** `POST /api/projects/:id/duplicate`: the new id and optional display name. */
+interface DuplicateRequest {
+  newId: string;
+  newName: string | undefined;
+}
+
+function parseDuplicateRequest(body: JsonObject, projectId: string): DuplicateRequest {
+  return { newId: textField(body, 'newId', `${projectId}-copy`), newName: optionalTextField(body, 'newName') };
+}
+
+/** `POST /api/projects/:id/archive`: an optional reason, recorded next to the moved project. */
+interface ArchiveRequest {
+  reason: string | undefined;
+}
+
+function parseArchiveRequest(body: JsonObject): ArchiveRequest {
+  return { reason: optionalTextField(body, 'reason') };
+}
+
+/** `PATCH /api/projects/:id`: the project's new display name. */
+interface RenameRequest {
+  name: string;
+}
+
+function parseRenameRequest(body: JsonObject): RenameRequest {
+  return { name: textField(body, 'name', '') };
+}
+
+/** `PUT /api/projects/:id/scenes/:sceneId`: the document, and the revision it was edited from. */
+interface SceneWriteRequest {
+  expectedRevision: number | undefined;
+  /**
+   * Passed through untouched: an absent field stays `undefined` at runtime, and the schema refusal
+   * for a missing document is the one this route has always returned.
+   */
+  scene: JsonValue;
+}
+
+function parseSceneWriteRequest(body: JsonObject): SceneWriteRequest {
+  return { expectedRevision: numberField(body, 'expectedRevision'), scene: body.scene };
+}
+
+/** A field as text; absent or JSON `null` becomes `fallback`, which is what `?? fallback` did. */
+function textField(body: JsonObject, key: string, fallback: string): string {
+  const value = body[key];
+  return value === undefined || value === null ? fallback : String(value);
+}
+
+/** A field as text, or `undefined` only when the key is absent; JSON `null` stringifies. */
+function optionalTextField(body: JsonObject, key: string): string | undefined {
+  const value = body[key];
+  return value === undefined ? undefined : String(value);
+}
+
+/** A field as a number, or `undefined` when the key is absent or holds anything else. */
+function numberField(body: JsonObject, key: string): number | undefined {
+  const value = body[key];
+  return isJsonNumber(value) ? value : undefined;
+}
+
+/** Send a JSON response body: whatever the route produced, serialised for the editor. */
+function sendJson<Payload>(response: ServerResponse, status: number, payload: Payload): void {
   const body = `${JSON.stringify(payload)}\n`;
   response.writeHead(status, {
     'content-type': 'application/json; charset=utf-8',
@@ -509,17 +596,17 @@ function sendJson(response: ServerResponse, status: number, payload: unknown): v
   response.end(body);
 }
 
-function handleError(response: ServerResponse, error: unknown, logger: (message: string) => void): void {
-  if (error instanceof WorkspaceError) {
-    sendJson(response, error.status, { error: error.code, message: error.message, issues: error.issues });
+function handleError(response: ServerResponse, cause: unknown, logger: (message: string) => void): void {
+  if (cause instanceof WorkspaceError) {
+    sendJson(response, cause.status, { error: cause.code, message: cause.message, issues: cause.issues });
     return;
   }
-  if (error instanceof UnsafePathError) {
-    sendJson(response, 403, { error: 'unsafe-path', message: error.message });
+  if (cause instanceof UnsafePathError) {
+    sendJson(response, 403, { error: 'unsafe-path', message: cause.message });
     return;
   }
-  logger(`unhandled api error: ${String(error)}`);
-  sendJson(response, 500, { error: 'internal-error', message: String(error) });
+  logger(`unhandled api error: ${String(cause)}`);
+  sendJson(response, 500, { error: 'internal-error', message: String(cause) });
 }
 
 /** Constant-time-ish comparison; the token is local and short-lived, this avoids the trivial case. */

@@ -1,8 +1,8 @@
 {
   "stage": 2,
-  "generatedAt": "2026-09-11T15:47:57.277Z",
+  "generatedAt": "2026-09-11T17:30:52.458Z",
   "node": "v24.18.0",
-  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage2-bB3BP7",
+  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage2-BVG3Iq",
   "steps": [
     {
       "name": "typecheck",
@@ -68,10 +68,10 @@
       "id": "clip-playback",
       "title": "The imported clip is discoverable and plays in the editor preview",
       "passed": true,
-      "detail": "clips offered: First clip, Hop; preview time advanced from 0.11310000038146974 to 0.6302000002861025",
+      "detail": "clips offered: First clip, Hop; preview time advanced from 0.1237000002861023 to 0.6246000003814697",
       "observed": {
-        "before": 0.11310000038146974,
-        "after": 0.6302000002861025,
+        "before": 0.1237000002861023,
+        "after": 0.6246000003814697,
         "clip": "Hop"
       }
     },
@@ -109,7 +109,7 @@
       "detail": "typed \"wer\" into the name field: tool stayed Move, name is \"Crate Awer\", 6 entities still present",
       "observed": {
         "tool": "Move",
-        "focused": "name-field",
+        "focused": "x98rzlu x1s688f name-field",
         "name": "Crate Awer",
         "entityCount": 6
       }
@@ -214,7 +214,7 @@
       "id": "play-animates",
       "title": "Play runs the runtime animation: clips advance inside the play world",
       "passed": true,
-      "detail": "Limb clip \"Wave\" advanced 0.050 -> 0.167 after 502 ms; 2 animated entities, 2 models loaded",
+      "detail": "Limb clip \"Wave\" advanced 0.067 -> 0.217 after 503 ms; 2 animated entities, 2 models loaded",
       "observed": {
         "ids": {
           "limbId": "box-2",
@@ -228,7 +228,7 @@
           "playing": true,
           "loop": true,
           "speed": 1,
-          "time": 0.05,
+          "time": 0.06666666666666667,
           "duration": 1
         },
         "second": {
@@ -239,7 +239,7 @@
           "playing": true,
           "loop": true,
           "speed": 1,
-          "time": 0.16666666666666666,
+          "time": 0.21666666666666665,
           "duration": 1
         },
         "crate": {
@@ -250,18 +250,18 @@
           "playing": true,
           "loop": true,
           "speed": 1,
-          "time": 0.16666666666666666,
+          "time": 0.21666666666666665,
           "duration": 0.800000011920929
         },
         "stats": {
           "state": "running",
-          "frames": 8,
-          "steps": 10,
-          "fps": 28.12296883088005,
-          "frameTimeMs": 35.55812353999992,
-          "physicsTimeMs": 0.05909484927003852,
-          "droppedTime": 0.18330666666666656,
-          "clampedTime": 0.23330000000000017,
+          "frames": 10,
+          "steps": 13,
+          "fps": 30.099001583485638,
+          "frameTimeMs": 33.22369339150001,
+          "physicsTimeMs": 0.06884027910132687,
+          "droppedTime": 0.16675,
+          "clampedTime": 0.23329999999999995,
           "drawCalls": 6,
           "triangles": 1268,
           "geometries": 4,
@@ -289,7 +289,7 @@
           "inputListeners": 8,
           "audioActivated": true
         },
-        "waitedMs": 502
+        "waitedMs": 503
       }
     },
     {

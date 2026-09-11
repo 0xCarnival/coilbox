@@ -2,7 +2,8 @@ import { createReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { Readable } from 'node:stream';
-import { extname, join, normalize, resolve, sep } from 'node:path';
+import { extname, join, resolve, sep } from 'node:path';
+import type { AddressInfo } from 'node:net';
 
 /**
  * Minimal static file server used to verify exported games (plan §14).
@@ -13,27 +14,32 @@ import { extname, join, normalize, resolve, sep } from 'node:path';
  * goes through this server.
  */
 
-const MIME_TYPES: Record<string, string> = {
-  '.html': 'text/html; charset=utf-8',
-  '.js': 'text/javascript; charset=utf-8',
-  '.mjs': 'text/javascript; charset=utf-8',
-  '.css': 'text/css; charset=utf-8',
-  '.json': 'application/json; charset=utf-8',
-  '.wasm': 'application/wasm',
-  '.png': 'image/png',
-  '.jpg': 'image/jpeg',
-  '.jpeg': 'image/jpeg',
-  '.webp': 'image/webp',
-  '.svg': 'image/svg+xml',
-  '.glb': 'model/gltf-binary',
-  '.gltf': 'model/gltf+json',
-  '.bin': 'application/octet-stream',
-  '.mp3': 'audio/mpeg',
-  '.ogg': 'audio/ogg',
-  '.wav': 'audio/wav',
-  '.txt': 'text/plain; charset=utf-8',
-  '.map': 'application/json; charset=utf-8',
-};
+const MIME_TYPES = new Map<string, string>([
+  ['.html', 'text/html; charset=utf-8'],
+  ['.js', 'text/javascript; charset=utf-8'],
+  ['.mjs', 'text/javascript; charset=utf-8'],
+  ['.css', 'text/css; charset=utf-8'],
+  ['.json', 'application/json; charset=utf-8'],
+  ['.wasm', 'application/wasm'],
+  ['.png', 'image/png'],
+  ['.jpg', 'image/jpeg'],
+  ['.jpeg', 'image/jpeg'],
+  ['.webp', 'image/webp'],
+  ['.svg', 'image/svg+xml'],
+  ['.glb', 'model/gltf-binary'],
+  ['.gltf', 'model/gltf+json'],
+  ['.bin', 'application/octet-stream'],
+  ['.mp3', 'audio/mpeg'],
+  ['.ogg', 'audio/ogg'],
+  ['.wav', 'audio/wav'],
+  ['.txt', 'text/plain; charset=utf-8'],
+  ['.map', 'application/json; charset=utf-8'],
+]);
+
+/** `server.address()` reports an `AddressInfo` for a TCP socket and a path string for a pipe. */
+function isAddressInfo(address: AddressInfo | string | null): address is AddressInfo {
+  return address !== null && typeof address !== 'string';
+}
 
 export interface RequestLogEntry {
   method: string;
@@ -133,7 +139,7 @@ export async function startStaticServer(options: StaticServerOptions): Promise<S
       const info = await stat(target);
       if (!info.isFile()) throw new Error('not a file');
       const extension = extname(target).toLowerCase();
-      const contentType = MIME_TYPES[extension] ?? 'application/octet-stream';
+      const contentType = MIME_TYPES.get(extension) ?? 'application/octet-stream';
       response.writeHead(200, {
         'content-type': contentType,
         'content-length': info.size,
@@ -153,7 +159,7 @@ export async function startStaticServer(options: StaticServerOptions): Promise<S
     server.once('error', rejectPort);
     server.listen(options.port ?? 0, host, () => {
       const address = server.address();
-      if (address === null || typeof address === 'string') {
+      if (!isAddressInfo(address)) {
         rejectPort(new Error('static server did not report a port'));
         return;
       }
@@ -193,7 +199,8 @@ async function forward(
   const payload = Buffer.concat(body);
   const headers: Record<string, string> = {};
   for (const [key, value] of Object.entries(request.headers)) {
-    if (typeof value === 'string' && key !== 'host' && key !== 'content-length') headers[key] = value;
+    if (value === undefined || Array.isArray(value)) continue;
+    if (key !== 'host' && key !== 'content-length') headers[key] = value;
   }
   if (payload.length > 0) headers['content-length'] = String(payload.length);
   const upstream = await fetch(new URL(url, target), {

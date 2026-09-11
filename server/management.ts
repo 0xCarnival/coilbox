@@ -1,10 +1,11 @@
 import { cp, mkdir, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { basename, join, relative, sep } from 'node:path';
-import { ENGINE_VERSION, parseGame, parseScene, type GameDocument } from '@schema/index.js';
+import { ENGINE_VERSION, parseGame, parseScene, type GameDocument, type JsonValue } from '@schema/index.js';
 import { assertSafeArchivePath, createTarGz, readTarGz, type ArchiveEntry } from './archive.js';
 import { PROJECT_FILES, Workspace, WorkspaceError } from './workspace.js';
 import { assertSafeSegment, resolveInside } from './paths.js';
+import { jsonNumber, jsonString, parseJson } from './json.js';
 
 /**
  * Project management (plan §4, §11, §13): duplicate, archive, source export, and source import.
@@ -58,7 +59,7 @@ export class ProjectManager {
     });
 
     const gamePath = join(targetRoot, PROJECT_FILES.game);
-    const raw = JSON.parse(await readFile(gamePath, 'utf8')) as Record<string, unknown>;
+    const raw = parseJson(await readFile(gamePath, 'utf8'));
     const parsed = parseGame(raw);
     if (!parsed.value) {
       await rm(targetRoot, { recursive: true, force: true });
@@ -112,13 +113,15 @@ export class ProjectManager {
       if (!entry.isDirectory()) continue;
       const marker = join(archiveRoot, entry.name, '.archived.json');
       if (!existsSync(marker)) continue;
-      const payload = JSON.parse(await readFile(marker, 'utf8')) as { projectId?: string; archivedAt?: string; reason?: string };
+      // The marker is read field by field: a hand-edited or truncated one falls back to the
+      // directory name instead of putting a non-string into the listing.
+      const payload = parseJson(await readFile(marker, 'utf8'));
       result.push({
         // Bare directory name so it can be handed straight back to `restore()`.
         directory: entry.name,
-        projectId: payload.projectId ?? entry.name,
-        archivedAt: payload.archivedAt ?? '',
-        reason: payload.reason ?? '',
+        projectId: jsonString(payload, 'projectId') ?? entry.name,
+        archivedAt: jsonString(payload, 'archivedAt') ?? '',
+        reason: jsonString(payload, 'reason') ?? '',
       });
     }
     return result.sort((a, b) => b.archivedAt.localeCompare(a.archivedAt));
@@ -132,7 +135,7 @@ export class ProjectManager {
     if (!existsSync(join(sourceRoot, PROJECT_FILES.game))) {
       throw new WorkspaceError('archive-not-found', `no archived project in "${directory}"`, 404);
     }
-    const game = parseGame(JSON.parse(await readFile(join(sourceRoot, PROJECT_FILES.game), 'utf8'))).value;
+    const game = parseGame(parseJson(await readFile(join(sourceRoot, PROJECT_FILES.game), 'utf8'))).value;
     const id = options.newId ?? game?.id ?? directory;
     assertSafeSegment(id, 'project id');
     const target = join(this.workspace.root, id);
@@ -154,7 +157,7 @@ export class ProjectManager {
     if (files.length === 0) {
       throw new WorkspaceError('empty-project', `project "${projectId}" has no files to export`, 422);
     }
-    const game = parseGame(JSON.parse(await readFile(join(projectRoot, PROJECT_FILES.game), 'utf8'))).value;
+    const game = parseGame(parseJson(await readFile(join(projectRoot, PROJECT_FILES.game), 'utf8'))).value;
     const withBytes: ArchiveEntry[] = [];
     for (const path of files) {
       const archivePath = relative(projectRoot, path).split(sep).join('/');
@@ -209,9 +212,9 @@ export class ProjectManager {
     }
 
     const decoded = new TextDecoder();
-    let rawGame: unknown;
+    let rawGame: JsonValue;
     try {
-      rawGame = JSON.parse(decoded.decode(gameEntry.bytes));
+      rawGame = parseJson(decoded.decode(gameEntry.bytes));
     } catch (cause) {
       throw new WorkspaceError('invalid-project', `game.json in the archive is not valid JSON: ${String(cause)}`, 422);
     }
@@ -223,17 +226,19 @@ export class ProjectManager {
     const warnings: string[] = [];
     const compatibility = byPath.get('COMPATIBILITY.json');
     if (compatibility) {
-      const payload = JSON.parse(decoded.decode(compatibility.bytes)) as { schemaVersion?: number; engineCompat?: string };
-      if (typeof payload.schemaVersion === 'number' && payload.schemaVersion > game.value.schemaVersion) {
+      const payload = parseJson(decoded.decode(compatibility.bytes));
+      const schemaVersion = jsonNumber(payload, 'schemaVersion');
+      if (schemaVersion !== undefined && schemaVersion > game.value.schemaVersion) {
         throw new WorkspaceError(
           'incompatible-schema',
-          `the archive was written with schema version ${payload.schemaVersion}, which this build cannot open (it supports ${game.value.schemaVersion})`,
+          `the archive was written with schema version ${schemaVersion}, which this build cannot open (it supports ${game.value.schemaVersion})`,
           422,
         );
       }
-      if (payload.engineCompat && payload.engineCompat !== ENGINE_VERSION) {
+      const engineCompat = jsonString(payload, 'engineCompat');
+      if (engineCompat !== undefined && engineCompat !== '' && engineCompat !== ENGINE_VERSION) {
         warnings.push(
-          `the archive was authored against engine ${payload.engineCompat}; this build is ${ENGINE_VERSION} and will open it without rewriting the original file`,
+          `the archive was authored against engine ${engineCompat}; this build is ${ENGINE_VERSION} and will open it without rewriting the original file`,
         );
       }
     }
@@ -244,9 +249,9 @@ export class ProjectManager {
       if (!entry) {
         throw new WorkspaceError('missing-scene', `the archive is missing ${sceneEntry.path}`, 422);
       }
-      let rawScene: unknown;
+      let rawScene: JsonValue;
       try {
-        rawScene = JSON.parse(decoded.decode(entry.bytes));
+        rawScene = parseJson(decoded.decode(entry.bytes));
       } catch (cause) {
         throw new WorkspaceError('invalid-scene', `${sceneEntry.path} is not valid JSON: ${String(cause)}`, 422);
       }

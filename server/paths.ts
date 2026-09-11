@@ -1,6 +1,8 @@
 import { realpath } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { isAbsolute, join, normalize, relative, resolve, sep } from 'node:path';
+import type { JsonValue } from '@schema/index.js';
+import { isJsonString } from './json.js';
 
 /**
  * Path safety for the workspace service (plan §13): every path the browser can influence
@@ -20,14 +22,21 @@ export class UnsafePathError extends Error {
 /** Project ids and scene ids become path segments, so they are deliberately narrow. */
 const SEGMENT_PATTERN = /^[a-z0-9][a-z0-9._-]*$/i;
 
-export function assertSafeSegment(segment: string, label: string): string {
-  if (typeof segment !== 'string' || segment.length === 0 || segment.length > 128) {
-    throw new UnsafePathError(segment, `${label} must be 1-128 characters`);
+/**
+ * Validate one path segment.
+ *
+ * Ids reach the service from routes, JSON bodies, and the CLI, so the value is treated as unparsed:
+ * anything that is not a string is refused with the same `UnsafePathError` an unsafe string
+ * produces, instead of reaching `node:path` as a number or `undefined`.
+ */
+export function assertSafeSegment(value: JsonValue, label: string): string {
+  if (!isJsonString(value) || value.length === 0 || value.length > 128) {
+    throw new UnsafePathError(String(value), `${label} must be 1-128 characters`);
   }
-  if (!SEGMENT_PATTERN.test(segment) || segment.includes('..')) {
-    throw new UnsafePathError(segment, `${label} "${segment}" contains unsupported characters`);
+  if (!SEGMENT_PATTERN.test(value) || value.includes('..')) {
+    throw new UnsafePathError(value, `${label} "${value}" contains unsupported characters`);
   }
-  return segment;
+  return value;
 }
 
 /**

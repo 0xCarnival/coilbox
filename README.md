@@ -88,6 +88,7 @@ If the dev server will not start or a project misbehaves, `docs/runbook.md` has 
 ```bash
 # Development
 pnpm dev              # workspace service + editor dev server (http://127.0.0.1:5178/)
+pnpm lint             # architectural + low-evidence rules (anti-slop + coilbox)
 pnpm typecheck        # tsc --noEmit
 pnpm test             # unit tests (including the real Box3D WASM in Node)
 pnpm build            # production build into dist/
@@ -133,7 +134,7 @@ src/
     physics/  Box3D adapter — the only module allowed to import the vendor binding
     behaviors/ registered behaviors, their declarative metadata, and the runtime that runs them
     assets/   GLTF loading, instancing, and asset resolution
-    hud/      shared HTML/CSS HUD
+    hud/      shared HTML/CSS HUD (self-contained; no editor styling)
     input/    action-based input
     project/  loading and validating a project from plain files
     probe/    the stage 0 probe scene, defined in code so tests and pages share it

@@ -78,15 +78,15 @@ export class AudioSystem {
 
   /** Decode an asset so the first play is not late; failures are reported once. */
   prepare(assetId: AssetId): void {
-    void this.load(assetId).catch((error: unknown) => this.onWarning(String(error)));
+    void this.load(assetId).catch((cause: unknown) => this.onWarning(String(cause)));
   }
 
   async load(assetId: AssetId): Promise<LoadedSound> {
     const cached = this.sounds.get(assetId);
     if (cached) return cached;
-    const promise = this.loadUncached(assetId).catch((error: unknown) => {
+    const promise = this.loadUncached(assetId).catch((cause: unknown) => {
       this.sounds.delete(assetId);
-      throw error;
+      throw cause;
     });
     this.sounds.set(assetId, promise);
     return promise;
@@ -120,7 +120,7 @@ export class AudioSystem {
     }
     void cached
       .then((sound) => this.playLoaded(sound, options))
-      .catch((error: unknown) => this.onWarning(String(error)));
+      .catch((cause: unknown) => this.onWarning(String(cause)));
     return true;
   }
 

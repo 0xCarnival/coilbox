@@ -15,6 +15,18 @@
 
 const STEP_EPSILON = 1e-9;
 
+/** What `setTimeout` hands back here: a number in browsers, a `Timeout` object in Node. */
+type TimerHandle = ReturnType<typeof setTimeout>;
+
+/**
+ * A scheduled-frame handle.
+ *
+ * `requestAnimationFrame` returns a number, and so does a browser timer; the `setTimeout` fallback
+ * used off the DOM returns a timer object. The loop never inspects a handle — it only stores one
+ * and passes it to the matching cancel function — so the union is the honest type of that field.
+ */
+export type FrameHandle = number | TimerHandle;
+
 export interface FixedStepLoopOptions {
   /** Seconds per simulation step. */
   fixedTimeStep: number;
@@ -26,12 +38,15 @@ export interface FixedStepLoopOptions {
   onRender: (alpha: number, frameDelta: number) => void;
   /** Maximum frame delta accepted before clamping, in seconds. */
   maxFrameDelta?: number;
-  requestFrame?: (callback: (timeMs: number) => void) => number;
-  cancelFrame?: (handle: number) => void;
+  requestFrame?: (callback: (timeMs: number) => void) => FrameHandle;
+  cancelFrame?: (handle: FrameHandle) => void;
   now?: () => number;
   /** Returns true when the page is hidden and time should be dropped. */
   isBackgrounded?: () => boolean;
 }
+
+/** True for the handle shape the DOM hands out, whether from a frame callback or a timer. */
+const isFrameHandleNumber = (handle: FrameHandle): handle is number => typeof handle === 'number';
 
 export interface LoopStats {
   /** Frames rendered since start. */
@@ -53,7 +68,7 @@ export class FixedStepLoop {
     FixedStepLoopOptions;
 
   private accumulator = 0;
-  private frameHandle: number | null = null;
+  private frameHandle: FrameHandle | null = null;
   private lastTimeMs: number | null = null;
   private running = false;
   private readonly stats: LoopStats = {
@@ -189,17 +204,24 @@ export class FixedStepLoop {
   }
 }
 
-function defaultRequestFrame(callback: (timeMs: number) => void): number {
-  if (typeof requestAnimationFrame === 'function') {
-    return requestAnimationFrame(callback);
+function defaultRequestFrame(callback: (timeMs: number) => void): FrameHandle {
+  // An existence probe, not a shape check: Node (unit tests, the headless harness) has no
+  // `requestAnimationFrame` at all, while every host that has it has it as a callable.
+  if (typeof requestAnimationFrame === 'undefined') {
+    return setTimeout(() => callback(performance.now()), 16);
   }
-  return setTimeout(() => callback(performance.now()), 16) as unknown as number;
+  return requestAnimationFrame(callback);
 }
 
-function defaultCancelFrame(handle: number): void {
-  if (typeof cancelAnimationFrame === 'function') {
-    cancelAnimationFrame(handle);
+function defaultCancelFrame(handle: FrameHandle): void {
+  // A numbered handle came from `requestAnimationFrame`, or from a timer in a host that numbers
+  // its timers; both are cancelled by `cancelAnimationFrame` where that exists. Off the DOM the
+  // handle is a `Timeout` object (or a number from a host with timers but no frame scheduling),
+  // and `clearTimeout` is what releases it.
+  if (isFrameHandleNumber(handle)) {
+    if (typeof cancelAnimationFrame === 'undefined') clearTimeout(handle);
+    else cancelAnimationFrame(handle);
     return;
   }
-  clearTimeout(handle as unknown as ReturnType<typeof setTimeout>);
+  clearTimeout(handle);
 }

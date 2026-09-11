@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
-import type { Entity, SceneDocument, Transform, Vec3 } from '@schema/index.js';
+import type { Entity, SceneDocument, Transform } from '@schema/index.js';
 import { applyMaterial, createLight, createPrimitiveMesh, RuntimeWorldError } from '@runtime/scene-graph.js';
 import { disposeSceneResources } from '@runtime/render/viewport.js';
 import { AnimationController } from '@runtime/animation.js';
@@ -51,6 +51,15 @@ export interface ViewportAssetProvider {
 export interface ViewportOptions extends ViewportCallbacks {
   canvas: HTMLCanvasElement;
   container: HTMLElement;
+}
+
+/** What the editor viewport drew, for the status bar and for automated checks. */
+export interface ViewportStats {
+  entities: number;
+  drawCalls: number;
+  triangles: number;
+  programs: number;
+  geometries: number;
 }
 
 interface EntityProjection {
@@ -211,7 +220,7 @@ export class EditorViewport {
     this.resizeObserver = null;
     disposeSceneResources(this.root);
     this.boxHelper.geometry.dispose();
-    (this.boxHelper.material as THREE.Material).dispose();
+    if (this.boxHelper.material instanceof THREE.Material) this.boxHelper.material.dispose();
     this.scene.clear();
     this.renderer.dispose();
   }
@@ -225,7 +234,8 @@ export class EditorViewport {
       seen.add(entity.id);
       this.syncEntity(entity);
     }
-    for (const [id, projection] of [...this.projections]) {
+    // Deleting the entry being visited is well defined for a Map iterator, so no copy is needed.
+    for (const [id, projection] of this.projections) {
       if (seen.has(id)) continue;
       this.disposeProjectionChildren(projection);
       projection.object.removeFromParent();
@@ -309,8 +319,10 @@ export class EditorViewport {
           break;
         }
         case 'material': {
-          const mesh = object.children.find((child): child is THREE.Mesh => (child as THREE.Mesh).isMesh === true);
-          if (mesh) applyMaterial(mesh.material as THREE.MeshStandardMaterial, component);
+          const mesh = object.children.find(isMesh);
+          // `applyMaterial` configures standard-material fields, so a mesh that does not carry one
+          // is left alone rather than written with properties it does not have.
+          if (mesh && mesh.material instanceof THREE.MeshStandardMaterial) applyMaterial(mesh.material, component);
           break;
         }
         case 'light': {
@@ -428,10 +440,7 @@ export class EditorViewport {
     // The instance shares geometry and textures with the cached source; only the
     // per-instance materials and cloned skeleton belong to this projection.
     for (const material of projection.model.materials) material.dispose();
-    projection.model.object.traverse((object) => {
-      const skeleton = (object as THREE.SkinnedMesh).skeleton;
-      if (skeleton) skeleton.dispose();
-    });
+    disposeSkeletons(projection.model.object);
     projection.object.remove(projection.model.object);
     projection.model = null;
     projection.pendingAssetId = null;
@@ -440,17 +449,15 @@ export class EditorViewport {
   private disposeProjectionChildren(projection: EntityProjection): void {
     projection.animation?.dispose();
     projection.animation = null;
-    for (const child of [...projection.object.children]) {
+    // Removing a child splices `children`, so the pass runs over a copy of the current list.
+    for (const child of projection.object.children.slice()) {
       if (projection.model && child === projection.model.object) continue;
       projection.object.remove(child);
       disposeSceneResources(child);
     }
     if (projection.model) {
       for (const material of projection.model.materials) material.dispose();
-      projection.model.object.traverse((object) => {
-        const skeleton = (object as THREE.SkinnedMesh).skeleton;
-        if (skeleton) skeleton.dispose();
-      });
+      disposeSkeletons(projection.model.object);
       projection.object.remove(projection.model.object);
       projection.model = null;
     }
@@ -541,7 +548,7 @@ export class EditorViewport {
   }
 
   getTool(): TransformTool {
-    return this.transform.mode as TransformTool;
+    return this.transform.mode;
   }
 
   isDragging(): boolean {
@@ -567,9 +574,9 @@ export class EditorViewport {
     const object = this.projections.get(entityId)?.object;
     if (!object) return;
     this.callbacks.onCommitTransform(entityId, {
-      position: object.position.toArray() as Vec3,
+      position: [object.position.x, object.position.y, object.position.z],
       rotation: [object.quaternion.x, object.quaternion.y, object.quaternion.z, object.quaternion.w],
-      scale: object.scale.toArray() as Vec3,
+      scale: [object.scale.x, object.scale.y, object.scale.z],
     });
   };
 
@@ -681,7 +688,7 @@ export class EditorViewport {
   };
 
   /** Statistics used by the editor status bar and by tests. */
-  stats(): { entities: number; drawCalls: number; triangles: number; programs: number; geometries: number } {
+  stats(): ViewportStats {
     return {
       entities: this.projections.size,
       drawCalls: this.renderer.info.render.calls,
@@ -723,14 +730,31 @@ export class EditorViewport {
   }
 }
 
+/** Whether a projected object is a mesh, by three's own runtime marker rather than a class check. */
+function isMesh(object: THREE.Object3D): object is THREE.Mesh {
+  return 'isMesh' in object && object.isMesh === true;
+}
+
+/** Release the skeletons a skinned model owns: instances share geometry, never skeletons. */
+function disposeSkeletons(root: THREE.Object3D): void {
+  root.traverse((object) => {
+    if (object instanceof THREE.SkinnedMesh && object.skeleton instanceof THREE.Skeleton) object.skeleton.dispose();
+  });
+}
+
 function findEntityId(object: THREE.Object3D): string | null {
   let cursor: THREE.Object3D | null = object;
   while (cursor) {
-    const entityId = cursor.userData?.entityId;
-    if (typeof entityId === 'string') return entityId;
+    const entityId: unknown = cursor.userData?.entityId;
+    if (isEntityId(entityId)) return entityId;
     cursor = cursor.parent;
   }
   return null;
+}
+
+/** `userData.entityId` is set by `syncEntity`; three types `userData` as an open bag. */
+function isEntityId(value: unknown): value is string {
+  return typeof value === 'string';
 }
 
 export { RuntimeWorldError };

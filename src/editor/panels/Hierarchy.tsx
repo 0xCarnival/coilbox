@@ -1,6 +1,9 @@
 import { useMemo, useState } from 'react';
 import type { JSX } from 'react';
+import * as stylex from '@stylexjs/stylex';
 import type { Entity } from '@schema/index.js';
+import { color, fontSize, space } from '../styles/tokens.stylex.js';
+import { DOM, DOM_STATE, withDomClass } from '../dom-contract.js';
 import { useSession, useSessionSnapshot } from '../hooks.js';
 import { createEntity, reparentPreservingWorldTransform } from '../document/factory.js';
 import { createEntityId, subtreeOf } from '../document/commands.js';
@@ -17,11 +20,104 @@ interface TreeRow {
   depth: number;
 }
 
+/** The tree's base row layout, shared by the row and the muted name treatment. */
+const treeRow = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: space.xs,
+  paddingBlock: space.xxs,
+  paddingInline: space.sm,
+  cursor: 'default',
+  borderInlineStartWidth: '2px',
+  borderInlineStartStyle: 'solid',
+  borderInlineStartColor: 'transparent',
+} as const;
+
+/** Bare icon buttons: no chrome, muted, and sized to the 11px glyph they carry. */
+const iconButton = {
+  backgroundColor: 'transparent',
+  borderWidth: 0,
+  borderStyle: 'none',
+  paddingBlock: 0,
+  paddingInline: '3px',
+  color: color.muted,
+  fontSize: fontSize.xs,
+} as const;
+
+const styles = stylex.create({
+  hierarchy: {
+    display: 'flex',
+    flexDirection: 'column',
+    minHeight: 0,
+    height: '100%',
+  },
+  panelHeader: {
+    display: 'flex',
+    gap: space.sm,
+    padding: space.sm,
+    borderBlockEndWidth: '1px',
+    borderBlockEndStyle: 'solid',
+    borderBlockEndColor: color.line,
+  },
+  search: {
+    flex: 1,
+  },
+  tree: {
+    overflow: 'auto',
+    flex: 1,
+    paddingBlock: space.xs,
+    paddingInline: 0,
+  },
+  treeRow: {
+    ...treeRow,
+    ':hover': {
+      backgroundColor: '#1a2030',
+    },
+  },
+  treeRowSelected: {
+    backgroundColor: '#22314c',
+    borderInlineStartColor: color.accent,
+  },
+  treeName: {
+    flex: 1,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  /**
+   * A disabled entity is struck through and muted. This replaced
+   * `.tree-row.disabled-entity .tree-name`, which StyleX cannot express: the child's colour
+   * depends on the parent's state, so the decoration lives on the child's own conditional style
+   * instead of on a descendant selector.
+   */
+  treeNameDisabled: {
+    color: color.muted,
+    textDecorationLine: 'line-through',
+  },
+  treeActions: {
+    display: 'none',
+    gap: space.xxs,
+  },
+  treeActionsVisible: {
+    display: 'flex',
+  },
+  iconToggle: iconButton,
+  rename: {
+    flex: 1,
+  },
+  empty: {
+    color: color.muted,
+    padding: '14px',
+    textAlign: 'center',
+  },
+});
+
 export function Hierarchy({ locked }: { locked: boolean }): JSX.Element {
   const session = useSession();
   const snapshot = useSessionSnapshot();
   const [search, setSearch] = useState('');
   const [renaming, setRenaming] = useState<string | null>(null);
+  const [hovered, setHovered] = useState<string | null>(null);
   const scene = snapshot.project && session.scene ? session.scene : null;
 
   const rows = useMemo<TreeRow[]>(() => {
@@ -49,7 +145,9 @@ export function Hierarchy({ locked }: { locked: boolean }): JSX.Element {
   }, [scene, search]);
 
   if (!scene) {
-    return <div className="panel-empty">No scene open</div>;
+    return (
+      <div {...withDomClass(styles.empty, DOM.panelEmpty)}>No scene open</div>
+    );
   }
 
   const selected = new Set(snapshot.selectedIds);
@@ -80,10 +178,11 @@ export function Hierarchy({ locked }: { locked: boolean }): JSX.Element {
     if (!primary) return;
     const entity = scene.entities.find((candidate) => candidate.id === primary);
     if (!entity) return;
+    const { position } = entity.transform;
     const group = createEntity('group', {
       usedIds: scene.entities.map((candidate) => candidate.id),
       name: `${entity.name} group`,
-      position: [...entity.transform.position] as [number, number, number],
+      position: [position[0], position[1], position[2]],
     });
     const commands = [
       { kind: 'insertEntities' as const, entities: [group] },
@@ -93,10 +192,10 @@ export function Hierarchy({ locked }: { locked: boolean }): JSX.Element {
   };
 
   return (
-    <div className="hierarchy">
-      <div className="panel-header">
+    <div {...stylex.props(styles.hierarchy)}>
+      <div {...stylex.props(styles.panelHeader)}>
         <input
-          className="search"
+          {...stylex.props(styles.search)}
           type="search"
           placeholder="Search objects"
           value={search}
@@ -107,22 +206,29 @@ export function Hierarchy({ locked }: { locked: boolean }): JSX.Element {
           Group
         </button>
       </div>
-      <div className="tree" role="tree" aria-label="Scene hierarchy">
+      <div {...stylex.props(styles.tree)} role="tree" aria-label="Scene hierarchy">
         {rows.map(({ entity, depth }) => (
           <div
             key={entity.id}
             role="treeitem"
             aria-selected={selected.has(entity.id)}
             aria-level={depth + 1}
-            className={`tree-row${selected.has(entity.id) ? ' selected' : ''}${entity.enabled ? '' : ' disabled-entity'}`}
+            {...withDomClass(
+              styles.treeRow,
+              selected.has(entity.id) && styles.treeRowSelected,
+              DOM.treeRow,
+              selected.has(entity.id) && DOM_STATE.selected,
+            )}
             style={{ paddingLeft: 6 + depth * 12 }}
             onClick={(event) => session.select(entity.id, { additive: event.shiftKey || event.metaKey || event.ctrlKey })}
             onDoubleClick={() => !locked && setRenaming(entity.id)}
+            onMouseEnter={() => setHovered(entity.id)}
+            onMouseLeave={() => setHovered((current) => (current === entity.id ? null : current))}
             data-entity-id={entity.id}
           >
             <button
+              {...stylex.props(styles.iconToggle)}
               type="button"
-              className="icon-toggle"
               title={entity.editor.visible ? 'Hide in the editor' : 'Show in the editor'}
               disabled={locked}
               onClick={(event) => {
@@ -133,8 +239,8 @@ export function Hierarchy({ locked }: { locked: boolean }): JSX.Element {
               {entity.editor.visible ? '◉' : '○'}
             </button>
             <button
+              {...stylex.props(styles.iconToggle)}
               type="button"
-              className="icon-toggle"
               title={entity.editor.locked ? 'Unlock' : 'Lock (prevents selection in the viewport)'}
               disabled={locked}
               onClick={(event) => {
@@ -145,8 +251,8 @@ export function Hierarchy({ locked }: { locked: boolean }): JSX.Element {
               {entity.editor.locked ? '🔒' : '·'}
             </button>
             <button
+              {...stylex.props(styles.iconToggle)}
               type="button"
-              className="icon-toggle"
               title={entity.enabled ? 'Enabled in the game — click to disable' : 'Disabled in the game — click to enable'}
               disabled={locked}
               onClick={(event) => {
@@ -158,7 +264,7 @@ export function Hierarchy({ locked }: { locked: boolean }): JSX.Element {
             </button>
             {renaming === entity.id ? (
               <input
-                className="rename"
+                {...stylex.props(styles.rename)}
                 autoFocus
                 defaultValue={entity.name}
                 onClick={(event) => event.stopPropagation()}
@@ -169,15 +275,17 @@ export function Hierarchy({ locked }: { locked: boolean }): JSX.Element {
                   }
                 }}
                 onKeyDown={(event) => {
-                  if (event.key === 'Enter') (event.target as HTMLInputElement).blur();
+                  if (event.key === 'Enter') event.currentTarget.blur();
                   if (event.key === 'Escape') setRenaming(null);
                   event.stopPropagation();
                 }}
               />
             ) : (
-              <span className="tree-name">{entity.name}</span>
+              <span {...withDomClass(styles.treeName, !entity.enabled && styles.treeNameDisabled, DOM.treeName)}>
+                {entity.name}
+              </span>
             )}
-            <span className="tree-actions">
+            <span {...stylex.props(styles.treeActions, hovered === entity.id && styles.treeActionsVisible)}>
               <button
                 type="button"
                 title="Duplicate"
@@ -203,7 +311,9 @@ export function Hierarchy({ locked }: { locked: boolean }): JSX.Element {
             </span>
           </div>
         ))}
-        {rows.length === 0 && <div className="panel-empty">{search ? 'No matching objects' : 'This scene is empty'}</div>}
+        {rows.length === 0 && (
+          <div {...withDomClass(styles.empty, DOM.panelEmpty)}>{search ? 'No matching objects' : 'This scene is empty'}</div>
+        )}
       </div>
     </div>
   );

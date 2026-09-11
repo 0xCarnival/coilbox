@@ -53,7 +53,7 @@ async function request(
   path: string,
   options: { method?: string; body?: unknown; token?: string | null; headers?: Record<string, string> } = {},
 ): Promise<{ status: number; body: any }> {
-  const headers: Record<string, string> = { ...options.headers };
+  const headers = { ...options.headers };
   if (options.body !== undefined) headers['content-type'] = 'application/json';
   const token = options.token === undefined ? api.token : options.token;
   if (token) headers['x-coilbox-token'] = token;
@@ -170,7 +170,7 @@ describe('scene reads and writes', () => {
       body: '{ not json',
     });
     expect(response.status).toBe(400);
-    const arrayBody = await request('/api/projects/g/scenes/main', { method: 'PUT', body: [1, 2, 3] as unknown });
+    const arrayBody = await request('/api/projects/g/scenes/main', { method: 'PUT', body: [1, 2, 3] });
     expect(arrayBody.status).toBe(400);
   });
 

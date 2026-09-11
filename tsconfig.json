@@ -19,6 +19,9 @@
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "noEmit": true,
+    // Oxlint loads its JS plugins from source, and the vendored rules in tools/oxlint import each
+    // other with explicit .ts extensions. Safe here because noEmit is true: the build is Vite's job.
+    "allowImportingTsExtensions": true,
     "baseUrl": ".",
     "paths": {
       "@schema/*": ["src/schema/*"],

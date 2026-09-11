@@ -42,13 +42,23 @@ export interface CheckResult {
   observed?: unknown;
 }
 
+/**
+ * The subset of the live world's stats these checks assert on. The probe publishes the real world
+ * stats object, which carries more; naming the slice the checks read keeps the assertions typed
+ * instead of re-asserting the shape at every call site.
+ */
+export interface Stage0Stats {
+  steps: number;
+  physics: { contactCount: number };
+}
+
 export interface Stage0ProbeApi {
   play(): Promise<void>;
   pause(): void;
   step(): void;
   stop(): void;
   reset(): Promise<void>;
-  stats(): unknown;
+  stats(): Stage0Stats | null;
   samplePixels(): PixelStats;
   readState(): Stage0State;
   error(): string | null;
@@ -106,7 +116,7 @@ export async function runStage0Checks(options: Stage0RunOptions): Promise<CheckR
 
   const afterFall = await page.evaluate(() => {
     const api = (window as Stage0Window).__STAGE0__!;
-    return { state: api.readState(), stats: api.stats() as { steps: number; physics: { contactCount: number } } | null };
+    return { state: api.readState(), stats: api.stats() };
   });
 
   record({
@@ -146,12 +156,12 @@ export async function runStage0Checks(options: Stage0RunOptions): Promise<CheckR
   const beforeStep = await page.evaluate(() => {
     const api = (window as Stage0Window).__STAGE0__!;
     api.pause();
-    return { stats: api.stats() as { steps: number } | null, state: api.readState().state };
+    return { stats: api.stats(), state: api.readState().state };
   });
   await page.evaluate(() => (window as Stage0Window).__STAGE0__!.step());
   const afterStep = await page.evaluate(() => {
     const api = (window as Stage0Window).__STAGE0__!;
-    return { stats: api.stats() as { steps: number } | null };
+    return { stats: api.stats() };
   });
   const advanced = (afterStep.stats?.steps ?? 0) - (beforeStep.stats?.steps ?? 0);
   record({

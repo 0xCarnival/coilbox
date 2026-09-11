@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
 import type { JSX } from 'react';
-import type { SceneDocument, Transform } from '@schema/index.js';
-import { RuntimeWorldError } from '@runtime/world.js';
+import * as stylex from '@stylexjs/stylex';
+import type { JsonValue, SceneDocument, Transform } from '@schema/index.js';
+import { RuntimeWorldError, type RuntimeStats } from '@runtime/world.js';
 import { RuntimeSession } from '@runtime/session.js';
 import { AssetCache } from '@runtime/assets/loader.js';
 import wasmUrl from 'virtual:box3d-wasm-url';
+import { color, radius, space } from '../styles/tokens.stylex.js';
+import { DOM, DOM_ID, withDomClass } from '../dom-contract.js';
 import { EditorViewport, type SnapSettings, type TransformTool } from '../viewport/viewport-controller.js';
 import { useSession } from '../hooks.js';
 
@@ -16,6 +19,74 @@ import { useSession } from '../hooks.js';
  * on its own canvas from a snapshot of the authored document. Stopping throws that world
  * away, which is why the authored scene cannot be left modified by a simulation.
  */
+
+/**
+ * Viewport chrome.
+ *
+ * `.hud-host .coilbox-hud` is deliberately absent: the HUD is created by the runtime through
+ * `document.createElement`, so it renders no `stylex` class and its positioning stays in
+ * `base.css` where a descendant selector can reach it.
+ */
+const styles = stylex.create({
+  viewport: {
+    position: 'absolute',
+    inset: 0,
+    display: 'flex',
+  },
+  editorCanvas: {
+    position: 'absolute',
+    inset: 0,
+    width: '100%',
+    height: '100%',
+    display: 'block',
+  },
+  playCanvas: {
+    position: 'absolute',
+    inset: 0,
+    width: '100%',
+    height: '100%',
+    display: 'block',
+  },
+  canvasHidden: {
+    visibility: 'hidden',
+  },
+  hudHost: {
+    position: 'absolute',
+    inset: 0,
+    pointerEvents: 'none',
+    overflow: 'hidden',
+  },
+  badge: {
+    position: 'absolute',
+    top: '8px',
+    left: '8px',
+    backgroundColor: 'rgba(20, 26, 38, 0.86)',
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: color.line,
+    borderRadius: radius.md,
+    paddingBlock: '3px',
+    paddingInline: '8px',
+    color: color.ok,
+  },
+  error: {
+    position: 'absolute',
+    left: '12px',
+    right: '12px',
+    bottom: '12px',
+    backgroundColor: '#3a1418',
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: '#7a2630',
+    color: '#ffd7db',
+    paddingBlock: '8px',
+    paddingInline: space.md,
+    borderRadius: radius.md,
+    display: 'flex',
+    gap: space.md,
+    alignItems: 'center',
+  },
+});
 
 export type PlayState = 'stopped' | 'running' | 'paused';
 
@@ -37,7 +108,7 @@ export interface ViewportHandle {
   /** Read the play canvas after forcing a render (the drawing buffer is not preserved). */
   samplePlayPixels(): { width: number; height: number; distinctColors: number; nonBackgroundPixels: number } | null;
   /** Runtime statistics of the live play world, or null when stopped. */
-  playStats(): unknown;
+  playStats(): RuntimeStats | null;
   /** Whether an entity's model is loading, loaded, or failed. */
   modelStatus(entityId: string): 'none' | 'loading' | 'loaded' | 'failed';
   clipNames(entityId: string): string[] | null;
@@ -45,7 +116,7 @@ export interface ViewportHandle {
   /** Animation state inside the running play world (independent of the editor preview). */
   playAnimationState(entityId: string): { clip: string | null; time: number; playing: boolean } | null;
   /** Game-state values of the running play world. */
-  playGameState(): Record<string, unknown> | null;
+  playGameState(): Record<string, JsonValue> | null;
   /** World position of an entity in the running play world. */
   playEntityTransform(entityId: string): [number, number, number] | null;
   /** PNG data URL of the current editor view, for the project thumbnail. */
@@ -113,7 +184,7 @@ export function Viewport({ handleRef, tool, snap, onPlayStateChange, onStatus }:
     viewportRef.current = viewport;
     viewport.setAssetProvider({
       instantiate: (assetId) => assetCache.instantiate(assetId),
-      clipsFor: (assetId) => null,
+      clipsFor: () => null,
     });
     viewport.start();
     viewport.setTool(tool);
@@ -321,13 +392,21 @@ export function Viewport({ handleRef, tool, snap, onPlayStateChange, onStatus }:
   );
 
   return (
-    <div className="viewport" ref={containerRef}>
-      <canvas id="editor-canvas" ref={editorCanvasRef} tabIndex={0} />
-      <canvas id="play-canvas" ref={playCanvasRef} className={playState === 'stopped' ? 'hidden' : ''} />
-      <div className="hud-host" ref={hudRootRef} />
-      {playState !== 'stopped' && <div className="viewport-badge">Play mode — authoring is paused</div>}
+    <div {...stylex.props(styles.viewport)} ref={containerRef}>
+      <canvas {...stylex.props(styles.editorCanvas)} id={DOM_ID.editorCanvas} ref={editorCanvasRef} tabIndex={0} />
+      <canvas
+        {...stylex.props(styles.playCanvas, playState === 'stopped' && styles.canvasHidden)}
+        id={DOM_ID.playCanvas}
+        ref={playCanvasRef}
+      />
+      <div {...withDomClass(styles.hudHost, DOM.hudHost)} ref={hudRootRef} />
+      {playState !== 'stopped' && (
+        <div {...withDomClass(styles.badge, DOM.viewportBadge)}>
+          Play mode — authoring is paused
+        </div>
+      )}
       {error && (
-        <div className="viewport-error" role="alert">
+        <div {...stylex.props(styles.error)} role="alert">
           {error}
           <button type="button" onClick={stopPlay}>
             Stop

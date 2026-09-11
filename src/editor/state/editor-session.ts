@@ -1,4 +1,4 @@
-import type { AssetEntry, GameDocument, SceneDocument, ValidationIssue } from '@schema/index.js';
+import type { AssetEntry, BehaviorComponent, GameDocument, JsonValue, SceneDocument, ValidationIssue } from '@schema/index.js';
 import type { EditorCommand } from '../document/commands.js';
 import { SceneDocumentStore, type SaveState } from '../document/store.js';
 import { SelectionStore } from '../document/selection.js';
@@ -6,9 +6,92 @@ import { WorkspaceClient, WorkspaceClientError, type ProjectDetail, type Project
 import { ApiAssetResolver } from '../api/asset-resolver.js';
 import { BehaviorRegistry } from '@runtime/behaviors/registry.js';
 import { BEHAVIOR_LIBRARY } from '@runtime/behaviors/library.js';
-import type { BehaviorEntry, BehaviorPropertyDescriptor } from '@runtime/behaviors/types.js';
+import type { BehaviorEntry, BehaviorPropertyDescriptor, BehaviorPropertyType } from '@runtime/behaviors/types.js';
+import { isFiniteJsonNumber, isJsonBoolean, isJsonString, jsonField } from '../json-values.js';
 
 export type { ProjectDetail, ProjectSummary } from '../api/client.js';
+
+/** The `scene-updated` payload: which scene changed and the revision now on disk. */
+interface SceneChange {
+  sceneId: string | null;
+  revision: number | null;
+}
+
+function sceneChange(data: string): SceneChange {
+  const payload: JsonValue = JSON.parse(data);
+  const sceneId = jsonField(payload, 'sceneId');
+  const revision = jsonField(payload, 'revision');
+  return {
+    sceneId: isJsonString(sceneId) ? sceneId : null,
+    revision: isFiniteJsonNumber(revision) ? revision : null,
+  };
+}
+
+/** The optional `message` an `invalid` event carries. */
+function invalidMessage(data: string): string | null {
+  const payload: JsonValue = JSON.parse(data);
+  const message = jsonField(payload, 'message');
+  return isJsonString(message) ? message : null;
+}
+
+/** One behavior declaration from `scripts/registry.json`, or null when it carries no usable id. */
+function declaredBehavior(entry: JsonValue): Omit<BehaviorEntry, 'definition'> | null {
+  const id = jsonField(entry, 'id');
+  if (!isJsonString(id)) return null;
+  const name = jsonField(entry, 'name');
+  const description = jsonField(entry, 'description');
+  return {
+    id,
+    name: isJsonString(name) ? name : id,
+    description: isJsonString(description) ? description : '',
+    properties: declaredProperties(jsonField(entry, 'properties')),
+  };
+}
+
+/** The property descriptors a behavior declares; entries without a usable key and type are dropped. */
+function declaredProperties(value: JsonValue): BehaviorPropertyDescriptor[] {
+  if (!Array.isArray(value)) return [];
+  const descriptors: BehaviorPropertyDescriptor[] = [];
+  for (const candidate of value) {
+    const descriptor = declaredProperty(candidate);
+    if (descriptor) descriptors.push(descriptor);
+  }
+  return descriptors;
+}
+
+function declaredProperty(value: JsonValue): BehaviorPropertyDescriptor | null {
+  const key = jsonField(value, 'key');
+  const type = jsonField(value, 'type');
+  if (!isJsonString(key) || !isBehaviorPropertyType(type)) return null;
+  const label = jsonField(value, 'label');
+  const description = jsonField(value, 'description');
+  const group = jsonField(value, 'group');
+  const min = jsonField(value, 'min');
+  const max = jsonField(value, 'max');
+  const step = jsonField(value, 'step');
+  const advanced = jsonField(value, 'advanced');
+  return {
+    key,
+    label: isJsonString(label) ? label : key,
+    type,
+    default: jsonField(value, 'default'),
+    description: isJsonString(description) ? description : undefined,
+    min: isFiniteJsonNumber(min) ? min : undefined,
+    max: isFiniteJsonNumber(max) ? max : undefined,
+    step: isFiniteJsonNumber(step) ? step : undefined,
+    options: declaredOptions(jsonField(value, 'options')),
+    group: isJsonString(group) ? group : undefined,
+    advanced: isJsonBoolean(advanced) ? advanced : undefined,
+  };
+}
+
+/** Enum options as declared; a non-array declaration means "no list" rather than an empty one. */
+function declaredOptions(value: JsonValue): string[] | undefined {
+  return Array.isArray(value) ? value.filter(isJsonString) : undefined;
+}
+
+const isBehaviorPropertyType = (value: JsonValue): value is BehaviorPropertyType =>
+  value === 'number' || value === 'boolean' || value === 'text' || value === 'enum' || value === 'entity' || value === 'asset';
 
 /**
  * Editor session: the authoring state the panels render.
@@ -254,11 +337,13 @@ export class EditorSession {
       this.emit();
     });
     events.addEventListener('scene-updated', (event) => {
-      void this.handleExternalSceneChange(JSON.parse((event as MessageEvent).data) as { sceneId: string | null; revision: number | null });
+      // Server-sent events always arrive as MessageEvents; anything else cannot carry a payload.
+      if (!(event instanceof MessageEvent)) return;
+      void this.handleExternalSceneChange(sceneChange(event.data));
     });
     events.addEventListener('invalid', (event) => {
-      const payload = JSON.parse((event as MessageEvent).data) as { message?: string };
-      this.log('warning', payload.message ?? 'an external change could not be read');
+      if (!(event instanceof MessageEvent)) return;
+      this.log('warning', invalidMessage(event.data) ?? 'an external change could not be read');
     });
     events.addEventListener('assets-changed', () => {
       void this.refreshAssets();
@@ -280,7 +365,7 @@ export class EditorSession {
     this.watching = false;
   }
 
-  private async handleExternalSceneChange(payload: { sceneId: string | null; revision: number | null }): Promise<void> {
+  private async handleExternalSceneChange(payload: SceneChange): Promise<void> {
     if (!this.store || !this.sceneId || payload.sceneId !== this.sceneId) return;
     const currentRevision = this.store.scene.revision;
     if (payload.revision === currentRevision) return;
@@ -306,19 +391,11 @@ export class EditorSession {
     try {
       const document_ = await this.client.readRegistry(this.project.id);
       const entries: Array<Omit<BehaviorEntry, 'definition'>> = [];
-      for (const entry of document_.behaviors as Array<{
-        id?: unknown;
-        name?: unknown;
-        description?: unknown;
-        properties?: unknown;
-      }>) {
-        if (typeof entry?.id !== 'string') continue;
-        entries.push({
-          id: entry.id,
-          name: typeof entry.name === 'string' ? entry.name : entry.id,
-          description: typeof entry.description === 'string' ? entry.description : '',
-          properties: Array.isArray(entry.properties) ? (entry.properties as BehaviorPropertyDescriptor[]) : [],
-        });
+      // `scripts/registry.json` is a file on disk that people and tools edit, so every declaration
+      // is read out of the JSON rather than assumed: a malformed entry is dropped, not half-used.
+      for (const entry of document_.behaviors) {
+        const declared = declaredBehavior(entry);
+        if (declared) entries.push(declared);
       }
       this.registry = new BehaviorRegistry();
       this.registry.replaceMetadata(entries);
@@ -339,15 +416,12 @@ export class EditorSession {
     this.emit();
   }
 
-  behaviorsFor(entityId: string): Array<{ behaviorId: string; properties: Record<string, unknown> }> {
+  behaviorsFor(entityId: string): Array<{ behaviorId: string; properties: Record<string, JsonValue> }> {
     const entity = this.scene?.entities.find((candidate) => candidate.id === entityId);
     if (!entity) return [];
     return entity.components
-      .filter((component) => component.type === 'behavior')
-      .map((component) => ({
-        behaviorId: (component as Extract<typeof component, { type: 'behavior' }>).behaviorId,
-        properties: (component as Extract<typeof component, { type: 'behavior' }>).properties as Record<string, unknown>,
-      }));
+      .filter((component): component is BehaviorComponent => component.type === 'behavior')
+      .map((component) => ({ behaviorId: component.behaviorId, properties: component.properties }));
   }
 
   /** Rename the project's display name; the folder and id stay put. */
@@ -414,9 +488,8 @@ export class EditorSession {
     if (!projectId) return false;
     try {
       const bytes = await this.client.exportSource(projectId);
-      const blob = new Blob([bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer], {
-        type: 'application/gzip',
-      });
+      // `bytes.slice()` copies into a plain `ArrayBuffer`, which is what `BlobPart` accepts.
+      const blob = new Blob([bytes.slice()], { type: 'application/gzip' });
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement('a');
       anchor.href = url;
@@ -652,8 +725,9 @@ export function describeIssues(issues: ValidationIssue[]): string {
   return issues.length > 0 ? issues.map((issue) => `${issue.path}: ${issue.message}`).join('; ') : 'the change was rejected';
 }
 
-export function describeError(error: unknown): string {
-  if (error instanceof WorkspaceClientError) return `${error.code}: ${error.message}`;
-  if (error instanceof Error) return error.message;
-  return String(error);
+/** Describe a caught failure. `cause` is whatever was thrown, so it has no narrower contract. */
+export function describeError(cause: unknown): string {
+  if (cause instanceof WorkspaceClientError) return `${cause.code}: ${cause.message}`;
+  if (cause instanceof Error) return cause.message;
+  return String(cause);
 }

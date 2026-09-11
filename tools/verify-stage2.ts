@@ -103,7 +103,7 @@ async function main(): Promise<void> {
     page.on('pageerror', (error) => consoleErrors.push(String(error)));
 
     await page.goto(editorServer.url, { waitUntil: 'load' });
-    await page.waitForFunction(() => (window as unknown as { __STUDIO__?: unknown }).__STUDIO__ !== undefined, undefined, {
+    await page.waitForFunction(() => window.__STUDIO__ !== undefined, undefined, {
       timeout: 30_000,
     });
 
@@ -169,9 +169,7 @@ async function main(): Promise<void> {
     const modelLoaded = await page
       .waitForFunction(
         () => {
-          const studio = (window as unknown as {
-            __STUDIO__?: { viewport?: () => { modelStatus(id: string): string } | null; session: { selection: { primary: string | null } } };
-          }).__STUDIO__;
+          const studio = window.__STUDIO__;
           const viewport = studio?.viewport?.();
           const id = studio?.session.selection.primary;
           return Boolean(id && viewport && viewport.modelStatus(id) === 'loaded');
@@ -196,12 +194,7 @@ async function main(): Promise<void> {
     await selectField(page, 'Clip', 'Hop', { section: 'Animation' });
 
     const animating = await page.evaluate(async () => {
-      const studio = (window as unknown as {
-        __STUDIO__?: {
-          session: { selection: { primary: string | null } };
-          viewport?: () => { animationState(id: string): { time: number; clip: string | null } | null } | null;
-        };
-      }).__STUDIO__;
+      const studio = window.__STUDIO__;
       const id = studio?.session.selection.primary;
       const viewport = studio?.viewport?.();
       if (!id || !viewport) return null;
@@ -231,11 +224,9 @@ async function main(): Promise<void> {
 
     const limbLoaded = await waitForModelStatus(page, 'loaded', 30_000);
     const limbClips = await page.evaluate(() => {
-      const studio = (window as unknown as {
-        __STUDIO__?: { session: { selection: { primary: string | null }; clipsFor(id: string): string[] } };
-      }).__STUDIO__;
+      const studio = window.__STUDIO__;
       const id = studio?.session.selection.primary;
-      return id ? studio!.session.clipsFor(id) : [];
+      return id ? studio?.session.clipsFor(id) ?? [] : [];
     });
     record({
       id: 'skinned-model-clips',
@@ -256,16 +247,7 @@ async function main(): Promise<void> {
     await setColorField(page, 'Colour', '#2f6f4f');
 
     const inspectorEdits = await page.evaluate(() => {
-      const studio = (window as unknown as {
-        __STUDIO__?: {
-          session: {
-            scene: {
-              entities: Array<{ id: string; components: Array<{ type: string; [key: string]: unknown }> }>;
-            } | null;
-          };
-        };
-      }).__STUDIO__;
-      const scene = studio?.session.scene;
+      const scene = window.__STUDIO__?.session.scene;
       const sun = scene?.entities.find((entity) => entity.id === 'sun');
       const light = sun?.components.find((component) => component.type === 'light');
       const camera = scene?.entities.find((entity) => entity.id === 'game-camera')?.components.find((component) => component.type === 'camera');
@@ -287,7 +269,7 @@ async function main(): Promise<void> {
     // Snap settings reach the transform controls
     await page.click('.snap-toggle input');
     const snapApplied = await page.evaluate(() => {
-      const studio = (window as unknown as { __STUDIO__?: { viewport?: () => { setSnap(s: unknown): void } | null } }).__STUDIO__;
+      const studio = window.__STUDIO__;
       void studio;
       const input = document.querySelector('.snap-toggle input') as HTMLInputElement | null;
       return input?.checked ?? false;
@@ -313,11 +295,7 @@ async function main(): Promise<void> {
     await nameField.press('r');
     await nameField.press('Delete');
     const focusState = await page.evaluate(() => {
-      const session = (window as unknown as {
-        __STUDIO__?: {
-          session: { scene: { entities: Array<{ id: string; name: string }> } | null; snapshot(): { primarySelection: string | null } };
-        };
-      }).__STUDIO__?.session;
+      const session = window.__STUDIO__?.session;
       const tool = document.querySelector('.toolbar-group[aria-label="Transform tool"] button.active')?.textContent ?? null;
       const active = document.activeElement as HTMLElement | null;
       return {
@@ -341,20 +319,10 @@ async function main(): Promise<void> {
     // Start a real transform drag, abandon it with Escape, and release: the authored document and
     // the undo history must be exactly what they were before the drag started.
     await page.locator('.toolbar-group[aria-label="Transform tool"] button:has-text("Move")').click();
-    const crateId = await page.evaluate(
-      () => (window as unknown as { __STUDIO__?: { session: { selection: { primary: string | null } } } }).__STUDIO__?.session.selection.primary ?? null,
-    );
+    const crateId = await page.evaluate(() => window.__STUDIO__?.session.selection.primary ?? null);
     const readCrate = () =>
       page.evaluate((id: string | null) => {
-        const studio = (window as unknown as {
-          __STUDIO__?: {
-            session: {
-              scene: { entities: Array<{ id: string; name: string; transform: { position: number[] } }> } | null;
-              snapshot(): { undoLabel: string | null; canUndo: boolean };
-            };
-            viewport?: () => { project(id: string): [number, number, number] | null; isDragging(): boolean } | null;
-          };
-        }).__STUDIO__;
+        const studio = window.__STUDIO__;
         const entity = studio?.session.scene?.entities.find((candidate) => candidate.id === id);
         return {
           id,
@@ -382,9 +350,7 @@ async function main(): Promise<void> {
         [0, -64],
         [64, 64],
       ] as Array<[number, number]>) {
-        await page.evaluate(() =>
-          (window as unknown as { __STUDIO__?: { viewport?: () => { focusSelection(): void } | null } }).__STUDIO__?.viewport?.()?.focusSelection(),
-        );
+        await page.evaluate(() => window.__STUDIO__?.viewport?.()?.focusSelection());
         await page.waitForTimeout(150);
         await page.mouse.move(centre.x + dx, centre.y + dy);
         await page.mouse.down();
@@ -445,7 +411,7 @@ async function main(): Promise<void> {
     await page.screenshot({ path: join(evidenceDir, 'editor-with-assets.png') });
 
     await page.reload({ waitUntil: 'load' });
-    await page.waitForFunction(() => (window as unknown as { __STUDIO__?: unknown }).__STUDIO__ !== undefined, undefined, {
+    await page.waitForFunction(() => window.__STUDIO__ !== undefined, undefined, {
       timeout: 30_000,
     });
     await page.click('.card:has-text("Stage 2 Room") button:has-text("Open")');
@@ -463,15 +429,7 @@ async function main(): Promise<void> {
     await page.click('button:has-text("Play")');
     await page.waitForSelector('.viewport-badge', { timeout: 20_000 });
     const playAnimation = await page.evaluate(async () => {
-      const studio = (window as unknown as {
-        __STUDIO__?: {
-          session: { scene: { entities: Array<{ id: string; name: string }> } | null };
-          viewport?: () => {
-            playAnimationState(id: string): { time: number; clip: string | null } | null;
-            playStats(): { loadedModels: number; animatedEntities: number; entities: number } | null;
-          } | null;
-        };
-      }).__STUDIO__;
+      const studio = window.__STUDIO__;
       const viewport = studio?.viewport?.();
       const entities = studio?.session.scene?.entities ?? [];
       const limbId = entities.find((entity) => entity.name === 'Limb')?.id ?? '';
@@ -497,7 +455,7 @@ async function main(): Promise<void> {
         first,
         second,
         crate,
-        stats: viewport.playStats(),
+        stats: viewport.playStats() as { loadedModels: number; animatedEntities: number; entities: number } | null,
         waitedMs: Date.now() - started,
       };
     });
@@ -531,19 +489,14 @@ async function main(): Promise<void> {
     if (crateFile) await unlink(join(assetDir, crateFile));
 
     await page.reload({ waitUntil: 'load' });
-    await page.waitForFunction(() => (window as unknown as { __STUDIO__?: unknown }).__STUDIO__ !== undefined, undefined, {
+    await page.waitForFunction(() => window.__STUDIO__ !== undefined, undefined, {
       timeout: 30_000,
     });
     await page.click('.card:has-text("Stage 2 Room") button:has-text("Open")');
     await page.waitForSelector('.tree-row', { timeout: 20_000 });
     await page.click('.tree-row:has-text("Crate A")');
     const missingState = await page.evaluate(async () => {
-      const studio = (window as unknown as {
-        __STUDIO__?: {
-          session: { selection: { primary: string | null }; snapshot(): { logs: Array<{ level: string; message: string; detail?: string }> } };
-          viewport?: () => { modelStatus(id: string): string } | null;
-        };
-      }).__STUDIO__;
+      const studio = window.__STUDIO__;
       await new Promise((resolve) => setTimeout(resolve, 1500));
       const id = studio?.session.selection.primary;
       const logs = studio?.session.snapshot().logs ?? [];
@@ -681,12 +634,7 @@ async function waitForModelStatus(page: Page, status: string, timeout: number): 
   return page
     .waitForFunction(
       (expected: string) => {
-        const studio = (window as unknown as {
-          __STUDIO__?: {
-            viewport?: () => { modelStatus(id: string): string } | null;
-            session: { selection: { primary: string | null } };
-          };
-        }).__STUDIO__;
+        const studio = window.__STUDIO__;
         const id = studio?.session.selection.primary;
         const viewport = studio?.viewport?.();
         return Boolean(id && viewport && viewport.modelStatus(id) === expected);

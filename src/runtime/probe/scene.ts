@@ -30,7 +30,7 @@ export function lookAtQuaternion(eye: [number, number, number], target: [number,
   return [x, y, z, w];
 }
 
-export const probeScene: SceneDocument = parseScene({
+const parsedProbeScene = parseScene({
   schemaVersion: SCENE_SCHEMA_VERSION,
   revision: 0,
   id: PROBE_SCENE_ID,
@@ -98,7 +98,18 @@ export const probeScene: SceneDocument = parseScene({
       components: [{ type: 'camera', mode: 'free', fov: 55, near: 0.1, far: 500 }],
     },
   ],
-} as unknown as SceneDocument).value as SceneDocument;
+});
+
+if (!parsedProbeScene.value) {
+  // Failures are loud: a built-in document that no longer parses is an engine bug, and a null
+  // scene would otherwise surface much later as a confusing crash inside the runtime.
+  throw new Error(
+    `the built-in probe scene is invalid: ${parsedProbeScene.issues.map((issue) => issue.message).join('; ')}`,
+  );
+}
+
+/** The probe scene, validated once at module load. */
+export const probeScene: SceneDocument = parsedProbeScene.value;
 
 /** `game.json` for the probe; the player entry point loads the equivalent JSON file. */
 export const probeGame: GameDocument = {

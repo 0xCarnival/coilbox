@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { componentSchema, type Component } from './components.js';
 import { PROJECT_SCHEMA_VERSION, ENGINE_VERSION, assetManifestSchema, gameSchema, type AssetManifest, type GameDocument } from './project.js';
 import { SCENE_SCHEMA_VERSION, sceneSchema, type Entity, type SceneDocument } from './scene.js';
+import type { JsonValue } from './primitives.js';
 
 /**
  * Structural validation (Zod) plus relationship validation (application logic),
@@ -27,13 +28,16 @@ export interface ValidationResult<T> {
   issues: ValidationIssue[];
 }
 
+/** Property kinds a behavior may declare in its registry metadata. */
+export type BehaviorPropertyKind = 'number' | 'boolean' | 'text' | 'enum' | 'entity' | 'asset';
+
 export interface SceneValidationContext {
   /** Known asset ids from the project's asset manifest, if available. */
   assetIds?: ReadonlySet<string>;
   /** Known behavior ids from the behavior registry, if available. */
   behaviorIds?: ReadonlySet<string>;
   /** Declared property descriptors per behavior id, used to check property names/types. */
-  behaviorProperties?: ReadonlyMap<string, ReadonlyMap<string, 'number' | 'boolean' | 'text' | 'enum' | 'entity' | 'asset'>>;
+  behaviorProperties?: ReadonlyMap<string, ReadonlyMap<string, BehaviorPropertyKind>>;
 }
 
 function error(code: string, path: string, message: string): ValidationIssue {
@@ -54,7 +58,16 @@ function zodIssues(prefix: string, err: z.ZodError): ValidationIssue[] {
 /** Zod can be lenient about object identity; keep only one component of each singleton type. */
 const SINGLETON_COMPONENTS = new Set(['primitive', 'model', 'camera', 'rigidBody', 'collider', 'animation', 'audio']);
 
-export function parseScene(input: unknown, context: SceneValidationContext = {}): ValidationResult<SceneDocument> {
+/**
+ * Readers for the values an authored document stores in its free-form `jsonObject` bags (behavior
+ * properties, HUD state, asset metadata). Naming them as type predicates keeps `typeof` in one place
+ * instead of at every use.
+ */
+const isJsonNumber = (value: JsonValue): value is number => typeof value === 'number';
+const isJsonBoolean = (value: JsonValue): value is boolean => typeof value === 'boolean';
+const isJsonString = (value: JsonValue): value is string => typeof value === 'string';
+
+export function parseScene(input: JsonValue, context: SceneValidationContext = {}): ValidationResult<SceneDocument> {
   const parsed = sceneSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, value: null, issues: zodIssues('scene', parsed.error) };
@@ -98,7 +111,7 @@ export function validateSceneRelationships(scene: SceneDocument, context: SceneV
       issues.push(error('parent-self', `${at}.parentId`, `entity "${entity.name}" is its own parent`));
     }
     const { position, rotation, scale } = entity.transform;
-    for (const [axis, value] of (['x', 'y', 'z'] as const).entries()) {
+    for (const axis of [0, 1, 2] as const) {
       if (!Number.isFinite(position[axis]) || !Number.isFinite(rotation[axis]) || !Number.isFinite(scale[axis])) {
         issues.push(error('non-finite-transform', `${at}.transform`, `transform of "${entity.name}" contains a non-finite value`));
         break;
@@ -202,24 +215,30 @@ export function validateSceneRelationships(scene: SceneDocument, context: SceneV
   return issues;
 }
 
-function matchesDescriptor(value: unknown, expected: 'number' | 'boolean' | 'text' | 'enum' | 'entity' | 'asset'): boolean {
+/**
+ * Whether a validated behavior property value satisfies the kind its descriptor declares.
+ *
+ * The value comes out of a behavior's `jsonObject` property bag, so it is read as the JSON domain
+ * the schema validated rather than poked at with ad-hoc `typeof` at each call site.
+ */
+function matchesDescriptor(value: JsonValue, expected: BehaviorPropertyKind): boolean {
   switch (expected) {
     case 'number':
-      return typeof value === 'number' && Number.isFinite(value);
+      return isJsonNumber(value) && Number.isFinite(value);
     case 'boolean':
-      return typeof value === 'boolean';
+      return isJsonBoolean(value);
     case 'text':
     case 'enum':
-      return typeof value === 'string';
+      return isJsonString(value);
     case 'entity':
     case 'asset':
-      return value === null || typeof value === 'string';
+      return value === null || isJsonString(value);
     default:
       return true;
   }
 }
 
-export function parseGame(input: unknown): ValidationResult<GameDocument> {
+export function parseGame(input: JsonValue): ValidationResult<GameDocument> {
   const parsed = gameSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, value: null, issues: zodIssues('game', parsed.error) };
@@ -257,7 +276,7 @@ export function parseGame(input: unknown): ValidationResult<GameDocument> {
   return { ok: issues.every((issue) => issue.severity !== 'error'), value: game, issues };
 }
 
-export function parseAssetManifest(input: unknown): ValidationResult<AssetManifest> {
+export function parseAssetManifest(input: JsonValue): ValidationResult<AssetManifest> {
   const parsed = assetManifestSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, value: null, issues: zodIssues('assets', parsed.error) };
@@ -283,7 +302,7 @@ export function parseAssetManifest(input: unknown): ValidationResult<AssetManife
 }
 
 /** Parse a single component in isolation (used by the inspector and by agent tooling). */
-export function parseComponent(input: unknown): ValidationResult<Component> {
+export function parseComponent(input: JsonValue): ValidationResult<Component> {
   const parsed = componentSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, value: null, issues: zodIssues('component', parsed.error) };

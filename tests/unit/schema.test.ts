@@ -7,6 +7,7 @@ import {
   parseGame,
   parseScene,
   validateSceneRelationships,
+  type JsonValue,
   type SceneDocument,
 } from '@schema/index.js';
 import { probeScene } from '@runtime/probe/scene.js';
@@ -19,7 +20,12 @@ import { probeScene } from '@runtime/probe/scene.js';
  * behavior properties, and schema-version compatibility.
  */
 
-function sceneWith(entities: unknown[], extra: Record<string, unknown> = {}): unknown {
+/**
+ * Build a scene-shaped JSON object. The return type is deliberately inferred rather than annotated:
+ * these helpers exist to construct input the schema must *reject*, so they cannot claim to be a
+ * `SceneDocument`.
+ */
+function sceneWith(entities: JsonValue[], extra: Record<string, JsonValue> = {}) {
   return {
     schemaVersion: SCENE_SCHEMA_VERSION,
     id: 'test',
@@ -29,7 +35,7 @@ function sceneWith(entities: unknown[], extra: Record<string, unknown> = {}): un
   };
 }
 
-const minimalEntity = (id: string, rest: Record<string, unknown> = {}) => ({
+const minimalEntity = (id: string, rest: Record<string, JsonValue> = {}) => ({
   id,
   name: id,
   ...rest,

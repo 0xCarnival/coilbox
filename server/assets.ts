@@ -9,6 +9,7 @@ import {
   type AssetManifest,
 } from '@schema/index.js';
 import { PROJECT_FILES, Workspace, WorkspaceError, writeFileAtomic } from './workspace.js';
+import { isJsonString, jsonArray, parseJson } from './json.js';
 
 /**
  * Asset import and replacement (plan §9, §14).
@@ -68,8 +69,12 @@ export const ASSET_KINDS: AssetKindSpec[] = [
   },
 ];
 
-/** Extensions a GLB may require that this build cannot decode. */
-const UNSUPPORTED_MODEL_EXTENSIONS: Record<string, string> = {
+/** Extensions a GLB may require that this build cannot decode, and what to do instead. */
+interface UnsupportedExtensionMessages {
+  readonly [extension: string]: string;
+}
+
+const UNSUPPORTED_MODEL_EXTENSIONS: UnsupportedExtensionMessages = {
   KHR_draco_mesh_compression: 'Draco-compressed geometry needs the Draco decoder, which this version does not bundle. Re-export without Draco compression.',
   EXT_meshopt_compression: 'meshopt-compressed geometry needs the meshopt decoder, which this version does not bundle. Re-export without meshopt compression.',
   KHR_texture_basisu: 'Basis Universal textures need the KTX2 decoder, which this version does not bundle. Re-export with PNG or JPEG textures.',
@@ -238,7 +243,7 @@ export class AssetService {
   async readManifest(projectRoot: string): Promise<AssetManifest> {
     const path = join(projectRoot, PROJECT_FILES.assetManifest);
     if (!existsSync(path)) return { schemaVersion: 1, assets: [] };
-    const raw = JSON.parse(await readFile(path, 'utf8')) as unknown;
+    const raw = parseJson(await readFile(path, 'utf8'));
     const parsed = parseAssetManifest(raw);
     if (!parsed.value) {
       throw new WorkspaceError('invalid-assets', 'assets/manifest.json is not valid', 422, parsed.issues);
@@ -367,11 +372,11 @@ function detectRequirements(bytes: Uint8Array, kind: AssetKind, warnings: string
     return [];
   }
   try {
-    const json = JSON.parse(new TextDecoder().decode(bytes.subarray(jsonStart, jsonStart + jsonLength)).trim()) as {
-      extensionsRequired?: string[];
-      extensionsUsed?: string[];
-    };
-    return [...new Set([...(json.extensionsRequired ?? []), ...(json.extensionsUsed ?? [])])].sort();
+    const chunk = parseJson(new TextDecoder().decode(bytes.subarray(jsonStart, jsonStart + jsonLength)).trim());
+    // Only declared string extensions count: a GLB that puts anything else in these arrays is
+    // malformed, and its entries are not extensions this build could look up.
+    const declared = [...(jsonArray(chunk, 'extensionsRequired') ?? []), ...(jsonArray(chunk, 'extensionsUsed') ?? [])];
+    return [...new Set(declared.filter(isJsonString))].sort();
   } catch {
     warnings.push('the GLB JSON chunk could not be parsed');
     return [];

@@ -1,4 +1,4 @@
-import type { Component, ComponentType } from '@schema/index.js';
+import type { Component, ComponentType, Quat, Vec3 } from '@schema/index.js';
 import { COMPONENT_LABELS } from '@schema/index.js';
 
 /**
@@ -241,8 +241,8 @@ export const COMPONENT_DESCRIPTORS: Record<ComponentType, ComponentDescriptor> =
 };
 
 /** Rotation is stored as a quaternion and presented in degrees (plan §7). */
-export function quaternionToEulerDegrees(quaternion: readonly number[]): [number, number, number] {
-  const [x, y, z, w] = quaternion as [number, number, number, number];
+export function quaternionToEulerDegrees(quaternion: Quat): [number, number, number] {
+  const [x, y, z, w] = quaternion;
   const sinrCosp = 2 * (w * x + y * z);
   const cosrCosp = 1 - 2 * (x * x + y * y);
   const roll = Math.atan2(sinrCosp, cosrCosp);
@@ -254,8 +254,8 @@ export function quaternionToEulerDegrees(quaternion: readonly number[]): [number
   return [radiansToDegrees(roll), radiansToDegrees(pitch), radiansToDegrees(yaw)];
 }
 
-export function eulerDegreesToQuaternion(degrees: readonly number[]): [number, number, number, number] {
-  const [roll, pitch, yaw] = [degreesToRadians(degrees[0] ?? 0), degreesToRadians(degrees[1] ?? 0), degreesToRadians(degrees[2] ?? 0)];
+export function eulerDegreesToQuaternion(degrees: Vec3): Quat {
+  const [roll, pitch, yaw] = [degreesToRadians(degrees[0]), degreesToRadians(degrees[1]), degreesToRadians(degrees[2])];
   const c1 = Math.cos(roll / 2);
   const c2 = Math.cos(pitch / 2);
   const c3 = Math.cos(yaw / 2);

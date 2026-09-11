@@ -1,10 +1,9 @@
 import wasmUrl from 'virtual:box3d-wasm-url';
-import { RuntimeWorld, RuntimeWorldError } from '@runtime/world.js';
+import { RuntimeWorld, RuntimeWorldError, type RuntimeStats } from '@runtime/world.js';
 import { createBox3DBackend } from '@runtime/physics/box3d-adapter.js';
 import type { PhysicsBackend } from '@runtime/physics/types.js';
 import { probeGame, probeScene, PROBE_BOX_ID, PROBE_DROP_Y, PROBE_RESTING_Y } from '@runtime/probe/scene.js';
-import * as threeNamespace from 'three';
-import { Quaternion as THREEQuaternion, Vector2, Vector3 } from 'three';
+import { Quaternion as THREEQuaternion, Vector3 } from 'three';
 
 /**
  * Stage 0 probe page.
@@ -70,7 +69,7 @@ interface ProbeHandle {
   step(): void;
   stop(): void;
   reset(): Promise<void>;
-  stats(): unknown;
+  stats(): RuntimeStats | null;
   samplePixels(): PixelStats;
   readState(): ProbeState;
   error(): string | null;

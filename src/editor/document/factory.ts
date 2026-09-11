@@ -1,4 +1,4 @@
-import type { Component, ComponentType, Entity, EntityId, PrimitiveShape, SceneDocument } from '@schema/index.js';
+import type { Component, ComponentType, Entity, EntityId, PrimitiveComponent, PrimitiveShape, SceneDocument } from '@schema/index.js';
 import * as THREE from 'three';
 import { createEntityId, findEntity } from './commands.js';
 import type { EditorCommand } from './commands.js';
@@ -153,18 +153,23 @@ export function componentsFor(kind: CreatableKind): Component[] {
           coneAngleDegrees: 30,
         },
       ];
-    default:
+    default: {
+      const { size } = PRIMITIVE_DEFAULTS[kind];
       return [
         {
           type: 'primitive',
           shape: kind,
-          size: [...PRIMITIVE_DEFAULTS[kind].size] as [number, number, number],
+          size: [size[0], size[1], size[2]],
           castShadow: true,
           receiveShadow: true,
         },
       ];
+    }
   }
 }
+
+/** Whether a component is the primitive a created shape always carries. */
+const isPrimitiveComponent = (component: Component): component is PrimitiveComponent => component.type === 'primitive';
 
 /** Small starter scene used when a project is created without a template. */
 export function createStarterScene(sceneId: string, name: string): SceneDocument {
@@ -174,7 +179,9 @@ export function createStarterScene(sceneId: string, name: string): SceneDocument
   const ground = createEntity('box', { id: 'ground', name: 'Ground', usedIds: used });
   used.add(ground.id);
   ground.transform.position = [0, -0.2, 0];
-  (ground.components[0] as Extract<Component, { type: 'primitive' }>).size = [10, 0.4, 10];
+  const groundShape = ground.components.find(isPrimitiveComponent);
+  if (!groundShape) throw new Error('a box entity must carry a primitive component');
+  groundShape.size = [10, 0.4, 10];
   ground.components.push({
     type: 'material',
     color: '#4b5563',

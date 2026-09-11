@@ -51,9 +51,32 @@ interface CheckResult {
   observed?: unknown;
 }
 
+/** The measurements the release evidence records, keyed by the check they support. */
+interface Stage5Measurements {
+  playStopCycles?: {
+    first: Record<string, number>;
+    last: Record<string, number>;
+    growth: Record<string, number>;
+    samples: Array<Record<string, number>>;
+  };
+  referenceScene?: {
+    frames: number;
+    medianFrameMs: number;
+    p95FrameMs: number;
+    medianPhysicsMs: number;
+    drawCalls: number;
+    triangles: number;
+    entities: number;
+    physicsBodies: number;
+    fps: number;
+  };
+  frameRateIndependence?: { stepsTaken: number; droppedTime: number; clampedTime: number };
+  narrowViewport?: { width: number; height: number; rendered: number; distinctColors: number; steps: number };
+}
+
 const checks: CheckResult[] = [];
 const steps: Array<{ name: string; ok: boolean; detail: string }> = [];
-const measurements: Record<string, unknown> = {};
+const measurements: Stage5Measurements = {};
 
 function record(result: CheckResult): void {
   checks.push(result);
@@ -301,20 +324,17 @@ async function main(): Promise<void> {
 
     // --- 20 Play/Stop cycles on a real game ---------------------------------
     await page.goto(`${server.url}player.html?project=./games/collect-room/`, { waitUntil: 'load' });
-    await page.waitForFunction(() => (window as unknown as { __PLAYER__?: unknown }).__PLAYER__ !== undefined, undefined, { timeout: 30_000 });
-    await page.evaluate(() => (window as unknown as { __PLAYER__: { ready: Promise<void> } }).__PLAYER__.ready);
+    await page.waitForFunction(() => window.__PLAYER__ !== undefined, undefined, { timeout: 30_000 });
+    await page.evaluate(() => window.__PLAYER__?.ready);
 
     const cycles: Array<Record<string, number>> = [];
     for (let cycle = 0; cycle < 20; cycle += 1) {
       const measured = await page.evaluate(async () => {
-        const player = (window as unknown as {
-          __PLAYER__: {
-            session: { restart(toStart?: boolean): Promise<boolean>; stats(): (Record<string, unknown> & { physics: Record<string, number> }) | null };
-          };
-        }).__PLAYER__;
-        await player.session.restart(true);
+        const session = window.__PLAYER__?.session;
+        if (!session) throw new Error('no player session');
+        await session.restart(true);
         await new Promise((resolve) => setTimeout(resolve, 120));
-        const stats = player.session.stats();
+        const stats = session.stats();
         return {
           geometries: Number(stats?.geometries ?? 0),
           textures: Number(stats?.textures ?? 0),
@@ -325,7 +345,7 @@ async function main(): Promise<void> {
           hudElements: Number(document.querySelectorAll('.coilbox-hud .hud-element').length),
         };
       });
-      cycles.push(measured as unknown as Record<string, number>);
+      cycles.push(measured);
     }
 
     const first = cycles[0]!;
@@ -352,28 +372,32 @@ async function main(): Promise<void> {
 
     // --- reference scene performance ----------------------------------------
     await page.goto(`${server.url}player.html?project=./games/${REFERENCE_PROJECT}/`, { waitUntil: 'load' });
-    await page.waitForFunction(() => (window as unknown as { __PLAYER__?: unknown }).__PLAYER__ !== undefined, undefined, { timeout: 30_000 });
-    await page.evaluate(() => (window as unknown as { __PLAYER__: { ready: Promise<void> } }).__PLAYER__.ready);
+    await page.waitForFunction(() => window.__PLAYER__ !== undefined, undefined, { timeout: 30_000 });
+    await page.evaluate(() => window.__PLAYER__?.ready);
     await page.waitForTimeout(2500); // warm-up before measuring
 
     const perf = await page.evaluate(async () => {
-      const player = (window as unknown as {
-        __PLAYER__: {
-          stats(): { fps: number; frameTimeMs: number; physicsTimeMs: number; drawCalls: number; triangles: number; entities: number; physicsBodies: number } | null;
-        };
-      }).__PLAYER__;
+      const player = window.__PLAYER__;
       const frames: number[] = [];
       const physics: number[] = [];
       const start = performance.now();
       while (performance.now() - start < 4000) {
         await new Promise((resolve) => requestAnimationFrame(() => resolve(undefined)));
-        const stats = player.stats();
-        if (stats) {
-          frames.push(stats.frameTimeMs);
-          physics.push(stats.physicsTimeMs);
+        const sample = player?.stats() as { frameTimeMs: number; physicsTimeMs: number } | null;
+        if (sample) {
+          frames.push(sample.frameTimeMs);
+          physics.push(sample.physicsTimeMs);
         }
       }
-      const stats = player.stats();
+      const stats = player?.stats() as {
+        fps: number;
+        frameTimeMs: number;
+        physicsTimeMs: number;
+        drawCalls: number;
+        triangles: number;
+        entities: number;
+        physicsBodies: number;
+      } | null;
       const sorted = [...frames].sort((a, b) => a - b);
       return {
         frames: frames.length,
@@ -399,16 +423,15 @@ async function main(): Promise<void> {
     // --- frame-rate independence ---------------------------------------------
     // A blocked main thread must not be replayed as hundreds of physics steps.
     const blocked = await page.evaluate(async () => {
-      const player = (window as unknown as {
-        __PLAYER__: { session: { current: { getLoopStats(): { steps: number; droppedTime: number; clampedTime: number } } } };
-      }).__PLAYER__;
-      const before = player.session.current.getLoopStats();
+      const world = window.__PLAYER__?.session?.current;
+      if (!world) throw new Error('no runtime world');
+      const before = world.getLoopStats();
       const start = performance.now();
       while (performance.now() - start < 400) {
         // Deliberately block the frame.
       }
       await new Promise((resolve) => setTimeout(resolve, 250));
-      const after = player.session.current.getLoopStats();
+      const after = world.getLoopStats();
       return {
         stepsTaken: after.steps - before.steps,
         droppedTime: after.droppedTime - before.droppedTime,
@@ -426,14 +449,13 @@ async function main(): Promise<void> {
 
     // --- tab backgrounding ----------------------------------------------------
     const backgrounded = await page.evaluate(async () => {
-      const player = (window as unknown as {
-        __PLAYER__: { session: { current: { getLoopStats(): { steps: number } } } };
-      }).__PLAYER__;
-      const before = player.session.current.getLoopStats();
+      const world = window.__PLAYER__?.session?.current;
+      if (!world) throw new Error('no runtime world');
+      const before = world.getLoopStats();
       // Simulate a hidden tab by blocking the loop through a long synchronous wait, which is
       // exactly what a suspended tab looks like to the accumulator.
       await new Promise((resolve) => setTimeout(resolve, 1200));
-      const after = player.session.current.getLoopStats();
+      const after = world.getLoopStats();
       return { stepsDuringWait: after.steps - before.steps };
     });
     record({
@@ -448,20 +470,23 @@ async function main(): Promise<void> {
     const narrow = await context.newPage();
     await narrow.setViewportSize({ width: 390, height: 844 });
     await narrow.goto(`${server.url}player.html?project=./games/collect-room/`, { waitUntil: 'load' });
-    await narrow.waitForFunction(() => (window as unknown as { __PLAYER__?: unknown }).__PLAYER__ !== undefined, undefined, { timeout: 30_000 });
-    await narrow.evaluate(() => (window as unknown as { __PLAYER__: { ready: Promise<void> } }).__PLAYER__.ready);
+    await narrow.waitForFunction(() => window.__PLAYER__ !== undefined, undefined, { timeout: 30_000 });
+    await narrow.evaluate(() => window.__PLAYER__?.ready);
     await narrow.waitForTimeout(1200);
     const narrowResult = await narrow.evaluate(() => {
-      const player = (window as unknown as {
-        __PLAYER__: { samplePixels(): { width: number; height: number; nonBackgroundPixels: number; distinctColors: number }; stats(): { steps: number } | null };
-      }).__PLAYER__;
-      const pixels = player.samplePixels();
+      const player = window.__PLAYER__;
+      const pixels = player?.samplePixels() as {
+        width: number;
+        height: number;
+        nonBackgroundPixels: number;
+        distinctColors: number;
+      };
       return {
         width: pixels.width,
         height: pixels.height,
         rendered: pixels.nonBackgroundPixels / (pixels.width * pixels.height),
         distinctColors: pixels.distinctColors,
-        steps: player.stats()?.steps ?? 0,
+        steps: (player?.stats() as { steps: number } | null)?.steps ?? 0,
       };
     });
     await narrow.screenshot({ path: join(evidenceDir, 'narrow-viewport.png') });
@@ -479,7 +504,7 @@ async function main(): Promise<void> {
     await studio.setViewportSize({ width: 1440, height: 900 });
     studio.on('pageerror', (error) => consoleErrors.push(`studio: ${String(error)}`));
     await studio.goto(server.url, { waitUntil: 'load' });
-    await studio.waitForFunction(() => (window as unknown as { __STUDIO__?: unknown }).__STUDIO__ !== undefined, undefined, { timeout: 30_000 });
+    await studio.waitForFunction(() => window.__STUDIO__ !== undefined, undefined, { timeout: 30_000 });
     await studio.click('.card:has-text("Gem Rush") button:has-text("Open")');
     await studio.waitForSelector('.tree-row', { timeout: 20_000 });
 
@@ -496,9 +521,7 @@ async function main(): Promise<void> {
       movedNames.push(name);
     }
     const movedDocument = await studio.evaluate(() => {
-      const session = (window as unknown as {
-        __STUDIO__?: { session: { scene: { entities: Array<{ name: string; transform: { position: number[] } }> } | null } };
-      }).__STUDIO__?.session;
+      const session = window.__STUDIO__?.session;
       return (session?.scene?.entities ?? [])
         .filter((entity) => entity.name.startsWith('Gem'))
         .map((entity) => ({ name: entity.name, x: entity.transform.position[0] }));
@@ -551,17 +574,13 @@ async function main(): Promise<void> {
     await studio.keyboard.press('Control+z');
     await studio.waitForTimeout(200);
     const afterUndo = await studio.evaluate(() => {
-      const session = (window as unknown as {
-        __STUDIO__?: { session: { scene: { entities: Array<{ id: string; components: Array<{ type: string; properties?: Record<string, unknown> }> }> } | null } };
-      }).__STUDIO__?.session;
+      const session = window.__STUDIO__?.session;
       return session?.scene?.entities.find((entity) => entity.id === 'player')?.components.find((c) => c.type === 'behavior')?.properties?.moveSpeed ?? null;
     });
     await studio.keyboard.press('Control+Shift+z');
     await studio.waitForTimeout(200);
     const afterRedo = await studio.evaluate(() => {
-      const session = (window as unknown as {
-        __STUDIO__?: { session: { scene: { entities: Array<{ id: string; components: Array<{ type: string; properties?: Record<string, unknown> }> }> } | null } };
-      }).__STUDIO__?.session;
+      const session = window.__STUDIO__?.session;
       return session?.scene?.entities.find((entity) => entity.id === 'player')?.components.find((c) => c.type === 'behavior')?.properties?.moveSpeed ?? null;
     });
     record({
@@ -579,8 +598,8 @@ async function main(): Promise<void> {
     await studio.waitForSelector('.viewport-badge', { timeout: 20_000 });
     await studio.waitForTimeout(1500);
     const playStats = await studio.evaluate(() => {
-      const api = (window as unknown as { __STUDIO__?: { viewport?: () => { playStats(): { state: string; steps: number; behaviors: number } | null } | null } }).__STUDIO__;
-      return api?.viewport?.()?.playStats() ?? null;
+      const viewport = window.__STUDIO__?.viewport?.();
+      return (viewport?.playStats() ?? null) as { state: string; steps: number; behaviors: number } | null;
     });
     await studio.screenshot({ path: join(evidenceDir, 'acceptance-play.png') });
     await studio.click('button:has-text("Stop")');
@@ -595,13 +614,11 @@ async function main(): Promise<void> {
 
     // 10: reopen.
     await studio.reload({ waitUntil: 'load' });
-    await studio.waitForFunction(() => (window as unknown as { __STUDIO__?: unknown }).__STUDIO__ !== undefined, undefined, { timeout: 30_000 });
+    await studio.waitForFunction(() => window.__STUDIO__ !== undefined, undefined, { timeout: 30_000 });
     await studio.click('.card:has-text("Gem Rush") button:has-text("Open")');
     await studio.waitForSelector('.tree-row', { timeout: 20_000 });
     const reopened = await studio.evaluate(() => {
-      const session = (window as unknown as {
-        __STUDIO__?: { session: { scene: { entities: Array<{ id: string; name: string; components: Array<{ type: string; properties?: Record<string, unknown>; assetId?: string }> }> } | null } };
-      }).__STUDIO__?.session;
+      const session = window.__STUDIO__?.session;
       const player = session?.scene?.entities.find((entity) => entity.id === 'player');
       const gems = (session?.scene?.entities ?? []).filter((entity) => entity.name.startsWith('Gem'));
       const swapped = session?.scene?.entities.find((entity) => entity.name === 'Model Swap');
@@ -676,8 +693,8 @@ async function main(): Promise<void> {
       if (message.type() === 'error') exportErrors.push(message.text());
     });
     await page.goto(exportServer.url, { waitUntil: 'load' });
-    await page.waitForFunction(() => (window as unknown as { __PLAYER__?: unknown }).__PLAYER__ !== undefined, undefined, { timeout: 30_000 });
-    await page.evaluate(() => (window as unknown as { __PLAYER__: { ready: Promise<void> } }).__PLAYER__.ready);
+    await page.waitForFunction(() => window.__PLAYER__ !== undefined, undefined, { timeout: 30_000 });
+    await page.evaluate(() => window.__PLAYER__?.ready);
 
     // Audio activation needs a user gesture. How that gesture was delivered is part of the
     // evidence: a swallowed click failure would otherwise look like a broken audio system.
@@ -692,10 +709,13 @@ async function main(): Promise<void> {
     }
     await page.waitForTimeout(1500);
     const state = await page.evaluate(() => {
-      const player = (window as unknown as {
-        __PLAYER__: { state(): { errors: string[] }; gameState(): Record<string, unknown> | null; stats(): { steps: number; audioActivated: boolean } | null };
-      }).__PLAYER__;
-      return { state: player.state(), gameState: player.gameState(), stats: player.stats() };
+      const player = window.__PLAYER__;
+      if (!player) throw new Error('no player');
+      return {
+        state: player.state(),
+        gameState: player.gameState(),
+        stats: player.stats() as { steps: number; audioActivated: boolean } | null,
+      };
     });
 
     const requests = exportServer.requests;
@@ -730,25 +750,15 @@ async function main(): Promise<void> {
     // scheduled by `restart` but has not run a frame yet, so the values are the ones the restart
     // built rather than whatever gameplay reached in the meantime.
     const restart = await page.evaluate(async () => {
-      const player = (window as unknown as {
-        __PLAYER__: {
-          game: { settings?: { initialGameState?: Record<string, unknown> } } | null;
-          session: {
-            restart(toStart?: boolean): Promise<boolean>;
-            current: {
-              getGameState(): { snapshot(): Record<string, unknown> };
-              getState(): string;
-              pause(): void;
-              resume(): void;
-            };
-          };
-        };
-      }).__PLAYER__;
+      const player = window.__PLAYER__;
+      const session = player?.session;
+      const previousWorld = session?.current;
+      if (!player || !session || !previousWorld) throw new Error('no runtime world');
       const authored = player.game?.settings?.initialGameState ?? {};
-      const previousWorld = player.session.current;
       const before = previousWorld.getGameState().snapshot();
-      await player.session.restart(true);
-      const world = player.session.current;
+      await session.restart(true);
+      const world = session.current;
+      if (!world) throw new Error('restart produced no world');
       world.pause();
       const after = world.getGameState().snapshot();
       const pausedState = world.getState();
@@ -849,14 +859,7 @@ async function selectComponentField(page: Page, label: string, value: string): P
 /** The asset id of the selected entity's model component, read from the authored document. */
 async function readSelectedModelAsset(page: Page): Promise<string | null> {
   return page.evaluate(() => {
-    const studio = (window as unknown as {
-      __STUDIO__?: {
-        session: {
-          selection: { primary: string | null };
-          scene: { entities: Array<{ id: string; components: Array<{ type: string; assetId?: string }> }> } | null;
-        };
-      };
-    }).__STUDIO__;
+    const studio = window.__STUDIO__;
     const id = studio?.session.selection.primary;
     const entity = studio?.session.scene?.entities.find((candidate) => candidate.id === id);
     return entity?.components.find((component) => component.type === 'model')?.assetId ?? null;
@@ -868,12 +871,7 @@ async function waitForModelStatus(page: Page, status: string, timeout: number): 
   return page
     .waitForFunction(
       (expected: string) => {
-        const studio = (window as unknown as {
-          __STUDIO__?: {
-            viewport?: () => { modelStatus(id: string): string } | null;
-            session: { selection: { primary: string | null } };
-          };
-        }).__STUDIO__;
+        const studio = window.__STUDIO__;
         const id = studio?.session.selection.primary;
         const viewport = studio?.viewport?.();
         return Boolean(id && viewport && viewport.modelStatus(id) === expected);

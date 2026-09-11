@@ -1,8 +1,9 @@
 import { watch, type FSWatcher } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { parseScene, type SceneDocument } from '@schema/index.js';
+import { parseScene, type JsonValue, type SceneDocument } from '@schema/index.js';
 import { PROJECT_FILES, Workspace } from './workspace.js';
+import { parseJson } from './json.js';
 
 /**
  * External file watching (plan §11).
@@ -132,9 +133,9 @@ export class ProjectWatcher {
       return;
     }
 
-    let raw: unknown;
+    let raw: JsonValue;
     try {
-      raw = JSON.parse(await readFile(join(projectRoot, relativePath), 'utf8'));
+      raw = parseJson(await readFile(join(projectRoot, relativePath), 'utf8'));
     } catch (cause) {
       this.emit({
         kind: 'invalid',

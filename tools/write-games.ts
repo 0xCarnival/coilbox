@@ -2,7 +2,7 @@ import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ENGINE_VERSION, PROJECT_SCHEMA_VERSION, SCENE_SCHEMA_VERSION } from '../src/schema/index.js';
-import type { Component, Entity, SceneDocument } from '../src/schema/index.js';
+import type { Component, Entity, GameDocumentInput, SceneDocument } from '../src/schema/index.js';
 import { BEHAVIOR_LIBRARY } from '../src/runtime/behaviors/library.js';
 import { BehaviorRegistry } from '../src/runtime/behaviors/registry.js';
 import { lookAt } from '../src/editor/document/factory.js';
@@ -109,10 +109,13 @@ const collider = (
   ...extra,
 });
 
-const behavior = (behaviorId: string, properties: Record<string, never> | Record<string, unknown> = {}): Component => ({
+/** The scalar properties a registered behavior reads: the values the inspector edits. */
+type BehaviorProperties = Record<string, string | number | boolean>;
+
+const behavior = (behaviorId: string, properties: BehaviorProperties = {}): Component => ({
   type: 'behavior',
   behaviorId,
-  properties: properties as Record<string, never>,
+  properties,
 });
 
 const DIRECTIONAL_SUN = (position: Vec3, intensity = 2.2): Component => ({
@@ -147,7 +150,7 @@ const AMBIENT_FILL: Component = {
 
 // ----------------------------------------------------------------- collect-room
 
-function collectRoom(): { scene: SceneDocument; game: Record<string, unknown>; readme: string } {
+function collectRoom(): BuiltGame {
   const roomHalf = 8;
   const wallHeight = 2;
   const wallThickness = 0.5;
@@ -307,7 +310,7 @@ function collectRoom(): { scene: SceneDocument; game: Record<string, unknown>; r
     entities,
   };
 
-  const game = {
+  const game: GameDocumentInput = {
     schemaVersion: PROJECT_SCHEMA_VERSION,
     engineVersion: ENGINE_VERSION,
     engineCompat: ENGINE_VERSION,
@@ -388,7 +391,7 @@ function collectRoom(): { scene: SceneDocument; game: Record<string, unknown>; r
 
 // ----------------------------------------------------------------- physics-targets
 
-function physicsTargets(): { scene: SceneDocument; game: Record<string, unknown>; readme: string } {
+function physicsTargets(): BuiltGame {
   const targetPositions: Array<{ position: Vec3; size: Vec3; color: string }> = [
     { position: [-3, 1.2, -2], size: [1, 2.4, 1], color: '#e2705f' },
     { position: [-1, 1.2, -2], size: [1, 2.4, 1], color: '#e2a05f' },
@@ -481,7 +484,7 @@ function physicsTargets(): { scene: SceneDocument; game: Record<string, unknown>
     entities,
   };
 
-  const game = {
+  const game: GameDocumentInput = {
     schemaVersion: PROJECT_SCHEMA_VERSION,
     engineVersion: ENGINE_VERSION,
     engineCompat: ENGINE_VERSION,
@@ -569,9 +572,18 @@ function physicsTargets(): { scene: SceneDocument; game: Record<string, unknown>
 
 interface BuiltGame {
   scene: SceneDocument;
-  game: Record<string, unknown>;
+  game: GameDocumentInput;
   readme: string;
 }
+
+/** The project files a generated game ships, keyed by their path inside the project. */
+type GameSourceFiles = {
+  'game.json': string;
+  'scenes/main.scene.json': string;
+  'assets/manifest.json': string;
+  'scripts/registry.json': string;
+  'README.md': string;
+};
 
 async function writeFiles(target: string, files: Record<string, string>, label: string): Promise<void> {
   for (const [relative, contents] of Object.entries(files)) {
@@ -582,7 +594,7 @@ async function writeFiles(target: string, files: Record<string, string>, label: 
   }
 }
 
-function filesFor(built: BuiltGame): Record<string, string> {
+function filesFor(built: BuiltGame): GameSourceFiles {
   return {
     'game.json': `${JSON.stringify(built.game, null, 2)}\n`,
     'scenes/main.scene.json': `${JSON.stringify(built.scene, null, 2)}\n`,

@@ -179,10 +179,12 @@ describe('source export and import', () => {
   });
 
   it('refuses a newer schema version with an explanation', async () => {
-    const game = JSON.parse(await readFile(join(workspaceRoot, 'alpha', 'game.json'), 'utf8')) as Record<string, unknown>;
+    // The project documents are copied through byte-for-byte: this test is about the compat
+    // manifest, so re-encoding the game document would add nothing.
+    const game = await readFile(join(workspaceRoot, 'alpha', 'game.json'));
     const scene = await readFile(join(workspaceRoot, 'alpha', 'scenes', 'main.scene.json'));
     const archive = createTarGz([
-      { path: 'game.json', bytes: new TextEncoder().encode(JSON.stringify(game)) },
+      { path: 'game.json', bytes: new Uint8Array(game) },
       { path: 'scenes/main.scene.json', bytes: new Uint8Array(scene) },
       { path: 'COMPATIBILITY.json', bytes: new TextEncoder().encode(JSON.stringify({ schemaVersion: 99, engineCompat: '9.9.9' })) },
     ]);

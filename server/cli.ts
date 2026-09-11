@@ -1,5 +1,6 @@
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
+import type { ViteDevServer } from 'vite';
 import { startApiServer, type ApiServerHandle } from './api.js';
 import { Workspace } from './workspace.js';
 import { buildGame } from './build.js';
@@ -38,13 +39,14 @@ export function createWorkspace(overrides: { root?: string; templatesRoot?: stri
 interface ParsedArgs {
   command: string;
   positionals: string[];
-  flags: Map<string, string | true>;
+  /** Each flag's value, or `null` for a bare switch such as `--keep-build`. */
+  flags: Map<string, string | null>;
 }
 
 function parseArgs(argv: string[]): ParsedArgs {
   const [command = 'help', ...rest] = argv;
   const positionals: string[] = [];
-  const flags = new Map<string, string | true>();
+  const flags = new Map<string, string | null>();
   for (let index = 0; index < rest.length; index += 1) {
     const token = rest[index] ?? '';
     if (token.startsWith('--')) {
@@ -58,7 +60,7 @@ function parseArgs(argv: string[]): ParsedArgs {
         flags.set(name ?? '', next);
         index += 1;
       } else {
-        flags.set(name ?? '', true);
+        flags.set(name ?? '', null);
       }
     } else {
       positionals.push(token);
@@ -67,19 +69,34 @@ function parseArgs(argv: string[]): ParsedArgs {
   return { command, positionals, flags };
 }
 
+/**
+ * The text of a `--name value` or `--name=value` flag, looked up once. `undefined` means the flag
+ * was not given, or was given as a bare switch (`--keep-build` is not a value). `--name=` is the
+ * empty string, which is a value and stays distinguishable from "not given".
+ */
+function stringFlag(args: ParsedArgs, name: string): string | undefined {
+  return args.flags.get(name) ?? undefined;
+}
+
+/** The numeric value of a flag; `undefined` when the flag was not given (or was a bare switch). */
+function numberFlag(args: ParsedArgs, name: string): number | undefined {
+  const value = stringFlag(args, name);
+  return value === undefined ? undefined : Number(value);
+}
+
 async function startDev(): Promise<void> {
   const args = parseArgs(['dev', ...process.argv.slice(3)]);
-  const workspaceRoot = typeof args.flags.get('workspace') === 'string' ? (args.flags.get('workspace') as string) : defaultWorkspaceRoot();
+  const workspaceRoot = stringFlag(args, 'workspace') ?? defaultWorkspaceRoot();
   const workspace = createWorkspace({ root: workspaceRoot });
   await workspace.ensureRoot();
 
   let api: ApiServerHandle | null = null;
-  let vite: { close(): Promise<void>; printUrls?(): void; resolvedUrls?: { local: string[] } } | null = null;
+  let vite: ViteDevServer | null = null;
 
   try {
     api = await startApiServer({
       workspace,
-      port: typeof args.flags.get('api-port') === 'string' ? Number(args.flags.get('api-port')) : undefined,
+      port: numberFlag(args, 'api-port'),
       logger: (message) => process.stdout.write(`${message}\n`),
     });
 
@@ -87,14 +104,14 @@ async function startDev(): Promise<void> {
     const server = await createServer({
       configFile: join(repositoryRoot, 'vite.config.ts'),
       server: {
-        port: typeof args.flags.get('port') === 'string' ? Number(args.flags.get('port')) : undefined,
+        port: numberFlag(args, 'port'),
         proxy: {
           '/api': { target: api.url, changeOrigin: false },
         },
       },
     });
     await server.listen();
-    vite = server as unknown as { close(): Promise<void>; resolvedUrls?: { local: string[] } };
+    vite = server;
     const urls = vite.resolvedUrls?.local ?? [];
     process.stdout.write(`\nCoilbox ready\n  editor:    ${urls[0] ?? 'see vite output'}index.html\n  probe:     ${urls[0] ?? ''}probe.html\n  workspace: ${workspaceRoot}\n\n`);
   } catch (error) {
@@ -116,20 +133,18 @@ async function main(): Promise<void> {
   /** Every project command accepts --workspace, so an agent can work in another folder. */
   const workspaceFor = (): Workspace =>
     createWorkspace({
-      root: typeof args.flags.get('workspace') === 'string' ? (args.flags.get('workspace') as string) : undefined,
-      templatesRoot: typeof args.flags.get('templates') === 'string' ? (args.flags.get('templates') as string) : undefined,
+      root: stringFlag(args, 'workspace'),
+      templatesRoot: stringFlag(args, 'templates'),
     });
   switch (args.command) {
     case 'dev':
       await startDev();
       return;
     case 'api': {
-      const workspace = createWorkspace({
-        root: typeof args.flags.get('workspace') === 'string' ? (args.flags.get('workspace') as string) : undefined,
-      });
+      const workspace = createWorkspace({ root: stringFlag(args, 'workspace') });
       const api = await startApiServer({
         workspace,
-        port: typeof args.flags.get('port') === 'string' ? Number(args.flags.get('port')) : undefined,
+        port: numberFlag(args, 'port'),
         logger: (message) => process.stdout.write(`${message}\n`),
       });
       process.stdout.write(`session token: ${api.token}\n`);
@@ -153,8 +168,8 @@ async function main(): Promise<void> {
       const workspace = workspaceFor();
       const project = await workspace.createProject({
         id,
-        name: typeof args.flags.get('name') === 'string' ? (args.flags.get('name') as string) : id,
-        template: typeof args.flags.get('template') === 'string' ? (args.flags.get('template') as string) : 'blank',
+        name: stringFlag(args, 'name') ?? id,
+        template: stringFlag(args, 'template') ?? 'blank',
       });
       process.stdout.write(`created "${project.name}" (${project.id}) in ${project.directory}\n`);
       return;
@@ -166,7 +181,7 @@ async function main(): Promise<void> {
       const result = await buildGame({
         workspace,
         projectId: id,
-        outSubdirectory: typeof args.flags.get('out') === 'string' ? (args.flags.get('out') as string) : undefined,
+        outSubdirectory: stringFlag(args, 'out'),
         log: (message) => process.stdout.write(`${message}\n`),
       });
       process.stdout.write(`\nexported to ${result.outDir}\n`);
@@ -180,7 +195,7 @@ async function main(): Promise<void> {
       const result = await testGame({
         workspace,
         projectId: id,
-        seconds: typeof args.flags.get('seconds') === 'string' ? Number(args.flags.get('seconds')) : undefined,
+        seconds: numberFlag(args, 'seconds'),
         keepBuild: args.flags.has('keep-build'),
         log: (message) => process.stdout.write(`${message}\n`),
       });
@@ -194,10 +209,10 @@ async function main(): Promise<void> {
     case 'duplicate': {
       const id = args.positionals[0];
       if (!id) throw new Error('usage: studio duplicate <game-id> --as <new-id> [--name "New Name"]');
-      const newId = typeof args.flags.get('as') === 'string' ? (args.flags.get('as') as string) : `${id}-copy`;
+      const newId = stringFlag(args, 'as') ?? `${id}-copy`;
       const result = await new ProjectManager(workspaceFor()).duplicate(id, {
         newId,
-        newName: typeof args.flags.get('name') === 'string' ? (args.flags.get('name') as string) : undefined,
+        newName: stringFlag(args, 'name'),
       });
       process.stdout.write(`${result.detail}\n`);
       return;
@@ -206,7 +221,7 @@ async function main(): Promise<void> {
       const id = args.positionals[0];
       if (!id) throw new Error('usage: studio archive <game-id> [--reason "why"]');
       const result = await new ProjectManager(workspaceFor()).archive(id, {
-        reason: typeof args.flags.get('reason') === 'string' ? (args.flags.get('reason') as string) : undefined,
+        reason: stringFlag(args, 'reason'),
       });
       process.stdout.write(`${result.detail}\n`);
       return;
@@ -234,7 +249,7 @@ async function main(): Promise<void> {
       if (!id) throw new Error('usage: studio export-source <game-id> [--out file.tar.gz]');
       const manager = new ProjectManager(workspaceFor());
       const exported = await manager.exportSource(id);
-      const out = typeof args.flags.get('out') === 'string' ? (args.flags.get('out') as string) : `${id}-source.tar.gz`;
+      const out = stringFlag(args, 'out') ?? `${id}-source.tar.gz`;
       await writeFile(out, exported.bytes);
       process.stdout.write(`${exported.detail} -> ${out}\n`);
       return;
@@ -245,8 +260,8 @@ async function main(): Promise<void> {
       const { readFile } = await import('node:fs/promises');
       const bytes = new Uint8Array(await readFile(file));
       const result = await new ProjectManager(workspaceFor()).importSource(bytes, {
-        projectId: typeof args.flags.get('as') === 'string' ? (args.flags.get('as') as string) : undefined,
-        name: typeof args.flags.get('name') === 'string' ? (args.flags.get('name') as string) : undefined,
+        projectId: stringFlag(args, 'as'),
+        name: stringFlag(args, 'name'),
       });
       process.stdout.write(`${result.detail}\n`);
       for (const warning of result.warnings) process.stdout.write(`warning: ${warning}\n`);

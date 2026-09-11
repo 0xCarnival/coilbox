@@ -10,10 +10,12 @@ import {
   parseScene,
   type AssetManifest,
   type GameDocument,
+  type JsonValue,
   type SceneDocument,
   type ValidationIssue,
 } from '@schema/index.js';
 import { assertProjectRelative, assertSafeSegment, resolveInside, UnsafePathError } from './paths.js';
+import { jsonArray, jsonNumber, jsonString, parseJson } from './json.js';
 
 /**
  * Project storage for the workspace service (plan §7, §13).
@@ -47,6 +49,16 @@ export interface ProjectSummary {
 export interface ProjectDetail extends ProjectSummary {
   game: GameDocument;
   scenes: Array<{ id: string; name: string; path: string }>;
+}
+
+/**
+ * `scripts/registry.json`: the declarative behavior metadata the inspector renders from and the
+ * validator checks against. Entries stay unparsed here — `behaviorValidationContext` reads the
+ * fields it checks one by one rather than trusting the document because it parsed.
+ */
+export interface BehaviorRegistryDocument {
+  schemaVersion: number;
+  behaviors: JsonValue[];
 }
 
 export class WorkspaceError extends Error {
@@ -137,13 +149,13 @@ export class Workspace {
       if (!isDirectoryLike(entry) || entry.name.startsWith('.')) continue;
       const gamePath = join(this.root, entry.name, PROJECT_FILES.game);
       if (!existsSync(gamePath)) continue;
-      const raw = await readJson(gamePath).catch((error: unknown) => {
+      const raw = await readJson(gamePath).catch((cause: unknown) => {
         // Remember it: "game.json is not valid JSON" is a far more useful answer than
         // "project not found" when the folder is sitting right there.
-        if (error instanceof WorkspaceError && !parseFailure) parseFailure = error;
+        if (cause instanceof WorkspaceError && !parseFailure) parseFailure = cause;
         return null;
       });
-      if (raw && typeof raw === 'object' && (raw as { id?: unknown }).id === projectId) return entry.name;
+      if (jsonString(raw, 'id') === projectId) return entry.name;
     }
     if (parseFailure) throw parseFailure;
     throw new WorkspaceError('project-not-found', `no project with id "${projectId}" in the workspace`, 404);
@@ -208,17 +220,18 @@ export class Workspace {
    * and the validator checks against. Executable behavior code lives in the runtime bundle, not
    * here — editing a scene must never execute a behavior constructor (plan §10).
    */
-  async readBehaviorRegistry(projectId: string): Promise<{ schemaVersion: number; behaviors: unknown[] }> {
+  async readBehaviorRegistry(projectId: string): Promise<BehaviorRegistryDocument> {
     const detail = await this.readProject(projectId);
     const projectRoot = await this.projectRoot(projectId);
     const relativePath = assertProjectRelative(detail.game.behaviorRegistry);
     const path = join(projectRoot, relativePath);
     if (!existsSync(path)) return { schemaVersion: 1, behaviors: [] };
-    const raw = (await readJson(path).catch(() => null)) as { schemaVersion?: number; behaviors?: unknown[] } | null;
-    if (!raw || !Array.isArray(raw.behaviors)) {
+    const raw = await readJson(path).catch(() => null);
+    const behaviors = jsonArray(raw, 'behaviors');
+    if (behaviors === undefined) {
       throw new WorkspaceError('invalid-registry', `${relativePath} does not contain a behaviors array`, 422);
     }
-    return { schemaVersion: raw.schemaVersion ?? 1, behaviors: raw.behaviors };
+    return { schemaVersion: jsonNumber(raw, 'schemaVersion') ?? 1, behaviors };
   }
 
   async readAssetManifest(projectRoot: string, game: GameDocument): Promise<AssetManifest> {
@@ -247,11 +260,15 @@ export class Workspace {
    * - The write goes to a temporary file and is renamed into place, so an interrupted
    *   save leaves the previous valid document intact.
    * - The replaced document is copied into the recovery folder first.
+   *
+   * `scene` is whatever the caller holds — parsed JSON from a client, a document read back from
+   * disk, or anything else the project format can express — because this method is the boundary:
+   * `parseScene` below decides whether it is a document, and refuses to write when it is not.
    */
-  async writeScene(
+  async writeScene<Input extends JsonValue>(
     projectId: string,
     sceneId: string,
-    scene: unknown,
+    scene: Input,
     options: { expectedRevision?: number; createRecovery?: boolean } = {},
   ): Promise<{ scene: SceneDocument; bytes: number }> {
     assertSafeSegment(sceneId, 'scene id');
@@ -294,7 +311,7 @@ export class Workspace {
     return { scene: nextDocument, bytes: Buffer.byteLength(serialised) };
   }
 
-  private async writeRecoveryCopy(projectRoot: string, scenePath: string, document: unknown): Promise<void> {
+  private async writeRecoveryCopy(projectRoot: string, scenePath: string, document: JsonValue): Promise<void> {
     const folder = join(projectRoot, PROJECT_FILES.internal, 'recovery');
     await mkdir(folder, { recursive: true });
     const stamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -433,29 +450,33 @@ export class Workspace {
   }
 }
 
+/** What the scene validator needs to know about a project's declared behaviors. */
+export interface BehaviorValidationContext {
+  behaviorIds: Set<string>;
+  behaviorProperties: Map<string, Map<string, BehaviorPropertyType>>;
+}
+
 /**
  * Turn a project's declared behaviors into the context the scene validator needs, so
  * `studio validate` catches an unregistered behavior or a mistyped property instead of leaving it
  * for the runtime to discover.
  */
-function behaviorValidationContext(registry: { behaviors: unknown[] }): {
-  behaviorIds: Set<string>;
-  behaviorProperties: Map<string, Map<string, BehaviorPropertyType>>;
-} {
+function behaviorValidationContext(registry: BehaviorRegistryDocument): BehaviorValidationContext {
   const behaviorIds = new Set<string>();
   const behaviorProperties = new Map<string, Map<string, BehaviorPropertyType>>();
-  for (const entry of registry.behaviors as Array<{ id?: unknown; properties?: unknown }>) {
-    if (typeof entry?.id !== 'string') continue;
-    behaviorIds.add(entry.id);
+  for (const entry of registry.behaviors) {
+    const id = jsonString(entry, 'id');
+    if (id === undefined) continue;
+    behaviorIds.add(id);
     const descriptors = new Map<string, BehaviorPropertyType>();
-    if (Array.isArray(entry.properties)) {
-      for (const property of entry.properties as Array<{ key?: unknown; type?: unknown }>) {
-        if (typeof property?.key === 'string' && isBehaviorPropertyType(property.type)) {
-          descriptors.set(property.key, property.type);
-        }
+    for (const property of jsonArray(entry, 'properties') ?? []) {
+      const key = jsonString(property, 'key');
+      const type = jsonString(property, 'type');
+      if (key !== undefined && isBehaviorPropertyType(type)) {
+        descriptors.set(key, type);
       }
     }
-    behaviorProperties.set(entry.id, descriptors);
+    behaviorProperties.set(id, descriptors);
   }
   return { behaviorIds, behaviorProperties };
 }
@@ -470,17 +491,15 @@ function isDirectoryLike(entry: { isDirectory(): boolean; isSymbolicLink(): bool
   return entry.isDirectory() || entry.isSymbolicLink();
 }
 
-function readRevision(document: unknown): number {
-  if (document && typeof document === 'object' && typeof (document as { revision?: unknown }).revision === 'number') {
-    return (document as { revision: number }).revision;
-  }
-  return 0;
+/** The revision a document on disk declares, or 0 when it declares none. */
+function readRevision(document: JsonValue): number {
+  return jsonNumber(document, 'revision') ?? 0;
 }
 
-async function readJson(path: string): Promise<unknown> {
+async function readJson(path: string): Promise<JsonValue> {
   const text = await readFile(path, 'utf8');
   try {
-    return JSON.parse(text) as unknown;
+    return parseJson(text);
   } catch (cause) {
     throw new WorkspaceError('invalid-json', `${basename(path)} is not valid JSON: ${String(cause)}`, 422);
   }

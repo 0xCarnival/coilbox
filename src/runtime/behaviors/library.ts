@@ -1,3 +1,5 @@
+import type { JsonValue } from '@schema/index.js';
+
 import type { BehaviorContext, BehaviorDefinition, BehaviorInstance, BehaviorPropertyDescriptor } from './types.js';
 
 /**
@@ -57,18 +59,44 @@ function distanceBetween(context: BehaviorContext, a: string | null, b: string):
   return Math.hypot(first[0]! - second[0]!, first[1]! - second[1]!, first[2]! - second[2]!);
 }
 
+const isJsonNumber = (value: JsonValue | undefined): value is number => typeof value === 'number';
+const isJsonString = (value: JsonValue | undefined): value is string => typeof value === 'string';
+const isJsonBoolean = (value: JsonValue | undefined): value is boolean => typeof value === 'boolean';
+
+/**
+ * Read a declared numeric property once, falling back when the scene omitted it or stored a value
+ * of another shape. The fallback always repeats the default declared in the behavior's
+ * `properties` array, which is defensive: declared defaults are merged with stored values.
+ */
+const numberProperty = (context: BehaviorContext, key: string, fallback: number): number => {
+  const value = context.properties[key];
+  return isJsonNumber(value) && Number.isFinite(value) ? value : fallback;
+};
+
+/** Read a declared text property once, falling back when the scene omitted it. */
+const stringProperty = (context: BehaviorContext, key: string, fallback: string): string => {
+  const value = context.properties[key];
+  return isJsonString(value) ? value : fallback;
+};
+
+/**
+ * Read a declared boolean property once, falling back when the scene omitted it.
+ *
+ * Only an explicit `false` is false: any other stored JSON value (a missing key, `null`, a
+ * number) yields the fallback, which is how the `property !== false` idiom this replaces reads.
+ */
+const booleanProperty = (context: BehaviorContext, key: string, fallback: boolean): boolean => {
+  const value = context.properties[key];
+  return isJsonBoolean(value) ? value : fallback;
+};
+
 /** Resolve the player entity from a behavior's property, falling back to the name "Player". */
 function playerId(context: BehaviorContext): string | null {
-  const configured = context.properties.playerName;
-  if (typeof configured === 'string' && configured.length > 0) {
+  const configured = stringProperty(context, 'playerName', '');
+  if (configured.length > 0) {
     return context.findEntityByName(configured) ?? context.findEntityById(configured);
   }
   return context.findEntityByName('Player');
-}
-
-function numberProperty(context: BehaviorContext, key: string, fallback: number): number {
-  const value = context.properties[key];
-  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 }
 
 /**
@@ -154,11 +182,6 @@ export const playerMover: BehaviorDefinition = {
     let yaw = 0;
     const transform = new Float32Array(7);
 
-    const readNumber = (key: string, fallback: number): number => {
-      const value = context.properties[key];
-      return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
-    };
-
     const start = () => {
       if (!context.isPhysicsBody(context.entityId)) {
         context.log('Character Mover needs a kinematic rigid body on this entity');
@@ -166,19 +189,19 @@ export const playerMover: BehaviorDefinition = {
       }
       context.readTransform(context.entityId, transform);
       position[0] = transform[0];
-      position[1] = transform[1] + readNumber('spawnHeight', 1);
+      position[1] = transform[1] + numberProperty(context, 'spawnHeight', 1);
       position[2] = transform[2];
       context.moveKinematic(context.entityId, position, [0, 0, 0, 1]);
       context.setBodyType(context.entityId, 'kinematic');
     };
 
     const fixedUpdate = (delta: number) => {
-      const speed = readNumber('moveSpeed', 5);
-      const jump = readNumber('jumpStrength', 7);
-      const gravity = readNumber('gravity', 20);
-      const acceleration = readNumber('acceleration', 40);
-      const turnSpeed = readNumber('turnSpeed', 12);
-      const groundCheck = readNumber('groundCheckDistance', 0.35);
+      const speed = numberProperty(context, 'moveSpeed', 5);
+      const jump = numberProperty(context, 'jumpStrength', 7);
+      const gravity = numberProperty(context, 'gravity', 20);
+      const acceleration = numberProperty(context, 'acceleration', 40);
+      const turnSpeed = numberProperty(context, 'turnSpeed', 12);
+      const groundCheck = numberProperty(context, 'groundCheckDistance', 0.35);
 
       const axis = context.moveAxis();
       const targetX = axis.x * speed;
@@ -257,14 +280,9 @@ export const cameraFollow: BehaviorDefinition = {
     const forward: [number, number, number] = [0, 0, -1];
     let resolved: string | null = null;
 
-    const readNumber = (key: string, fallback: number): number => {
-      const value = context.properties[key];
-      return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
-    };
-
     const resolveTarget = (): string | null => {
-      const configured = context.properties.target;
-      if (typeof configured === 'string' && configured.length > 0) {
+      const configured = stringProperty(context, 'target', '');
+      if (configured.length > 0) {
         return context.findEntityById(configured) ?? context.findEntityByName(configured);
       }
       return context.findEntityByName('Player') ?? context.entityId;
@@ -283,19 +301,19 @@ export const cameraFollow: BehaviorDefinition = {
         if (!resolved) return;
         if (!context.readTransform(resolved, target)) return;
 
-        const distance = readNumber('distance', 8);
-        const height = readNumber('height', 5);
-        const damping = readNumber('damping', 0.12);
-        const lookHeight = readNumber('lookHeight', 1);
-        const fixed = context.properties.fixed === true;
+        const distance = numberProperty(context, 'distance', 8);
+        const height = numberProperty(context, 'height', 5);
+        const damping = numberProperty(context, 'damping', 0.12);
+        const lookHeight = numberProperty(context, 'lookHeight', 1);
+        const fixed = booleanProperty(context, 'fixed', false);
 
         if (fixed) {
           // A fixed offset in world space: the camera does not swing when the target turns. The
           // offset is authored in metres rather than derived from `distance`, so what you set is
           // what you get.
-          desired[0] = target[0] + readNumber('offsetX', 6);
+          desired[0] = target[0] + numberProperty(context, 'offsetX', 6);
           desired[1] = target[1] + height;
-          desired[2] = target[2] + readNumber('offsetZ', 6);
+          desired[2] = target[2] + numberProperty(context, 'offsetZ', 6);
         } else {
           // Behind the target along its own -Z (the engine's forward axis), lifted by height.
           forward[0] = -2 * (target[3] * target[5] + target[6] * target[4]);
@@ -339,11 +357,11 @@ export const collectible: BehaviorDefinition = {
     const collect = () => {
       if (collected) return;
       collected = true;
-      const value = typeof context.properties.value === 'number' ? context.properties.value : 1;
+      const value = numberProperty(context, 'value', 1);
       context.setState('score', (context.getState<number>('score') ?? 0) + value);
-      const remaining = context.getState<number>('collectiblesRemaining');
-      if (typeof remaining === 'number') context.setState('collectiblesRemaining', Math.max(0, remaining - 1));
-      if (context.properties.hideOnCollect !== false) context.setBodyEnabled(context.entityId, false);
+      const remaining = context.getState('collectiblesRemaining');
+      if (isJsonNumber(remaining)) context.setState('collectiblesRemaining', Math.max(0, remaining - 1));
+      if (booleanProperty(context, 'hideOnCollect', true)) context.setBodyEnabled(context.entityId, false);
       context.emit('collected', { entityId: context.entityId, value });
       context.log(`collected (value ${value})`);
     };
@@ -380,7 +398,7 @@ export const exitZone: BehaviorDefinition = {
   create(context): BehaviorInstance {
     let triggered = false;
     const attempt = () => {
-      if (triggered && context.properties.repeatable !== true) return;
+      if (triggered && !booleanProperty(context, 'repeatable', false)) return;
       const required = numberProperty(context, 'requiredScore', 0);
       const score = context.getState<number>('score') ?? 0;
       if (score < required) {
@@ -389,7 +407,7 @@ export const exitZone: BehaviorDefinition = {
       }
       triggered = true;
       context.setState('won', true);
-      context.setState('objective', typeof context.properties.winMessage === 'string' ? context.properties.winMessage : 'You escaped!');
+      context.setState('objective', stringProperty(context, 'winMessage', 'You escaped!'));
       context.showOverlay('win');
       context.requestAction('none');
     };
@@ -436,20 +454,20 @@ export const gameRules: BehaviorDefinition = {
     // The clock counts fixed simulation steps, not wall time: pausing stops it, Step advances it
     // by exactly one tick, and a backgrounded tab cannot burn the player's time.
     let elapsed = 0;
-    const limit = (): number => (typeof context.properties.timeLimit === 'number' ? context.properties.timeLimit : 0);
+    const limit = (): number => numberProperty(context, 'timeLimit', 0);
 
     return {
       start() {
-        context.setState('scoreTarget', typeof context.properties.scoreTarget === 'number' ? context.properties.scoreTarget : 0);
+        context.setState('scoreTarget', numberProperty(context, 'scoreTarget', 0));
         elapsed = 0;
         context.setState('timeRemaining', limit());
-        context.setState('objective', typeof context.properties.initialObjective === 'string' ? context.properties.initialObjective : '');
+        context.setState('objective', stringProperty(context, 'initialObjective', ''));
         // The clock only runs once the round has actually started: counting it down behind the
         // start overlay would silently eat the player's time.
-        const waits = context.properties.waitForStart !== false && context.properties.showStartOverlay !== false;
+        const waits = booleanProperty(context, 'waitForStart', true) && booleanProperty(context, 'showStartOverlay', true);
         if (waits) context.setState('started', false);
         else context.setState('started', true);
-        if (context.properties.showStartOverlay !== false) context.showOverlay('start');
+        if (booleanProperty(context, 'showStartOverlay', true)) context.showOverlay('start');
         else context.showOverlay(null);
       },
       fixedUpdate(delta) {
@@ -466,14 +484,14 @@ export const gameRules: BehaviorDefinition = {
         }
       },
       update() {
-        const target = typeof context.properties.scoreTarget === 'number' ? context.properties.scoreTarget : 0;
+        const target = numberProperty(context, 'scoreTarget', 0);
         const score = context.getState<number>('score') ?? 0;
         if (target > 0 && score >= target && context.getState('won') !== true) {
           context.setState('won', true);
           context.showOverlay('win');
         }
 
-        if (context.properties.allowRestartKey !== false && context.wasActionPressed('restart')) {
+        if (booleanProperty(context, 'allowRestartKey', true) && context.wasActionPressed('restart')) {
           context.requestRestart();
         }
       },
@@ -508,8 +526,8 @@ export const projectileLauncher: BehaviorDefinition = {
       },
       update() {
         if (context.wasActionPressed('primary')) {
-          const impulse = typeof context.properties.impulse === 'number' ? context.properties.impulse : 9;
-          const upward = typeof context.properties.upward === 'number' ? context.properties.upward : 0.25;
+          const impulse = numberProperty(context, 'impulse', 9);
+          const upward = numberProperty(context, 'upward', 0.25);
           const pointer = context.pointer();
           // Aim mostly forward with a horizontal bias from the click, which is enough to make
           // clicking different targets feel deliberate without a full aiming rig.
@@ -518,9 +536,9 @@ export const projectileLauncher: BehaviorDefinition = {
           context.setState('launches', (context.getState<number>('launches') ?? 0) + 1);
         }
 
-        if (!launched || context.properties.resetAfterLaunch === false) return;
+        if (!launched || !booleanProperty(context, 'resetAfterLaunch', true)) return;
         context.readTransform(context.entityId, transform);
-        const limit = typeof context.properties.resetBelowY === 'number' ? context.properties.resetBelowY : -5;
+        const limit = numberProperty(context, 'resetBelowY', -5);
         if (transform[1] < limit) {
           context.setBodyType(context.entityId, 'dynamic');
           context.setLinearVelocity(context.entityId, [0, 0, 0]);
@@ -550,7 +568,7 @@ export const knockDownTarget: BehaviorDefinition = {
     const knockDown = (reason: string) => {
       if (down) return;
       down = true;
-      const value = typeof context.properties.value === 'number' ? context.properties.value : 1;
+      const value = numberProperty(context, 'value', 1);
       context.setState('score', (context.getState<number>('score') ?? 0) + value);
       context.setState('targetsDown', (context.getState<number>('targetsDown') ?? 0) + 1);
       context.emit('targetDown', { entityId: context.entityId });
@@ -560,17 +578,19 @@ export const knockDownTarget: BehaviorDefinition = {
     return {
       onPhysicsEvent(event) {
         if (event.kind !== 'hit') return;
-        const minimum = typeof context.properties.minImpactSpeed === 'number' ? context.properties.minImpactSpeed : 1.5;
+        const minimum = numberProperty(context, 'minImpactSpeed', 1.5);
         if ((event.approachSpeed ?? 0) >= minimum) knockDown('impact');
       },
       fixedUpdate() {
         if (down) return;
         if (!context.readTransform(context.entityId, transform)) return;
-        // Rotation quaternion -> how far the local up axis has tipped from world up.
-        const [, , , qx, qy, qz, qw] = transform as unknown as number[];
+        // Rotation quaternion -> how far the local up axis has tipped from world up. A successful
+        // readTransform wrote 7 floats, and the adapter stores the quaternion in slots 3..6.
+        const qx = transform[3]!;
+        const qz = transform[5]!;
         const upY = 1 - 2 * (qx * qx + qz * qz);
         const angle = Math.acos(Math.max(-1, Math.min(1, upY))) / DEG;
-        const threshold = typeof context.properties.tipAngle === 'number' ? context.properties.tipAngle : 45;
+        const threshold = numberProperty(context, 'tipAngle', 45);
         if (angle >= threshold) knockDown(`tilted ${angle.toFixed(0)}°`);
       },
     };
@@ -591,24 +611,25 @@ export const animationPlayback: BehaviorDefinition = {
   ],
   create(context): BehaviorInstance {
     let usingAlternate = false;
-    const speed = (): number => (typeof context.properties.speed === 'number' ? context.properties.speed : 1);
-    const loop = (): boolean => context.properties.loop !== false;
+    const speed = (): number => numberProperty(context, 'speed', 1);
+    const loop = (): boolean => booleanProperty(context, 'loop', true);
 
     return {
       start() {
-        const clip = typeof context.properties.clip === 'string' && context.properties.clip.length > 0 ? context.properties.clip : null;
+        const configuredClip = stringProperty(context, 'clip', '');
+        const clip = configuredClip.length > 0 ? configuredClip : null;
         if (!context.playClip(clip, { loop: loop(), speed: speed(), autoplay: true })) {
           context.log('Animation Playback needs a model with clips on this entity');
         }
       },
       fixedUpdate() {
-        const key = typeof context.properties.switchStateKey === 'string' ? context.properties.switchStateKey : '';
+        const key = stringProperty(context, 'switchStateKey', '');
         if (key.length === 0) return;
         const active = context.getState(key) === true;
         if (active === usingAlternate) return;
         usingAlternate = active;
-        const alternate = typeof context.properties.alternateClip === 'string' ? context.properties.alternateClip : '';
-        const base = typeof context.properties.clip === 'string' ? context.properties.clip : '';
+        const alternate = stringProperty(context, 'alternateClip', '');
+        const base = stringProperty(context, 'clip', '');
         context.playClip(active ? alternate : base, { loop: loop(), speed: speed(), autoplay: true });
       },
     };
@@ -626,11 +647,11 @@ export const audioCue: BehaviorDefinition = {
     boolean('spatial', '3D sound', false),
   ],
   create(context): BehaviorInstance {
-    let lastValue: unknown;
+    let lastValue: JsonValue | undefined;
     let primed = false;
 
     const play = () => {
-      const volume = typeof context.properties.volume === 'number' ? context.properties.volume : 0.8;
+      const volume = numberProperty(context, 'volume', 0.8);
       if (!context.playSound({ volume, loop: false })) {
         context.log('Audio Cue needs an audio asset on this entity');
       }
@@ -641,7 +662,7 @@ export const audioCue: BehaviorDefinition = {
         context.prepareAudio();
       },
       fixedUpdate() {
-        const key = typeof context.properties.stateKey === 'string' ? context.properties.stateKey : '';
+        const key = stringProperty(context, 'stateKey', '');
         if (key.length === 0) return;
         const value = context.getState(key);
         if (!primed) {

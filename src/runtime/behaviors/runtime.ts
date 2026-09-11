@@ -85,7 +85,7 @@ export class BehaviorRuntime {
           );
           continue;
         }
-        const properties = { ...this.registry.defaults(component.behaviorId), ...component.properties } as Record<string, JsonValue>;
+        const properties = { ...this.registry.defaults(component.behaviorId), ...component.properties };
         try {
           const instance = definition.definition.create(this.createContext(entityId, properties, component.behaviorId));
           const record: BehaviorRecord = { entityId, behaviorId: component.behaviorId, instance, properties };
@@ -222,6 +222,8 @@ export class BehaviorRuntime {
       isActionDown: (action) => host.input.isActionDown(action),
       wasActionPressed: (action) => host.input.wasActionPressed(action),
       wasActionReleased: (action) => host.input.wasActionReleased(action),
+      // SAFETY: `state` is a GameState, whose only writer (`set`) accepts nothing but JsonValue,
+      // so the entry is one of the JSON shapes; `T` is the caller's name for the shape it stored.
       getState: <T = JsonValue>(key: string) => host.state.get(key) as T | undefined,
       setState: (key, value) => host.state.set(key, value),
       requestScene: (sceneId) => host.requestScene(sceneId),

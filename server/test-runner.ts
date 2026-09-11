@@ -37,6 +37,13 @@ export interface GameTestResult {
   exportDir: string | null;
 }
 
+/** The loop stats the exported player publishes through `window.__PLAYER__.stats()`. */
+interface PlayerStats {
+  steps: number;
+  drawCalls: number;
+  behaviors: number;
+}
+
 export async function testGame(options: GameTestOptions): Promise<GameTestResult> {
   const started = Date.now();
   const log = options.log ?? (() => {});
@@ -95,17 +102,13 @@ export async function testGame(options: GameTestOptions): Promise<GameTestResult
     });
 
     await page.goto(staticServer.url, { waitUntil: 'load', timeout: 30_000 });
-    await page.waitForFunction(() => (window as unknown as { __PLAYER__?: unknown }).__PLAYER__ !== undefined, undefined, {
+    await page.waitForFunction(() => window.__PLAYER__ !== undefined, undefined, {
       timeout: 30_000,
     });
-    const state = await page.evaluate(
-      () => (window as unknown as { __PLAYER__: { state(): { errors: string[]; projectName: string; sceneName: string } } }).__PLAYER__.state(),
-    );
+    const state = await page.evaluate(() => window.__PLAYER__!.state());
     record('loads', state.errors.length === 0, state.errors.length === 0 ? `loaded "${state.projectName}" (${state.sceneName})` : state.errors.join('; '));
 
-    const behaviors = await page.evaluate(() =>
-      (window as unknown as { __PLAYER__: { behaviorList(): Array<{ behaviorId: string }> } }).__PLAYER__.behaviorList(),
-    );
+    const behaviors = await page.evaluate(() => window.__PLAYER__!.behaviorList());
     record('behaviors-registered', behaviors.length > 0, `${behaviors.length} behavior instance(s): ${[...new Set(behaviors.map((entry) => entry.behaviorId))].join(', ') || 'none'}`);
 
     // Dismiss the start overlay when the game has one, then let it run.
@@ -115,14 +118,16 @@ export async function testGame(options: GameTestOptions): Promise<GameTestResult
     await page.waitForTimeout(seconds * 1000);
 
     const after = await page.evaluate(() => {
-      const player = (window as unknown as {
-        __PLAYER__: { stats(): { steps: number; drawCalls: number; behaviors: number } | null; gameState(): Record<string, unknown> | null };
-      }).__PLAYER__;
+      const player = window.__PLAYER__!;
       return { stats: player.stats(), gameState: player.gameState() };
     });
-    const steps = after.stats?.steps ?? 0;
-    record('simulates', steps > seconds * 30, `${steps} fixed steps in ${seconds}s, ${after.stats?.drawCalls ?? 0} draw calls`);
-    record('renders', (after.stats?.drawCalls ?? 0) > 0, `${after.stats?.drawCalls ?? 0} draw calls in the final frame`);
+    // SAFETY: the page under test is the exported Coilbox player, whose `stats()` returns the
+    // loop-stat snapshot published in `src/player/main.ts` (steps, draw calls, behaviors) or null
+    // while no session is running; the page's global type only promises `unknown`.
+    const stats = after.stats as PlayerStats | null;
+    const steps = stats?.steps ?? 0;
+    record('simulates', steps > seconds * 30, `${steps} fixed steps in ${seconds}s, ${stats?.drawCalls ?? 0} draw calls`);
+    record('renders', (stats?.drawCalls ?? 0) > 0, `${stats?.drawCalls ?? 0} draw calls in the final frame`);
 
     const failedRequests = staticServer.requests.filter((entry) => entry.status >= 400);
     record('assets', failedRequests.length === 0, failedRequests.length === 0 ? `${staticServer.requests.length} requests, none failed` : failedRequests.map((entry) => `${entry.status} ${entry.url}`).join(', '));

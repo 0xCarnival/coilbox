@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { JSX } from 'react';
+import * as stylex from '@stylexjs/stylex';
+import type { JsonValue } from '@schema/index.js';
+import { color, space } from './styles/tokens.stylex.js';
+import { DOM, withDomClass } from './dom-contract.js';
 import { SessionProvider, isTextEntryTarget, useSession, useSessionSnapshot } from './hooks.js';
 import { EditorSession } from './state/editor-session.js';
 import { ProjectHome } from './panels/ProjectHome.js';
@@ -9,6 +13,7 @@ import { Toolbar } from './panels/Toolbar.js';
 import { BottomPanel } from './panels/BottomPanel.js';
 import { Viewport, type PlayState, type ViewportHandle } from './panels/Viewport.js';
 import type { SnapSettings, TransformTool } from './viewport/viewport-controller.js';
+import { isFiniteJsonNumber, isJsonString, jsonField } from './json-values.js';
 
 /**
  * Editor shell: one fixed, resizable layout instead of a window manager (plan §3).
@@ -27,24 +32,101 @@ interface Layout {
 
 const DEFAULT_LAYOUT: Layout = { left: 260, right: 320, bottom: 150 };
 
+/**
+ * Shell chrome.
+ *
+ * `.studio-body` keeps its grid template inline because the tracks come from the stored layout at
+ * runtime; everything else here is static. `.left-panel`/`.right-panel` were one rule, so they stay
+ * one style applied to two elements rather than two styles that could drift apart.
+ */
+const styles = stylex.create({
+  studio: {
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100%',
+  },
+  studioBody: {
+    flex: 1,
+    display: 'grid',
+    minHeight: 0,
+    gap: '1px',
+    backgroundColor: color.line,
+  },
+  sidePanel: {
+    backgroundColor: color.panel,
+    minHeight: 0,
+    overflow: 'hidden',
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  centerPanel: {
+    backgroundColor: '#101319',
+    minHeight: 0,
+    position: 'relative',
+  },
+  bottomHost: {
+    gridColumn: '1 / -1',
+    backgroundColor: color.panel,
+    minHeight: 0,
+    overflow: 'hidden',
+  },
+  statusbar: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '14px',
+    paddingBlock: space.xs,
+    paddingInline: space.md,
+    backgroundColor: color['panel-2'],
+    borderBlockStartWidth: '1px',
+    borderBlockStartStyle: 'solid',
+    borderBlockStartColor: color.line,
+    color: color.muted,
+    fontVariantNumeric: 'tabular-nums',
+  },
+  statusbarSpacer: {
+    flex: 1,
+  },
+  playState: {
+    color: color.ok,
+    textTransform: 'uppercase',
+    letterSpacing: '0.06em',
+  },
+});
+
+/** Panel sizes from browser storage: this module wrote them, and every field is range-checked. */
 function loadLayout(): Layout {
   try {
     const raw = globalThis.localStorage?.getItem(LAYOUT_KEY);
     if (!raw) return DEFAULT_LAYOUT;
-    const parsed = JSON.parse(raw) as Partial<Layout>;
+    const stored: JsonValue = JSON.parse(raw);
     return {
-      left: clampNumber(parsed.left, 180, 520, DEFAULT_LAYOUT.left),
-      right: clampNumber(parsed.right, 220, 620, DEFAULT_LAYOUT.right),
-      bottom: clampNumber(parsed.bottom, 90, 420, DEFAULT_LAYOUT.bottom),
+      left: clampNumber(jsonField(stored, 'left'), 180, 520, DEFAULT_LAYOUT.left),
+      right: clampNumber(jsonField(stored, 'right'), 220, 620, DEFAULT_LAYOUT.right),
+      bottom: clampNumber(jsonField(stored, 'bottom'), 90, 420, DEFAULT_LAYOUT.bottom),
     };
   } catch {
     return DEFAULT_LAYOUT;
   }
 }
 
-function clampNumber(value: unknown, min: number, max: number, fallback: number): number {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return fallback;
+function clampNumber(value: JsonValue, min: number, max: number, fallback: number): number {
+  if (!isFiniteJsonNumber(value)) return fallback;
   return Math.min(max, Math.max(min, value));
+}
+
+/** The `/build` response: where the export landed, or what went wrong. */
+interface ExportResult {
+  message: string | null;
+  relativeOutDir: string | null;
+}
+
+function readExportResult(payload: JsonValue): ExportResult {
+  const message = jsonField(payload, 'message');
+  const relativeOutDir = jsonField(payload, 'relativeOutDir');
+  return {
+    message: isJsonString(message) ? message : null,
+    relativeOutDir: isJsonString(relativeOutDir) ? relativeOutDir : null,
+  };
 }
 
 export function App({ session }: { session: EditorSession }): JSX.Element {
@@ -63,7 +145,7 @@ function StudioShell(): JSX.Element {
   const [tool, setTool] = useState<TransformTool>('translate');
   const [snap, setSnap] = useState<SnapSettings>({ enabled: false, translate: 0.5, rotateDegrees: 15, scale: 0.25 });
   const [status, setStatus] = useState<string>('');
-  const [layout, setLayout] = useState<Layout>(() => loadLayout());
+  const [layout] = useState<Layout>(() => loadLayout());
   const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
@@ -72,7 +154,7 @@ function StudioShell(): JSX.Element {
 
   // Test hook: the browser checks drive the same handle the toolbar buttons use.
   useEffect(() => {
-    const studio = (globalThis as unknown as { __STUDIO__?: { viewport?: () => ViewportHandle | null } }).__STUDIO__;
+    const studio = window.__STUDIO__;
     if (studio) studio.viewport = () => viewportRef.current;
     return () => {
       if (studio) delete studio.viewport;
@@ -140,14 +222,15 @@ function StudioShell(): JSX.Element {
         },
         body: '{}',
       });
-      const payload = (await response.json()) as { ok?: boolean; relativeOutDir?: string; message?: string; issues?: unknown[] };
+      const payload: JsonValue = await response.json();
+      const result = readExportResult(payload);
       if (!response.ok) {
-        session.log('error', `Export failed: ${payload.message ?? response.statusText}`);
-        setStatus(`Export failed: ${payload.message ?? response.statusText}`);
+        session.log('error', `Export failed: ${result.message ?? response.statusText}`);
+        setStatus(`Export failed: ${result.message ?? response.statusText}`);
         return;
       }
-      session.log('info', `Exported to ${payload.relativeOutDir}`);
-      setStatus(`Exported to ${payload.relativeOutDir} — serve it with any static server`);
+      session.log('info', `Exported to ${result.relativeOutDir}`);
+      setStatus(`Exported to ${result.relativeOutDir} — serve it with any static server`);
     } catch (error) {
       session.log('error', 'Export failed', String(error));
       setStatus(`Export failed: ${String(error)}`);
@@ -159,7 +242,7 @@ function StudioShell(): JSX.Element {
   const openProject = snapshot.project !== null;
 
   return (
-    <div className="studio">
+    <div {...withDomClass(styles.studio, DOM.studio)}>
       {!openProject ? (
         <ProjectHome />
       ) : (
@@ -175,13 +258,13 @@ function StudioShell(): JSX.Element {
             exporting={exporting}
           />
           <div
-            className="studio-body"
+            {...withDomClass(styles.studioBody, DOM.studioBody)}
             style={{ gridTemplateColumns: `${layout.left}px 1fr ${layout.right}px`, gridTemplateRows: `1fr ${layout.bottom}px` }}
           >
-            <div className="panel left-panel">
+            <div {...stylex.props(styles.sidePanel)}>
               <Hierarchy locked={editorLocked} />
             </div>
-            <div className="center-panel">
+            <div {...stylex.props(styles.centerPanel)}>
               <Viewport
                 handleRef={viewportRef}
                 tool={tool}
@@ -193,19 +276,21 @@ function StudioShell(): JSX.Element {
                 }}
               />
             </div>
-            <div className="panel right-panel">
+            <div {...stylex.props(styles.sidePanel)}>
               <Inspector locked={editorLocked} />
             </div>
-            <div className="panel bottom-host">
+            <div {...stylex.props(styles.bottomHost)}>
               <BottomPanel onReloadScene={() => void session.reloadScene()} />
             </div>
           </div>
-          <footer className="statusbar">
+          <footer {...withDomClass(styles.statusbar, DOM.statusbar)}>
             <span>{status || 'Ready'}</span>
-            <span className="toolbar-spacer" />
+            <span {...withDomClass(styles.statusbarSpacer, DOM.toolbarSpacer)} />
             <span>{snapshot.sceneId ? `scene ${snapshot.sceneId}` : 'no scene'}</span>
             <span>{snapshot.dirty ? 'unsaved changes' : 'saved'}</span>
-            {playState !== 'stopped' && <span className="play-state">{playState}</span>}
+            {playState !== 'stopped' && (
+              <span {...stylex.props(styles.playState)}>{playState}</span>
+            )}
           </footer>
         </>
       )}

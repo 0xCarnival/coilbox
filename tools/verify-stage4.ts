@@ -180,7 +180,7 @@ async function main(): Promise<void> {
 
     const game = JSON.parse(await readFile(join(workspaceRoot, AGENT_GAME, 'game.json'), 'utf8')) as {
       name: string;
-      settings: { hud: Array<{ type: string; bind?: string }>; initialGameState: Record<string, unknown> };
+      settings: { hud: Array<{ type: string; bind?: string }> };
     };
     const bindsGameplay = game.settings.hud.some((element) => element.bind === 'score' || element.bind === 'timeRemaining');
     record({
@@ -206,7 +206,7 @@ async function main(): Promise<void> {
     const page = await context.newPage();
     page.on('pageerror', (error) => consoleErrors.push(`studio: ${String(error)}`));
     await page.goto(server.url, { waitUntil: 'load' });
-    await page.waitForFunction(() => (window as unknown as { __STUDIO__?: unknown }).__STUDIO__ !== undefined, undefined, { timeout: 30_000 });
+    await page.waitForFunction(() => window.__STUDIO__ !== undefined, undefined, { timeout: 30_000 });
 
     if (!agentGamePresent) {
       record({
@@ -222,14 +222,7 @@ async function main(): Promise<void> {
 
     // Every behavior the agent used must be declared and editable.
     const behaviors = await page.evaluate(() => {
-      const studio = (window as unknown as {
-        __STUDIO__?: {
-          session: {
-            scene: { entities: Array<{ id: string; name: string; components: Array<{ type: string; behaviorId?: string; properties?: Record<string, unknown> }> }> } | null;
-            behaviorRegistry: { list(): Array<{ id: string }> };
-          };
-        };
-      }).__STUDIO__;
+      const studio = window.__STUDIO__;
       const scene = studio?.session.scene;
       const used = new Set<string>();
       for (const entity of scene?.entities ?? []) {
@@ -256,9 +249,7 @@ async function main(): Promise<void> {
     await speedInput.blur();
     await page.waitForTimeout(250);
     const edited = await page.evaluate(() => {
-      const session = (window as unknown as {
-        __STUDIO__?: { session: { scene: { entities: Array<{ id: string; components: Array<{ type: string; properties?: Record<string, unknown> }> }> } | null } };
-      }).__STUDIO__?.session;
+      const session = window.__STUDIO__?.session;
       const player = session?.scene?.entities.find((entity) => entity.id === 'player');
       return player?.components.find((component) => component.type === 'behavior')?.properties ?? null;
     });
@@ -278,7 +269,7 @@ async function main(): Promise<void> {
     );
     const onDisk = JSON.parse(await readFile(join(workspaceRoot, AGENT_GAME, 'scenes', 'main.scene.json'), 'utf8')) as {
       revision: number;
-      entities: Array<{ id: string; components: Array<{ type: string; properties?: Record<string, unknown> }> }>;
+      entities: Array<{ id: string; components: Array<{ type: string; properties?: { moveSpeed?: number } }> }>;
     };
     const savedSpeed = onDisk.entities
       .find((entity) => entity.id === 'player')
@@ -292,15 +283,13 @@ async function main(): Promise<void> {
     });
 
     await page.reload({ waitUntil: 'load' });
-    await page.waitForFunction(() => (window as unknown as { __STUDIO__?: unknown }).__STUDIO__ !== undefined, undefined, { timeout: 30_000 });
+    await page.waitForFunction(() => window.__STUDIO__ !== undefined, undefined, { timeout: 30_000 });
     await page.click('.card:has-text("Gem Rush") button:has-text("Open"), .card:has-text("gem-rush") button:has-text("Open")');
     await page.waitForSelector('.tree-row', { timeout: 20_000 });
     await page.click('.tree-row:has-text("Player")');
     await page.waitForTimeout(400);
     const reopenedSpeed = await page.evaluate(() => {
-      const session = (window as unknown as {
-        __STUDIO__?: { session: { scene: { entities: Array<{ id: string; components: Array<{ type: string; properties?: Record<string, unknown> }> }> } | null } };
-      }).__STUDIO__?.session;
+      const session = window.__STUDIO__?.session;
       return session?.scene?.entities.find((entity) => entity.id === 'player')?.components.find((c) => c.type === 'behavior')?.properties?.moveSpeed ?? null;
     });
     record({
@@ -315,9 +304,7 @@ async function main(): Promise<void> {
     // Simulate an agent editing the same file while the editor holds it. The editor must be told,
     // not silently overwritten, and an unsaved local edit must survive.
     const before = await page.evaluate(() => {
-      const session = (window as unknown as {
-        __STUDIO__?: { session: { scene: { entities: Array<{ id: string; name: string }> } | null } };
-      }).__STUDIO__?.session;
+      const session = window.__STUDIO__?.session;
       return session?.scene?.entities.find((entity) => entity.id === 'player')?.name ?? null;
     });
     const external = JSON.parse(await readFile(join(workspaceRoot, AGENT_GAME, 'scenes', 'main.scene.json'), 'utf8')) as {
@@ -355,9 +342,7 @@ async function main(): Promise<void> {
     await page.click('.conflict button:has-text("Reload from disk")');
     await page.waitForTimeout(600);
     const afterReload = await page.evaluate(() => {
-      const session = (window as unknown as {
-        __STUDIO__?: { session: { scene: { entities: Array<{ id: string; name: string }> } | null } };
-      }).__STUDIO__?.session;
+      const session = window.__STUDIO__?.session;
       return session?.scene?.entities.find((entity) => entity.id === 'player')?.name ?? null;
     });
     record({
@@ -375,18 +360,10 @@ async function main(): Promise<void> {
     await page.click('.card:has-text("Collect Room") button:has-text("Open")');
     await page.waitForSelector('.tree-row', { timeout: 20_000 });
     const otherProject = await page.evaluate(() => {
-      const session = (window as unknown as {
-        __STUDIO__?: {
-          session: {
-            project: { id: string } | null;
-            scene: { entities: Array<{ id: string; name: string; components: Array<{ type: string; behaviorId?: string; properties?: Record<string, unknown> }> }> } | null;
-            snapshot(): { assets: Array<{ id: string }>; canUndo: boolean };
-          };
-        };
-      }).__STUDIO__?.session;
+      const session = window.__STUDIO__?.session;
       const player = session?.scene?.entities.find((entity) => entity.id === 'player');
       return {
-        project: session?.project?.id ?? null,
+        project: session?.snapshot().project?.id ?? null,
         playerName: player?.name ?? null,
         moveSpeed: player?.components.find((component) => component.type === 'behavior')?.properties?.moveSpeed ?? null,
         entityCount: session?.scene?.entities.length ?? 0,
@@ -417,7 +394,7 @@ async function main(): Promise<void> {
   const manager = new ProjectManager(workspace);
   const duplicate = await manager
     .duplicate(AGENT_GAME, { newId: `${AGENT_GAME}-copy`, newName: 'Gem Rush copy' })
-    .catch((error: unknown) => ({ detail: String(error) }));
+    .catch((cause: unknown) => ({ detail: String(cause) }));
   const duplicateWorkspace = await workspace.readProject(`${AGENT_GAME}-copy`).catch(() => null);
   record({
     id: 'duplicate',
@@ -430,7 +407,7 @@ async function main(): Promise<void> {
   const exported = await manager.exportSource(AGENT_GAME).catch(async () => manager.exportSource('collect-room'));
   const imported = await manager
     .importSource(exported.bytes, { projectId: `${AGENT_GAME}-imported` })
-    .catch((error: unknown) => ({ detail: String(error), warnings: [] as string[], projectId: '' }));
+    .catch((cause: unknown) => ({ detail: String(cause), warnings: [] as string[], projectId: '' }));
   const importedProject = await workspace.readProject(`${AGENT_GAME}-imported`).catch(() => null);
   record({
     id: 'source-round-trip',
@@ -447,7 +424,7 @@ async function main(): Promise<void> {
     detail: '',
   }));
   const archives = await manager.listArchived();
-  const restored = await manager.restore(archives[0]!.directory).catch((error: unknown) => ({ detail: String(error), projectId: '' }));
+  const restored = await manager.restore(archives[0]!.directory).catch((cause: unknown) => ({ detail: String(cause), projectId: '' }));
   const restoredProject = await workspace.readProject(restored.projectId || 'missing').catch(() => null);
   record({
     id: 'archive-restore',

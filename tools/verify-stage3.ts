@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -127,14 +127,12 @@ async function main(): Promise<void> {
       if (message.type() === 'error') consoleErrors.push(`collect-room: ${message.text()}`);
     });
     await collect.goto(`${server.url}player.html?project=./games/collect-room/`, { waitUntil: 'load' });
-    await collect.waitForFunction(() => (window as unknown as { __PLAYER__?: unknown }).__PLAYER__ !== undefined, undefined, {
+    await collect.waitForFunction(() => window.__PLAYER__ !== undefined, undefined, {
       timeout: 30_000,
     });
-    await collect.evaluate(() => (window as unknown as { __PLAYER__: { ready: Promise<void> } }).__PLAYER__.ready);
+    await collect.evaluate(() => window.__PLAYER__?.ready);
 
-    const collectBehaviors = await collect.evaluate(() =>
-      (window as unknown as { __PLAYER__: { behaviorList(): Array<{ entityId: string; behaviorId: string }> } }).__PLAYER__.behaviorList(),
-    );
+    const collectBehaviors = await collect.evaluate(() => window.__PLAYER__?.behaviorList() ?? []);
     record({
       id: 'collect-room-behaviors',
       title: 'Collect Room runs registered behaviors from the shared runtime',
@@ -201,18 +199,15 @@ async function main(): Promise<void> {
 
     // Collect every gem by moving it onto the player (an ordinary authored transform change
     // through the physics adapter), then check the score.
-    const gemTargets = await collect.evaluate(() =>
-      (window as unknown as { __PLAYER__: { session: { current: { getEntityIds(): string[] } } } }).__PLAYER__.session.current
-        .getEntityIds()
-        .filter((id) => id.startsWith('collectible-')),
+    const gemTargets = await collect.evaluate(
+      () =>
+        window.__PLAYER__?.session?.current?.getEntityIds().filter((id) => id.startsWith('collectible-')) ?? [],
     );
     for (const gem of gemTargets) {
       await moveEntityOntoPlayer(collect, gem);
       await collect.waitForTimeout(450);
     }
-    const afterCollect = await collect.evaluate(() =>
-      (window as unknown as { __PLAYER__: { gameState(): Record<string, unknown> | null } }).__PLAYER__.gameState(),
-    );
+    const afterCollect = await collect.evaluate(() => window.__PLAYER__?.gameState() ?? null);
     record({
       id: 'collect-room-triggers',
       title: 'Sensor triggers collect the gems and update the score',
@@ -224,9 +219,7 @@ async function main(): Promise<void> {
     // Reach the exit: the level must report a win through the shared rules behavior.
     await moveEntityOntoPlayer(collect, 'exit-zone');
     await collect.waitForTimeout(900);
-    const afterExit = await collect.evaluate(() =>
-      (window as unknown as { __PLAYER__: { gameState(): Record<string, unknown> | null } }).__PLAYER__.gameState(),
-    );
+    const afterExit = await collect.evaluate(() => window.__PLAYER__?.gameState() ?? null);
     const hudVisible = await collect
       .locator('.coilbox-hud .hud-overlay[data-hud-id="win-overlay"]')
       .isVisible()
@@ -251,9 +244,7 @@ async function main(): Promise<void> {
       detail: `player at (${restartedPlayer.x.toFixed(1)}, ${restartedPlayer.y.toFixed(2)}, ${restartedPlayer.z.toFixed(1)}) after restart`,
       observed: restartedPlayer,
     });
-    const afterRestart = await collect.evaluate(() =>
-      (window as unknown as { __PLAYER__: { gameState(): Record<string, unknown> | null } }).__PLAYER__.gameState(),
-    );
+    const afterRestart = await collect.evaluate(() => window.__PLAYER__?.gameState() ?? null);
     record({
       id: 'collect-room-restart',
       title: 'Restart from the win overlay rebuilds the scene from the start',
@@ -269,16 +260,14 @@ async function main(): Promise<void> {
       if (message.type() === 'error') consoleErrors.push(`physics-targets: ${message.text()}`);
     });
     await targets.goto(`${server.url}player.html?project=./games/physics-targets/`, { waitUntil: 'load' });
-    await targets.waitForFunction(() => (window as unknown as { __PLAYER__?: unknown }).__PLAYER__ !== undefined, undefined, {
+    await targets.waitForFunction(() => window.__PLAYER__ !== undefined, undefined, {
       timeout: 30_000,
     });
-    await targets.evaluate(() => (window as unknown as { __PLAYER__: { ready: Promise<void> } }).__PLAYER__.ready);
+    await targets.evaluate(() => window.__PLAYER__?.ready);
     await targets.click('.coilbox-hud .hud-overlay[data-hud-id="start-overlay"] button');
     await targets.waitForTimeout(400);
 
-    const targetBehaviors = await targets.evaluate(() =>
-      (window as unknown as { __PLAYER__: { behaviorList(): Array<{ behaviorId: string }> } }).__PLAYER__.behaviorList(),
-    );
+    const targetBehaviors = await targets.evaluate(() => window.__PLAYER__?.behaviorList() ?? []);
     const targetCount = targetBehaviors.filter((entry) => entry.behaviorId === 'game.target').length;
     record({
       id: 'targets-behaviors',
@@ -290,9 +279,7 @@ async function main(): Promise<void> {
 
     // Launch the ball repeatedly and count knock-downs.
     const knocked = await knockDownTargets(targets, 8);
-    const boardState = await targets.evaluate(() =>
-      (window as unknown as { __PLAYER__: { gameState(): Record<string, unknown> | null } }).__PLAYER__.gameState(),
-    );
+    const boardState = await targets.evaluate(() => window.__PLAYER__?.gameState() ?? null);
     await targets.screenshot({ path: join(evidenceDir, 'physics-targets.png') });
     record({
       id: 'targets-physics',
@@ -306,7 +293,7 @@ async function main(): Promise<void> {
     const studio = await context.newPage();
     studio.on('pageerror', (error) => consoleErrors.push(`studio: ${String(error)}`));
     await studio.goto(server.url, { waitUntil: 'load' });
-    await studio.waitForFunction(() => (window as unknown as { __STUDIO__?: unknown }).__STUDIO__ !== undefined, undefined, {
+    await studio.waitForFunction(() => window.__STUDIO__ !== undefined, undefined, {
       timeout: 30_000,
     });
     await studio.click('.card:has-text("Collect Room") button:has-text("Open")');
@@ -323,9 +310,7 @@ async function main(): Promise<void> {
     await studio.waitForTimeout(200);
 
     const tuned = await studio.evaluate(() => {
-      const session = (window as unknown as {
-        __STUDIO__?: { session: { scene: { entities: Array<{ id: string; components: Array<{ type: string; properties?: Record<string, unknown> }> }> } | null } };
-      }).__STUDIO__?.session;
+      const session = window.__STUDIO__?.session;
       const player = session?.scene?.entities.find((entity) => entity.id === 'player');
       const behavior = player?.components.find((component) => component.type === 'behavior');
       return behavior?.properties ?? null;
@@ -407,11 +392,9 @@ async function main(): Promise<void> {
 
 async function readPlayer(page: Page): Promise<{ x: number; y: number; z: number }> {
   return page.evaluate(() => {
-    const player = (window as unknown as {
-      __PLAYER__: { session: { current: { readEntityTransform(id: string, out: Float32Array): boolean } } };
-    }).__PLAYER__;
+    const world = window.__PLAYER__?.session?.current;
     const out = new Float32Array(7);
-    player.session.current.readEntityTransform('player', out);
+    world?.readEntityTransform('player', out);
     return { x: out[0]!, y: out[1]!, z: out[2]! };
   });
 }
@@ -425,18 +408,8 @@ async function readPlayer(page: Page): Promise<{ x: number; y: number; z: number
  */
 async function moveEntityOntoPlayer(page: Page, entityId: string): Promise<void> {
   await page.evaluate((id: string) => {
-    const runtime = (window as unknown as {
-      __PLAYER__: {
-        session: {
-          current: {
-            readEntityTransform(entityId: string, out: Float32Array): boolean;
-            getPhysics(): {
-              setTransform(key: string, position: [number, number, number], rotation: [number, number, number, number]): void;
-            };
-          };
-        };
-      };
-    }).__PLAYER__.session.current;
+    const runtime = window.__PLAYER__?.session?.current;
+    if (!runtime) return;
     const player = new Float32Array(7);
     if (!runtime.readEntityTransform('player', player)) return;
     runtime.getPhysics().setTransform(id, [player[0], player[1] + 0.6, player[2]], [0, 0, 0, 1]);
@@ -446,10 +419,7 @@ async function moveEntityOntoPlayer(page: Page, entityId: string): Promise<void>
 /** Player position inside the editor's play world (not the editor projection). */
 async function studioPlayerPosition(page: Page): Promise<{ x: number; y: number; z: number }> {
   return page.evaluate(() => {
-    const api = (window as unknown as {
-      __STUDIO__?: { viewport?: () => { playEntityTransform(id: string): [number, number, number] | null } | null };
-    }).__STUDIO__;
-    const position = api?.viewport?.()?.playEntityTransform('player') ?? [0, 0, 0];
+    const position = window.__STUDIO__?.viewport?.()?.playEntityTransform('player') ?? [0, 0, 0];
     return { x: position[0], y: position[1], z: position[2] };
   });
 }
@@ -458,23 +428,14 @@ async function studioPlayerPosition(page: Page): Promise<{ x: number; y: number;
 async function knockDownTargets(page: Page, attempts: number): Promise<number> {
   for (let index = 0; index < attempts; index += 1) {
     const aim = await page.evaluate((attempt: number) => {
-      const runtime = (window as unknown as {
-        __PLAYER__: {
-          session: {
-            current: {
-              getEntityIds(): string[];
-              readEntityTransform(entityId: string, out: Float32Array): boolean;
-              readEntityVelocity(entityId: string, out: Float32Array): boolean;
-            };
-          };
-        };
-      }).__PLAYER__.session.current;
+      const runtime = window.__PLAYER__?.session?.current;
+      if (!runtime) return null;
       const ids = runtime.getEntityIds().filter((id) => id.startsWith('target-'));
       const transform = new Float32Array(7);
       const candidates: Array<{ id: string; x: number; upright: number }> = [];
       for (const id of ids) {
         if (!runtime.readEntityTransform(id, transform)) continue;
-        const [, , , qx, , qz] = transform as unknown as number[];
+        const [, , , qx, , qz] = transform;
         candidates.push({ id, x: transform[0]!, upright: 1 - 2 * (qx * qx + qz * qz) });
       }
       const standing = candidates.filter((candidate) => candidate.upright > 0.7);
@@ -488,9 +449,7 @@ async function knockDownTargets(page: Page, attempts: number): Promise<number> {
     await page.mouse.click(x, 420);
     await page.waitForTimeout(1100);
   }
-  const state = await page.evaluate(() =>
-    (window as unknown as { __PLAYER__: { gameState(): Record<string, unknown> | null } }).__PLAYER__.gameState(),
-  );
+  const state = await page.evaluate(() => window.__PLAYER__?.gameState() ?? null);
   return Number(state?.targetsDown ?? 0);
 }
 
