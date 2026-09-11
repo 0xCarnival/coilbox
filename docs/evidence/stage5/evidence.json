@@ -1,9 +1,9 @@
 {
   "stage": 5,
-  "generatedAt": "2026-09-11T19:41:20.848Z",
+  "generatedAt": "2026-09-11T19:47:43.316Z",
   "node": "v24.18.0",
   "host": "darwin",
-  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage5-UYpH6J",
+  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage5-seprrn",
   "measurements": {
     "playStopCycles": {
       "first": {
@@ -216,26 +216,26 @@
     },
     "referenceScene": {
       "frames": 120,
-      "medianFrameMs": 35.788293772743785,
-      "p95FrameMs": 37.532101700185926,
-      "medianPhysicsMs": 0.031782076974241145,
+      "medianFrameMs": 34.7748031689949,
+      "p95FrameMs": 35.7893287450919,
+      "medianPhysicsMs": 0.03956920997034555,
       "drawCalls": 401,
       "triangles": 4812,
       "entities": 203,
       "physicsBodies": 26,
-      "fps": 27.562141348090872
+      "fps": 28.014448462307364
     },
     "frameRateIndependence": {
       "stepsTaken": 20,
-      "droppedTime": 0.18300000000000047,
-      "clampedTime": 0.11670000000000075
+      "droppedTime": 0.183100000000001,
+      "clampedTime": 0.1166999999999998
     },
     "narrowViewport": {
       "width": 390,
       "height": 844,
-      "rendered": 0.6063859521205492,
-      "distinctColors": 2301,
-      "steps": 68
+      "rendered": 0.6060821484992102,
+      "distinctColors": 2306,
+      "steps": 64
     }
   },
   "steps": [
@@ -256,8 +256,8 @@
     },
     {
       "name": "clean checkout install + build",
-      "ok": false,
-      "detail": "exit 1 — reports an invalid external write instead of loading it 15047ms; tests/unit/management.test.ts > external change watching > reports an invalid external write instead of loading it"
+      "ok": true,
+      "detail": "exit 0"
     }
   ],
   "checks": [
@@ -270,8 +270,8 @@
     {
       "id": "clean-checkout",
       "title": "A clean checkout installs from the frozen lockfile, typechecks, tests, and builds",
-      "passed": false,
-      "detail": "the clean-checkout build failed (see the output above)"
+      "passed": true,
+      "detail": "built in /var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-clean-wr8h8W from a fresh clone"
     },
     {
       "id": "reference-scene",
@@ -296,17 +296,17 @@
       "id": "reference-performance",
       "title": "The reference scene renders on the declared conditions and the numbers are recorded",
       "passed": true,
-      "detail": "203 entities, 26 bodies, 401 draw calls, 4812 triangles; median frame 35.79 ms, p95 37.53 ms, physics 0.03 ms (software rasteriser, not the M1 Pro target)",
+      "detail": "203 entities, 26 bodies, 401 draw calls, 4812 triangles; median frame 34.77 ms, p95 35.79 ms, physics 0.04 ms (software rasteriser, not the M1 Pro target)",
       "observed": {
         "frames": 120,
-        "medianFrameMs": 35.788293772743785,
-        "p95FrameMs": 37.532101700185926,
-        "medianPhysicsMs": 0.031782076974241145,
+        "medianFrameMs": 34.7748031689949,
+        "p95FrameMs": 35.7893287450919,
+        "medianPhysicsMs": 0.03956920997034555,
         "drawCalls": 401,
         "triangles": 4812,
         "entities": 203,
         "physicsBodies": 26,
-        "fps": 27.562141348090872
+        "fps": 28.014448462307364
       }
     },
     {
@@ -316,30 +316,30 @@
       "detail": "a 400 ms stall produced 20 steps, 0.183 s dropped, 0.117 s clamped",
       "observed": {
         "stepsTaken": 20,
-        "droppedTime": 0.18300000000000047,
-        "clampedTime": 0.11670000000000075
+        "droppedTime": 0.183100000000001,
+        "clampedTime": 0.1166999999999998
       }
     },
     {
       "id": "no-catch-up-spiral",
       "title": "Time spent waiting is not replayed as a burst of simulation steps",
       "passed": true,
-      "detail": "72 steps during a 1.2 s wait (about 72 expected at 60 Hz)",
+      "detail": "73 steps during a 1.2 s wait (about 72 expected at 60 Hz)",
       "observed": {
-        "stepsDuringWait": 72
+        "stepsDuringWait": 73
       }
     },
     {
       "id": "narrow-viewport",
       "title": "The game runs at a narrow viewport (a viewport test, not a phone test)",
       "passed": true,
-      "detail": "390x844, 60.6% rendered, 68 steps",
+      "detail": "390x844, 60.6% rendered, 64 steps",
       "observed": {
         "width": 390,
         "height": 844,
-        "rendered": 0.6063859521205492,
-        "distinctColors": 2301,
-        "steps": 68
+        "rendered": 0.6060821484992102,
+        "distinctColors": 2306,
+        "steps": 64
       }
     },
     {
@@ -396,16 +396,16 @@
       "id": "acceptance-play-stop",
       "title": "Acceptance: play and stop without touching code",
       "passed": true,
-      "detail": "play world ran 61 steps with 9 behaviors, then stopped",
+      "detail": "play world ran 60 steps with 9 behaviors, then stopped",
       "observed": {
         "state": "running",
-        "frames": 19,
-        "steps": 61,
-        "fps": 9.287247738737602,
-        "frameTimeMs": 107.67452620316642,
-        "physicsTimeMs": 0.09885140870425244,
-        "droppedTime": 0.7498333333333373,
-        "clampedTime": 1.7334079999999974,
+        "frames": 18,
+        "steps": 60,
+        "fps": 8.61729563159469,
+        "frameTimeMs": 116.04568796892292,
+        "physicsTimeMs": 0.09650734960142682,
+        "droppedTime": 0.7334000000000017,
+        "clampedTime": 1.7664079999999975,
         "drawCalls": 16,
         "triangles": 5048,
         "geometries": 13,
@@ -468,7 +468,7 @@
       "id": "export-nested-path",
       "title": "The export runs from a nested path on a separate static server with no workspace service",
       "passed": true,
-      "detail": "8 requests from http://127.0.0.1:64845/releases/2026/gem-rush/, 0 failed, 62 steps",
+      "detail": "8 requests from http://127.0.0.1:49278/releases/2026/gem-rush/, 0 failed, 64 steps",
       "observed": {
         "failures": [],
         "requests": 8
@@ -503,7 +503,7 @@
         "gameState": {
           "score": 2,
           "collectiblesRemaining": 3,
-          "timeRemaining": 44.1,
+          "timeRemaining": 44.07,
           "objective": "",
           "won": false,
           "lost": false,
