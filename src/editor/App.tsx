@@ -2,14 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { JSX } from 'react';
 import * as stylex from '@stylexjs/stylex';
 import type { JsonValue } from '@schema/index.js';
-import { color, space } from './styles/tokens.stylex.js';
+import { color, fontSize, radius, space, surface } from './styles/tokens.stylex.js';
 import { DOM, withDomClass } from './dom-contract.js';
 import { SessionProvider, isTextEntryTarget, useSession, useSessionSnapshot } from './hooks.js';
 import { EditorSession } from './state/editor-session.js';
 import { ProjectHome } from './panels/ProjectHome.js';
 import { Hierarchy } from './panels/Hierarchy.js';
 import { Inspector } from './panels/Inspector.js';
-import { Toolbar } from './panels/Toolbar.js';
+import { Toolbar, SaveIndicator } from './panels/Toolbar.js';
 import { BottomPanel } from './panels/BottomPanel.js';
 import { Viewport, type PlayState, type ViewportHandle } from './panels/Viewport.js';
 import type { SnapSettings, TransformTool } from './viewport/viewport-controller.js';
@@ -22,7 +22,13 @@ import { isFiniteJsonNumber, isJsonString, jsonField } from './json-values.js';
  * never the authoritative project store.
  */
 
-const LAYOUT_KEY = 'coilbox.layout.v1';
+/**
+ * The key is versioned because a stored layout outlives the design that chose its defaults: the
+ * bottom panel's default shrank with the new density, and anyone who had already opened the editor
+ * would otherwise keep the old, taller console forever. Bumping the version is what makes a new
+ * default actually reach an existing install.
+ */
+const LAYOUT_KEY = 'coilbox.layout.v3';
 
 interface Layout {
   left: number;
@@ -30,14 +36,20 @@ interface Layout {
   bottom: number;
 }
 
-const DEFAULT_LAYOUT: Layout = { left: 260, right: 320, bottom: 150 };
+const DEFAULT_LAYOUT: Layout = { left: 264, right: 324, bottom: 116 };
 
 /**
  * Shell chrome.
  *
  * `.studio-body` keeps its grid template inline because the tracks come from the stored layout at
- * runtime; everything else here is static. `.left-panel`/`.right-panel` were one rule, so they stay
- * one style applied to two elements rather than two styles that could drift apart.
+ * runtime; everything else here is static. The panels no longer carry their surface here — each one
+ * spreads `surface.panel`, so "what is a panel" has a single definition.
+ *
+ * The gutter is the grid's own `gap` showing the app backdrop through, which is why `studioBody`
+ * paints `color.bg` and not `color.line`. The previous arrangement used `gap: 1px` over a line-
+ * coloured background so the gaps *were* the borders; that is what made the workspace read as one
+ * welded slab with no region identity. A real gutter plus a radius per panel costs 12px and buys
+ * the whole layout its structure.
  */
 const styles = stylex.create({
   studio: {
@@ -49,47 +61,55 @@ const styles = stylex.create({
     flex: 1,
     display: 'grid',
     minHeight: 0,
-    gap: '1px',
-    backgroundColor: color.line,
-  },
-  sidePanel: {
-    backgroundColor: color.panel,
-    minHeight: 0,
-    overflow: 'hidden',
-    display: 'flex',
-    flexDirection: 'column',
+    gap: space.sm,
+    backgroundColor: color.bg,
+    paddingBlockEnd: space.sm,
+    paddingInline: space.sm,
   },
   centerPanel: {
-    backgroundColor: '#101319',
     minHeight: 0,
+    minWidth: 0,
     position: 'relative',
   },
   bottomHost: {
     gridColumn: '1 / -1',
-    backgroundColor: color.panel,
     minHeight: 0,
-    overflow: 'hidden',
+    minWidth: 0,
   },
   statusbar: {
     display: 'flex',
     alignItems: 'center',
-    gap: '14px',
+    gap: space.md,
     paddingBlock: space.xs,
     paddingInline: space.md,
     backgroundColor: color['panel-2'],
     borderBlockStartWidth: '1px',
     borderBlockStartStyle: 'solid',
     borderBlockStartColor: color.line,
-    color: color.muted,
+    color: color.dim,
+    fontSize: fontSize.xs,
     fontVariantNumeric: 'tabular-nums',
   },
   statusbarSpacer: {
     flex: 1,
   },
+  /**
+   * The live play state. It was uppercase and letter-spaced in the status bar, which made a mode
+   * indicator look like a section heading; here it is a small accent dot and a word, so the eye
+   * catches it without the status bar gaining a second typographic voice.
+   */
   playState: {
-    color: color.ok,
-    textTransform: 'uppercase',
-    letterSpacing: '0.06em',
+    display: 'flex',
+    alignItems: 'center',
+    gap: space.xs,
+    color: color.accent,
+    fontWeight: 600,
+  },
+  playDot: {
+    width: '6px',
+    height: '6px',
+    borderRadius: radius.pill,
+    backgroundColor: color.accent,
   },
 });
 
@@ -261,10 +281,10 @@ function StudioShell(): JSX.Element {
             {...withDomClass(styles.studioBody, DOM.studioBody)}
             style={{ gridTemplateColumns: `${layout.left}px 1fr ${layout.right}px`, gridTemplateRows: `1fr ${layout.bottom}px` }}
           >
-            <div {...stylex.props(styles.sidePanel)}>
+            <div {...stylex.props(surface.panel)}>
               <Hierarchy locked={editorLocked} />
             </div>
-            <div {...stylex.props(styles.centerPanel)}>
+            <div {...stylex.props(styles.centerPanel, surface.panel)}>
               <Viewport
                 handleRef={viewportRef}
                 tool={tool}
@@ -276,10 +296,10 @@ function StudioShell(): JSX.Element {
                 }}
               />
             </div>
-            <div {...stylex.props(styles.sidePanel)}>
+            <div {...stylex.props(surface.panel)}>
               <Inspector locked={editorLocked} />
             </div>
-            <div {...stylex.props(styles.bottomHost)}>
+            <div {...stylex.props(styles.bottomHost, surface.panel)}>
               <BottomPanel onReloadScene={() => void session.reloadScene()} />
             </div>
           </div>
@@ -287,9 +307,12 @@ function StudioShell(): JSX.Element {
             <span>{status || 'Ready'}</span>
             <span {...withDomClass(styles.statusbarSpacer, DOM.toolbarSpacer)} />
             <span>{snapshot.sceneId ? `scene ${snapshot.sceneId}` : 'no scene'}</span>
-            <span>{snapshot.dirty ? 'unsaved changes' : 'saved'}</span>
+            <SaveIndicator state={snapshot.saveState} lastSavedAt={snapshot.lastSavedAt} />
             {playState !== 'stopped' && (
-              <span {...stylex.props(styles.playState)}>{playState}</span>
+              <span {...stylex.props(styles.playState)}>
+                <span {...stylex.props(styles.playDot)} />
+                {playState}
+              </span>
             )}
           </footer>
         </>

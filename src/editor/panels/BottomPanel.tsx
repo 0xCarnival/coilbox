@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { JSX } from 'react';
 import * as stylex from '@stylexjs/stylex';
-import { color, space } from '../styles/tokens.stylex.js';
+import { color, fontSize, radius, space } from '../styles/tokens.stylex.js';
 import { DOM, DOM_STATE, withDomClass } from '../dom-contract.js';import { useSession, useSessionSnapshot } from '../hooks.js';
 import { AssetBrowser } from './AssetBrowser.js';
 
@@ -24,23 +24,39 @@ const styles = stylex.create({
     height: '100%',
     minHeight: 0,
   },
+  /**
+   * The tab strip is a row of quiet labels with the watching status on the trailing edge. It has no
+   * bottom rule: the tabs sit directly above the content they switch, and the panel already has a
+   * border, so a rule here was drawing a second line one pixel from the first.
+   */
   tabs: {
     display: 'flex',
     alignItems: 'center',
-    gap: space.sm,
+    gap: space.xxs,
     paddingBlock: space.xs,
-    paddingInline: '8px',
-    borderBlockEndWidth: '1px',
-    borderBlockEndStyle: 'solid',
-    borderBlockEndColor: color.line,
+    paddingInline: space.sm,
   },
   /**
    * `.tabs button[role='tab'].active` was a descendant selector on the parent. The button knows
    * its own selected state, so the style moved onto the button and the selector disappears.
+   *
+   * The active tab is an accent-tinted fill rather than a full accent border, so the strip has one
+   * loud element (the selected tab) instead of two (the tab and its outline).
    */
+  tabButton: {
+    fontSize: fontSize.sm,
+    color: color.muted,
+    paddingBlock: space.xs,
+    paddingInline: space.sm,
+    borderRadius: radius.md,
+    ':hover': {
+      color: color.text,
+    },
+  },
   tabActive: {
-    backgroundColor: '#22314c',
-    borderColor: color.accent,
+    backgroundColor: color['accent-quiet'],
+    color: color.accent,
+    fontWeight: 600,
   },
   toolbarSpacer: {
     flex: 1,
@@ -50,10 +66,12 @@ const styles = stylex.create({
     alignItems: 'center',
     gap: space.sm,
     color: color.warn,
+    fontSize: fontSize.xs,
   },
   muted: {
-    color: color.muted,
+    color: color.dim,
     margin: 0,
+    fontSize: fontSize.xs,
   },
   tabBody: {
     flex: 1,
@@ -63,10 +81,11 @@ const styles = stylex.create({
   sceneList: {
     listStyle: 'none',
     margin: 0,
-    padding: '6px 10px',
+    paddingBlock: space.sm,
+    paddingInline: space.sm,
     display: 'flex',
     flexDirection: 'column',
-    gap: space.xs,
+    gap: space.xxs,
   },
   sceneRow: {
     display: 'flex',
@@ -75,30 +94,33 @@ const styles = stylex.create({
   },
   /** `.scene-list li.active button` — again a descendant rule, moved onto the row itself. */
   sceneRowActive: {
-    borderColor: color.accent,
+    color: color.accent,
   },
   tag: {
-    color: color.muted,
-    borderWidth: '1px',
-    borderStyle: 'solid',
-    borderColor: color.line,
-    borderRadius: '10px',
-    paddingBlock: 0,
-    paddingInline: space.sm,
-    fontSize: '10px',
+    color: color.dim,
+    backgroundColor: color.wash,
+    borderRadius: radius.sm,
+    paddingBlock: '1px',
+    paddingInline: space.xs,
+    fontSize: fontSize.micro,
+    fontWeight: 600,
+    letterSpacing: '0.06em',
+    textTransform: 'uppercase',
   },
   logList: {
     listStyle: 'none',
     margin: 0,
-    padding: '4px 8px',
+    paddingBlock: space.xs,
+    paddingInline: space.sm,
     display: 'flex',
     flexDirection: 'column',
-    gap: '3px',
+    gap: '2px',
   },
   logRow: {
     display: 'flex',
-    gap: '8px',
+    gap: space.sm,
     alignItems: 'baseline',
+    paddingBlock: '1px',
   },
   /** `.log-list li.error .log-message`: the level lives on the row, so the colour follows it here. */
   logMessage: {
@@ -111,16 +133,20 @@ const styles = stylex.create({
     color: color.warn,
   },
   logTime: {
-    color: color.muted,
+    color: color.dim,
     fontVariantNumeric: 'tabular-nums',
+    fontSize: fontSize.xs,
+    flexShrink: 0,
   },
   logDetail: {
-    color: color.muted,
+    color: color.dim,
+    fontSize: fontSize.xs,
   },
   empty: {
-    color: color.muted,
-    padding: '14px',
+    color: color.dim,
+    padding: space.lg,
     textAlign: 'center',
+    fontSize: fontSize.sm,
   },
 });
 
@@ -137,7 +163,11 @@ export function BottomPanel({ onReloadScene }: { onReloadScene(): void }): JSX.E
         {BOTTOM_TABS.map((candidate) => (
           <button
             key={candidate}
-            {...withDomClass(tab === candidate && styles.tabActive, tab === candidate && DOM_STATE.active)}
+            {...withDomClass(
+              styles.tabButton,
+              tab === candidate && styles.tabActive,
+              tab === candidate && DOM_STATE.active,
+            )}
             type="button"
             role="tab"
             aria-selected={tab === candidate}

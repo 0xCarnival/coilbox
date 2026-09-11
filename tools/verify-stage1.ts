@@ -115,7 +115,13 @@ async function main(): Promise<void> {
     });
 
     // --- create a project through the UI -------------------------------------
-    await page.click('button:has-text("+ New game")');
+    /**
+     * Selectors name the control's label, never the decoration in front of it. The create buttons
+     * carry an icon now, and the old "+ New game" selector was really asserting the glyph: it broke
+     * on a change that left the button's meaning untouched. Matching the label keeps a gate pinned
+     * to behaviour instead of to a character.
+     */
+    await page.click('button:has-text("New game")');
     await page.fill('input[placeholder="collect-room"]', 'stage1-room');
     await page.fill('input[placeholder="Collect Room"]', 'Stage 1 Room');
     await page.click('button[type="submit"]:has-text("Create")');
@@ -293,7 +299,7 @@ async function main(): Promise<void> {
     });
 
     // --- export ---------------------------------------------------------------
-    await page.click('button:has-text("Export Game")');
+    await page.click('button:has-text("Export")');
     await page.waitForFunction(
       () => (document.querySelector('.statusbar span')?.textContent ?? '').includes('Exported to'),
       undefined,
@@ -304,7 +310,7 @@ async function main(): Promise<void> {
     const exportedGame = await readFile(join(exportDir, 'project', 'game.json'), 'utf8').catch(() => null);
     record({
       id: 'export-produces-build',
-      title: 'Export Game produces a standalone player plus the project documents',
+      title: 'Export produces a standalone player plus the project documents',
       passed: existsSync(exportIndex) && exportedGame !== null,
       detail: existsSync(exportIndex)
         ? `index.html and project documents present in ${exportDir}`

@@ -107,7 +107,7 @@ async function main(): Promise<void> {
       timeout: 30_000,
     });
 
-    await page.click('button:has-text("+ New game")');
+    await page.click('button:has-text("New game")');
     await page.fill('input[placeholder="collect-room"]', 'stage2-room');
     await page.fill('input[placeholder="Collect Room"]', 'Stage 2 Room');
     await page.click('button[type="submit"]:has-text("Create")');
@@ -154,14 +154,14 @@ async function main(): Promise<void> {
     });
 
     // --- build a scene without editing code --------------------------------------
-    await page.click('button:has-text("+ Create")');
+    await page.click('button:has-text("Create")');
     await page.click('.menu button:has-text("Box")');
     await enterName(page, 'Crate A');
     await setComponentSelect(page, 'Shape', 'Box');
     await setVector(page, 'Size (m)', [1, 1, 1]);
 
     // Model component + asset picker
-    await page.click('.add-component button:has-text("+ Add component")');
+    await page.click('.add-component button:has-text("Add component")');
     await page.click('.add-menu button:has-text("Model")');
     await page.waitForSelector('.section-title:has-text("Model")', { timeout: 10_000 });
     await selectField(page, 'Asset', 'spinning-crate');
@@ -187,7 +187,7 @@ async function main(): Promise<void> {
     });
 
     // Animation component with a clip chosen from the loaded model
-    await page.click('.add-component button:has-text("+ Add component")');
+    await page.click('.add-component button:has-text("Add component")');
     await page.click('.add-menu button:has-text("Animation")');
     await page.waitForSelector('.section-title:has-text("Animation")', { timeout: 10_000 });
     const clipOptions = await page.locator('.section:has-text("Animation") select').first().locator('option').allTextContents();
@@ -212,13 +212,13 @@ async function main(): Promise<void> {
     });
 
     // A second instance of a skinned model, animated independently in Play
-    await page.click('button:has-text("+ Create")');
+    await page.click('button:has-text("Create")');
     await page.click('.menu button:has-text("Box")');
     await enterName(page, 'Limb');
-    await page.click('.add-component button:has-text("+ Add component")');
+    await page.click('.add-component button:has-text("Add component")');
     await page.click('.add-menu button:has-text("Model")');
     await selectField(page, 'Asset', 'animated-limb');
-    await page.click('.add-component button:has-text("+ Add component")');
+    await page.click('.add-component button:has-text("Add component")');
     await page.click('.add-menu button:has-text("Animation")');
     await selectField(page, 'Clip', 'Wave', { section: 'Animation' });
 
@@ -242,7 +242,7 @@ async function main(): Promise<void> {
     await page.click('.tree-row:has-text("Game Camera")');
     await setNumberField(page, 'Field of view', 42, { section: 'Camera' });
     await page.click('.tree-row:has-text("Ground")');
-    await page.click('.add-component button:has-text("+ Add component")');
+    await page.click('.add-component button:has-text("Add component")');
     await page.click('.add-menu button:has-text("Material")');
     await setColorField(page, 'Colour', '#2f6f4f');
 

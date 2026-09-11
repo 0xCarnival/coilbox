@@ -4,8 +4,12 @@
  * This file is deliberately small. Component styling lives in `*.tsx` as `stylex.create` calls, so
  * what remains here is only what StyleX cannot express:
  *
- * 1. **Element defaults** — `body`, `button`, `input`, `select`, `code`. A StyleX style is applied by
- *    class, so it cannot set a default for every button in the editor without every button opting in.
+ * 1. **Element defaults** — `body`, `button`, `input`, `select`, `code`, plus `::selection` and the
+ *    reduced-motion switch. A StyleX style is applied by class, so it cannot set a default for every
+ *    button in the editor without every button opting in. The control defaults here are what keep
+ *    the chrome calm: a button has no border and no fill until it is hovered or active, and a text
+ *    field has no box at all until it is hovered or focused. Anything that draws a permanent
+ *    rectangle around itself has to say so deliberately, in a component.
  * 2. **The design tokens** — the `:root` custom properties below are emitted by
  *    `styles/tokens.stylex.ts` via `stylex.defineVars`, and are duplicated here so plain CSS can read
  *    them too. They are the same names and values; the token file is the place to change them.
@@ -26,16 +30,24 @@
   color-scheme: dark;
 
   /* Design tokens. Mirrored from styles/tokens.stylex.ts — edit them there. */
-  --bg: #0d0f14;
-  --panel: #141821;
-  --panel-2: #171c26;
-  --line: #242a36;
-  --text: #e6e9ef;
-  --muted: #8b93a3;
-  --accent: #5b9dff;
-  --danger: #ff6b6b;
-  --warn: #f0b45c;
-  --ok: #54d1a0;
+  --bg: #08090a;
+  --panel: #121316;
+  --panel-2: #17181c;
+  --elevated: #1e2024;
+  --line: #26272c;
+  --line-strong: #3a3c43;
+  --text: #e9eaec;
+  --muted: #a8aab1;
+  --dim: #8c8f96;
+  --accent: #e0a458;
+  --accent-quiet: #4a3a22;
+  --wash: rgba(255, 255, 255, 0.055);
+  --wash-strong: rgba(255, 255, 255, 0.09);
+  --stroke: rgba(255, 255, 255, 0.12);
+  --accent-ink: #1a1408;
+  --danger: #e06c5f;
+  --warn: #d9a441;
+  --ok: #77b892;
 
   font-synthesis: none;
 }
@@ -54,52 +66,189 @@ body,
 body {
   background: var(--bg);
   color: var(--text);
-  font: 12.5px/1.45 ui-sans-serif, -apple-system, 'Segoe UI', sans-serif;
+  font: 12.5px/1.45 Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/**
+ * Selection is accent-tinted rather than the browser default, because the default blue is the one
+ * remaining piece of chrome that would fight a monochrome palette.
+ */
+::selection {
+  background: var(--accent);
+  color: var(--accent-ink);
 }
 
 /* ------------------------------------------------------------------ element defaults */
 
+/**
+ * A resting button is *invisible*: no border, no fill, one step of muted text. The fill appears on
+ * hover and the accent fill appears only on the active state, applied by the component. This is the
+ * single largest reason the toolbar stops reading as a wall of boxes.
+ */
 button {
-  background: #1d2230;
+  background: transparent;
   color: var(--text);
-  border: 1px solid var(--line);
+  border: 0;
   border-radius: 6px;
-  padding: 4px 9px;
+  padding: 4px 8px;
   font: inherit;
+  font-size: 12px;
   cursor: pointer;
+  transition: background-color 90ms ease, color 90ms ease;
 }
 
 button:hover:not(:disabled) {
-  border-color: var(--accent);
+  background: var(--wash);
+}
+
+button:active:not(:disabled) {
+  background: var(--wash-strong);
 }
 
 button:disabled {
-  opacity: 0.42;
+  color: var(--dim);
   cursor: default;
 }
 
+/**
+ * The accent is the focus ring, and it is the *only* place a resting control shows colour. Negative
+ * offset keeps the ring inside the control so it cannot be clipped by a panel's `overflow: hidden`.
+ */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+/**
+ * A field is a fill, not a box: a slightly sunken surface with a hairline that only lights up when
+ * the field has focus. The `:focus-within` colour is on the border rather than the outline so a
+ * numeric field inside a vector row still reads as one control.
+ */
 input,
-select {
-  background: #10141c;
+select,
+textarea {
+  background: color-mix(in srgb, var(--bg) 60%, transparent);
   color: var(--text);
-  border: 1px solid var(--line);
-  border-radius: 5px;
+  border: 1px solid transparent;
+  border-radius: 6px;
   padding: 3px 6px;
   font: inherit;
+  font-size: 12px;
   min-width: 0;
+  transition: border-color 90ms ease, background-color 90ms ease;
+}
+
+input:hover:not(:disabled),
+select:hover:not(:disabled) {
+  border-color: var(--stroke);
 }
 
 input:focus,
 select:focus,
-button:focus-visible {
-  outline: 1px solid var(--accent);
-  outline-offset: 0;
+textarea:focus {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--bg) 85%, transparent);
+  outline: none;
+}
+
+input:disabled,
+select:disabled {
+  color: var(--dim);
+}
+
+/**
+ * Numeric fields are read in columns, so they get tabular figures — a `1` and a `7` should occupy
+ * the same width or a vector row visibly jitters as it is scrubbed.
+ */
+input[type='number'] {
+  font-variant-numeric: tabular-nums;
+}
+
+/**
+ * Chrome's default checkbox is a bright system blue that would be the only cool pixel on screen.
+ * `accent-color` re-tints the native control to the palette instead of replacing it with a
+ * hand-built one.
+ */
+input[type='checkbox'],
+input[type='radio'] {
+  accent-color: var(--accent);
+  width: 13px;
+  height: 13px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+/**
+ * The native colour swatch is a 1px bordered rect with no padding by default, which makes it look
+ * like a broken input next to the rest of the inspector.
+ */
+input[type='color'] {
+  width: 30px;
+  height: 22px;
+  padding: 2px;
+  border-color: var(--line);
+  cursor: pointer;
+}
+
+select {
+  cursor: pointer;
+  appearance: none;
+  padding-inline-end: 20px;
+  background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+    linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position: calc(100% - 11px) 50%, calc(100% - 7px) 50%;
+  background-size: 4px 4px, 4px 4px;
+  background-repeat: no-repeat;
 }
 
 code {
-  background: #171b24;
+  background: var(--wash);
   padding: 1px 5px;
   border-radius: 4px;
+  font-size: 11px;
+}
+
+/* ------------------------------------------------------------------ utilities */
+
+/**
+ * The standard visually-hidden treatment.
+ *
+ * This is in the stylesheet rather than a `stylex.create` style because it is a behaviour, not a
+ * design decision: the transport buttons are icon-only, and the accessible name for each one has to
+ * keep existing as real text. It also keeps "Step" and "Stop" present as text for a test selector,
+ * which is what lets an icon replace the word without the control losing its name.
+ */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ------------------------------------------------------------------ motion */
+
+/**
+ * Every transition in the editor is a hover or focus affordance, so none of them are load-bearing.
+ * The switch is global rather than per-component because a component that forgot it would be the
+ * one that animates for a user who asked it not to.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* ------------------------------------------------------------------ runtime HUD seam */

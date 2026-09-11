@@ -6,7 +6,7 @@ import { RuntimeWorldError, type RuntimeStats } from '@runtime/world.js';
 import { RuntimeSession } from '@runtime/session.js';
 import { AssetCache } from '@runtime/assets/loader.js';
 import wasmUrl from 'virtual:box3d-wasm-url';
-import { color, radius, space } from '../styles/tokens.stylex.js';
+import { color, fontSize, radius, space } from '../styles/tokens.stylex.js';
 import { DOM, DOM_ID, withDomClass } from '../dom-contract.js';
 import { EditorViewport, type SnapSettings, type TransformTool } from '../viewport/viewport-controller.js';
 import { useSession } from '../hooks.js';
@@ -56,35 +56,62 @@ const styles = stylex.create({
     pointerEvents: 'none',
     overflow: 'hidden',
   },
+  /**
+   * The mode badge.
+   *
+   * It floats over the render, so it keeps a translucent surface rather than a solid one — a solid
+   * chip in the corner of a viewport reads as part of the scene. The dot plus word is the same
+   * treatment the status bar uses for the same fact, so "the editor is live" looks like one idea
+   * in two places instead of two ideas.
+   */
   badge: {
     position: 'absolute',
-    top: '8px',
-    left: '8px',
-    backgroundColor: 'rgba(20, 26, 38, 0.86)',
+    top: space.sm,
+    left: space.sm,
+    display: 'flex',
+    alignItems: 'center',
+    gap: space.xs,
+    backgroundColor: 'rgba(10, 11, 13, 0.72)',
+    backdropFilter: 'blur(6px)',
     borderWidth: '1px',
     borderStyle: 'solid',
-    borderColor: color.line,
-    borderRadius: radius.md,
+    borderColor: color.stroke,
+    borderRadius: radius.pill,
     paddingBlock: '3px',
-    paddingInline: '8px',
-    color: color.ok,
+    paddingInline: space.sm,
+    color: color.text,
+    fontSize: fontSize.xs,
+    fontWeight: 600,
+    letterSpacing: '0.04em',
   },
+  badgeDot: {
+    width: '6px',
+    height: '6px',
+    borderRadius: radius.pill,
+    backgroundColor: color.accent,
+  },
+  /**
+   * A load failure is the one thing in the viewport that must not be missable, so it is the only
+   * surface in the editor that gets a full semantic fill rather than a tint.
+   */
   error: {
     position: 'absolute',
-    left: '12px',
-    right: '12px',
-    bottom: '12px',
-    backgroundColor: '#3a1418',
+    left: space.md,
+    right: space.md,
+    bottom: space.md,
+    backgroundColor: 'rgba(46, 20, 18, 0.94)',
     borderWidth: '1px',
     borderStyle: 'solid',
-    borderColor: '#7a2630',
-    color: '#ffd7db',
-    paddingBlock: '8px',
+    borderColor: color.danger,
+    color: '#f6ddd9',
+    paddingBlock: space.sm,
     paddingInline: space.md,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     display: 'flex',
     gap: space.md,
     alignItems: 'center',
+    fontSize: fontSize.sm,
+    boxShadow: '0 12px 32px rgba(0, 0, 0, 0.5)',
   },
 });
 
@@ -402,7 +429,8 @@ export function Viewport({ handleRef, tool, snap, onPlayStateChange, onStatus }:
       <div {...withDomClass(styles.hudHost, DOM.hudHost)} ref={hudRootRef} />
       {playState !== 'stopped' && (
         <div {...withDomClass(styles.badge, DOM.viewportBadge)}>
-          Play mode — authoring is paused
+          <span {...stylex.props(styles.badgeDot)} />
+          {playState === 'paused' ? 'Paused' : 'Play mode'}
         </div>
       )}
       {error && (

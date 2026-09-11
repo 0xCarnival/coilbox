@@ -1,20 +1,43 @@
 import { useEffect, useRef, useState } from 'react';
 import type { JSX } from 'react';
 import * as stylex from '@stylexjs/stylex';
-import { button, color, radius, space } from '../styles/tokens.stylex.js';
+import { button, color, fontSize, radius, space, surface } from '../styles/tokens.stylex.js';
 import { DOM, DOM_STATE, withDomClass } from '../dom-contract.js';
 import { useSession, useSessionSnapshot } from '../hooks.js';
 import type { TransformTool } from '../viewport/viewport-controller.js';
 import type { PlayState, ViewportHandle } from './Viewport.js';
 import type { SnapSettings } from '../viewport/viewport-controller.js';
 import { createEntity, CREATABLE_KINDS, CREATABLE_LABELS, type CreatableKind } from '../document/factory.js';
+import {
+  IconBack,
+  IconCameraCapture,
+  IconExport,
+  IconHistory,
+  IconMore,
+  IconPause,
+  IconPlay,
+  IconPlus,
+  IconStep,
+  IconStop,
+} from './icons.js';
 
 /**
- * Top toolbar (plan §3): project and scene name, Save, undo/redo, transform tools, snap,
+ * Top toolbar (plan §3): project and scene identity, Save, undo/redo, transform tools, snap,
  * Play/Pause/Step/Stop, and Export Game.
  *
- * It also holds the creation menu and reflects the save state, which only ever reads
- * "Saved" after the workspace service acknowledges a write.
+ * It also holds the creation menu. The save *state* is rendered by the shell in the status bar
+ * instead of here, because a status word sitting inside a control row reads as a button — that is
+ * exactly how the old "Saved" label next to Save was being read.
+ *
+ * ## Structure
+ *
+ * Controls are clustered by what they act on, and clusters are separated by a hairline plus more
+ * space than the gap inside a cluster. The previous toolbar was nine equally-spaced children in one
+ * row, so "Play" and "Set thumbnail" carried the same visual rank. Proximity is the whole hierarchy
+ * here: there is no border or band, only which controls sit near each other.
+ *
+ * Rare actions live behind the overflow rather than competing for width. `Set thumbnail` was the
+ * clearest case — a once-per-project action that held permanent toolbar space.
  */
 
 const TRANSFORM_TOOLS: TransformTool[] = ['translate', 'rotate', 'scale'];
@@ -22,117 +45,173 @@ const TRANSFORM_TOOLS: TransformTool[] = ['translate', 'rotate', 'scale'];
 /**
  * Toolbar chrome.
  *
- * `toolbar` and the transform-tool buttons deliberately do not carry a colour of their own where
- * `base.css` already styles the bare `button` element: the element rule and an atomic class would
- * fight over the same property, and the atomic class would win by specificity — silently changing
- * every button's padding. Overrides are limited to what the original classes actually declared.
+ * The toolbar and its buttons deliberately carry no colour of their own where the bare `button`
+ * element rule already styles them: the element rule and an atomic class would fight over the same
+ * property, and the atomic class would win by specificity — silently changing every button's
+ * padding. Overrides are limited to what a cluster actually needs.
  */
 const styles = stylex.create({
   toolbar: {
     display: 'flex',
     alignItems: 'center',
-    gap: space.md,
+    gap: space.sm,
     paddingBlock: space.sm,
     paddingInline: space.md,
     backgroundColor: color['panel-2'],
     borderBlockEndWidth: '1px',
     borderBlockEndStyle: 'solid',
     borderBlockEndColor: color.line,
-    flexWrap: 'wrap',
+    minHeight: '46px',
   },
   group: {
     display: 'flex',
     alignItems: 'center',
-    gap: space.sm,
+    gap: space.xxs,
+    minWidth: 0,
+  },
+  /**
+   * The cluster divider: a 1px rule with an inset block, not a full-height border, so it groups
+   * without drawing a box around anything.
+   */
+  divider: {
+    width: '1px',
+    alignSelf: 'stretch',
+    marginBlock: space.xs,
+    marginInline: space.xxs,
+    backgroundColor: color.line,
+    flexShrink: 0,
   },
   spacer: {
     flex: 1,
   },
 
+  /** Identity: the project is a place you are in, so its name is a label rather than a field. */
+  identity: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: space.sm,
+    minWidth: 0,
+  },
+  backButton: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: space.xs,
+    color: color.muted,
+    paddingInline: space.sm,
+  },
+  /**
+   * The project name's own geometry. The "quiet until hovered" treatment is `button.ghost`,
+   * composed at the call site rather than spread here: StyleX cannot reference a style from inside
+   * another `stylex.create` block — it fails the compile with "Rule contains an unclosed function",
+   * which names neither the file's cause nor the offending property.
+   */
   projectName: {
     fontWeight: 600,
-    backgroundColor: 'transparent',
-    borderWidth: '1px',
-    borderStyle: 'solid',
-    borderColor: 'transparent',
-    /**
-     * The original class asked for `padding: 4px 6px`, but `button` in `base.css` declared
-     * `padding: 4px 9px` at higher specificity and always won in practice. This keeps the rendered
-     * result identical rather than the intent; changing it would be a redesign, not a migration.
-     */
+    maxWidth: '220px',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
     paddingBlock: space.xs,
-    paddingInline: '9px',
+    paddingInline: space.sm,
     ':hover': {
-      borderColor: color.line,
+      backgroundColor: color.wash,
     },
   },
   sceneName: {
     display: 'flex',
-    /**
-     * `.scene-name input { width: 150px }` targeted an element that is not a `stylex` class, so the
-     * width moves onto the wrapper and the input is told to fill it.
-     */
-    width: '150px',
+    alignItems: 'center',
+    gap: space.xs,
+    color: color.dim,
   },
   sceneNameInput: {
-    width: '100%',
+    width: '132px',
+    color: color.muted,
+    fontWeight: 500,
   },
-  /** `.active` for the transform tools: the toolbar's own selected treatment. */
+  /** A quiet icon-only control: undo, redo, and the overflow. */
+  iconButton: {
+    display: 'grid',
+    placeItems: 'center',
+    width: '28px',
+    height: '28px',
+    paddingInline: 0,
+    color: color.muted,
+    ':hover': {
+      color: color.text,
+    },
+  },
+  /** The toolbar's own selected treatment, now in the accent rather than a blue fill. */
   toolActive: {
-    backgroundColor: '#24314a',
-    borderColor: color.accent,
+    backgroundColor: color['accent-quiet'],
+    color: color.accent,
+    fontWeight: 600,
+  },
+  toolButton: {
+    paddingInline: space.sm,
   },
   snapToggle: {
     display: 'flex',
     alignItems: 'center',
     gap: space.xs,
     color: color.muted,
+    fontSize: fontSize.sm,
+    paddingInline: space.xs,
+    cursor: 'pointer',
   },
-  createMenu: {
+  menuHost: {
     position: 'relative',
   },
-  menu: {
-    position: 'absolute',
-    zIndex: 20,
-    top: 'calc(100% + 4px)',
-    left: 0,
-    backgroundColor: color['panel-2'],
-    borderWidth: '1px',
-    borderStyle: 'solid',
-    borderColor: color.line,
-    borderRadius: radius.lg,
-    padding: space.xs,
+  menuTrigger: {
     display: 'flex',
-    flexDirection: 'column',
-    minWidth: '170px',
-    boxShadow: '0 12px 28px rgba(0, 0, 0, 0.45)',
+    alignItems: 'center',
+    gap: space.xs,
   },
-  /** `.menu button` — the menu owns its buttons' chrome, so this is an intentional button override. */
-  menuButton: {
-    backgroundColor: 'transparent',
-    borderWidth: 0,
-    borderStyle: 'none',
+  /**
+   * The position on this layer is the toolbar's own; the surface, radius, and shadow come from
+   * `surface.menu`, which is spread at the call site. Splitting them this way is deliberate: the
+   * surface is shared with the add-component menu, the placement is not.
+   */
+  menuItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: space.sm,
     textAlign: 'left',
-    borderRadius: radius.sm,
+    borderRadius: radius.md,
+    paddingBlock: space.sm,
     paddingInline: space.sm,
+    color: color.text,
     ':hover': {
-      backgroundColor: '#212838',
+      backgroundColor: color.wash,
     },
   },
-  saveIndicator: {
-    color: color.muted,
-    minWidth: '108px',
+  menuPlacement: {
+    position: 'absolute',
+    zIndex: 20,
+    top: 'calc(100% + 6px)',
+    left: 0,
   },
-  saveDirty: {
-    color: color.warn,
+  menuPlacementEnd: {
+    left: 'auto',
+    right: 0,
   },
-  saveError: {
-    color: color.danger,
+  playback: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: space.xs,
   },
-  saveFlash: {
-    color: color.ok,
+  /** Play is the one filled control in the toolbar; see `button.primary`. */
+  playButton: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: space.xs,
+    paddingInline: space.md,
   },
-  saveSaving: {
+  transportButton: {
+    display: 'grid',
+    placeItems: 'center',
+    width: '28px',
+    height: '28px',
+    paddingInline: 0,
     color: color.muted,
   },
 });
@@ -161,18 +240,26 @@ export function Toolbar({
   const session = useSession();
   const snapshot = useSessionSnapshot();
   const [createOpen, setCreateOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [sceneNameDraft, setSceneNameDraft] = useState<string | null>(null);
   const editorLocked = playState !== 'stopped';
   const scene = session.scene;
 
   return (
     <header {...stylex.props(styles.toolbar)}>
-      <div {...withDomClass(styles.group, DOM.toolbarGroup)}>
-        <button {...stylex.props(button.link)} type="button" onClick={() => session.closeProject()} title="Back to projects">
-          ◀ Projects
-        </button>
+      <div {...withDomClass(styles.identity, DOM.toolbarGroup)} aria-label="Project">
         <button
-          {...stylex.props(styles.projectName)}
+          {...stylex.props(button.link, styles.backButton)}
+          type="button"
+          onClick={() => session.closeProject()}
+          title="Back to projects"
+        >
+          <IconBack size={13} />
+          Projects
+        </button>
+        <span {...stylex.props(styles.divider)} />
+        <button
+          {...stylex.props(button.ghost, styles.projectName)}
           type="button"
           title="Rename this project (the folder and id stay the same)"
           onClick={() => {
@@ -183,6 +270,7 @@ export function Toolbar({
         >
           {snapshot.project?.name ?? 'No project'}
         </button>
+        <span {...stylex.props(styles.divider)} />
         <span {...stylex.props(styles.sceneName)}>
           <input
             {...stylex.props(styles.sceneNameInput)}
@@ -204,29 +292,48 @@ export function Toolbar({
         </span>
       </div>
 
-      <div {...withDomClass(styles.group, DOM.toolbarGroup)}>
+      <span {...stylex.props(styles.divider)} />
+
+      <div {...withDomClass(styles.group, DOM.toolbarGroup)} aria-label="Document">
         <button type="button" onClick={() => void session.save()} disabled={!snapshot.dirty || editorLocked}>
           Save
         </button>
-        <SaveIndicator state={snapshot.saveState} lastSavedAt={snapshot.lastSavedAt} />
+        <button
+          {...stylex.props(styles.iconButton)}
+          type="button"
+          title="Undo"
+          aria-label="Undo"
+          disabled={!snapshot.canUndo || editorLocked}
+          onClick={() => session.undo()}
+        >
+          <IconHistory direction="undo" />
+        </button>
+        <button
+          {...stylex.props(styles.iconButton)}
+          type="button"
+          title="Redo"
+          aria-label="Redo"
+          disabled={!snapshot.canRedo || editorLocked}
+          onClick={() => session.redo()}
+        >
+          <IconHistory direction="redo" />
+        </button>
       </div>
 
-      <div {...withDomClass(styles.group, DOM.toolbarGroup)}>
-        <button type="button" title="Undo" disabled={!snapshot.canUndo || editorLocked} onClick={() => session.undo()}>
-          ↶
-        </button>
-        <button type="button" title="Redo" disabled={!snapshot.canRedo || editorLocked} onClick={() => session.redo()}>
-          ↷
-        </button>
-      </div>
+      <span {...stylex.props(styles.divider)} />
 
       <div {...withDomClass(styles.group, DOM.toolbarGroup)} role="group" aria-label="Transform tool">
         {TRANSFORM_TOOLS.map((candidate) => (
           <button
             key={candidate}
-            {...withDomClass(tool === candidate && styles.toolActive, tool === candidate && DOM_STATE.active)}
+            {...withDomClass(
+              styles.toolButton,
+              tool === candidate && styles.toolActive,
+              tool === candidate && DOM_STATE.active,
+            )}
             type="button"
             title={`${candidate} (${candidate === 'translate' ? 'W' : candidate === 'rotate' ? 'E' : 'R'})`}
+            aria-pressed={tool === candidate}
             onClick={() => onToolChange(candidate)}
           >
             {candidate === 'translate' ? 'Move' : candidate === 'rotate' ? 'Rotate' : 'Scale'}
@@ -242,17 +349,27 @@ export function Toolbar({
         </label>
       </div>
 
+      <span {...stylex.props(styles.divider)} />
+
       <div {...withDomClass(styles.group, DOM.toolbarGroup)}>
-        <div {...stylex.props(styles.createMenu)}>
-          <button type="button" disabled={editorLocked || !scene} onClick={() => setCreateOpen((open) => !open)}>
-            + Create
+        <div {...stylex.props(styles.menuHost)}>
+          <button
+            {...stylex.props(styles.menuTrigger)}
+            type="button"
+            disabled={editorLocked || !scene}
+            aria-expanded={createOpen}
+            onClick={() => setCreateOpen((open) => !open)}
+          >
+            <IconPlus />
+            Create
           </button>
           {createOpen && (
-            <div {...withDomClass(styles.menu, DOM.menu)}>
+            <div {...withDomClass(surface.menu, styles.menuPlacement, DOM.menu)}>
+              <span {...stylex.props(surface.microLabel)}>Add to scene</span>
               {CREATABLE_KINDS.map((kind: CreatableKind) => (
                 <button
                   key={kind}
-                  {...stylex.props(styles.menuButton)}
+                  {...stylex.props(styles.menuItem)}
                   type="button"
                   onClick={() => {
                     setCreateOpen(false);
@@ -277,43 +394,90 @@ export function Toolbar({
 
       <span {...withDomClass(styles.spacer, DOM.toolbarSpacer)} />
 
-      <div {...withDomClass(styles.group, DOM.toolbarGroup)} role="group" aria-label="Playback">
+      <div {...withDomClass(styles.playback, DOM.toolbarGroup)} role="group" aria-label="Playback">
         {playState === 'stopped' ? (
-          <button {...stylex.props(button.primary)} type="button" onClick={() => void viewport.current?.play()}>
-            ▶ Play
+          <button
+            {...stylex.props(button.primary, styles.playButton)}
+            type="button"
+            onClick={() => void viewport.current?.play()}
+          >
+            <IconPlay />
+            Play
           </button>
         ) : (
-          <button type="button" onClick={() => viewport.current?.pause()}>
-            {playState === 'paused' ? '▶ Resume' : '⏸ Pause'}
+          <button
+            {...stylex.props(button.primary, styles.playButton)}
+            type="button"
+            onClick={() => viewport.current?.pause()}
+          >
+            {playState === 'paused' ? <IconPlay /> : <IconPause />}
+            {playState === 'paused' ? 'Resume' : 'Pause'}
           </button>
         )}
-        <button type="button" disabled={playState !== 'paused'} onClick={() => viewport.current?.step()}>
-          Step
+        <button
+          {...stylex.props(styles.transportButton)}
+          type="button"
+          title="Step one frame"
+          disabled={playState !== 'paused'}
+          onClick={() => viewport.current?.step()}
+        >
+          <IconStep />
+          <span className="visually-hidden">Step</span>
         </button>
-        <button type="button" disabled={playState === 'stopped'} onClick={() => viewport.current?.stop()}>
-          ■ Stop
+        <button
+          {...stylex.props(styles.transportButton)}
+          type="button"
+          title="Stop and discard the simulation"
+          disabled={playState === 'stopped'}
+          onClick={() => viewport.current?.stop()}
+        >
+          <IconStop />
+          <span className="visually-hidden">Stop</span>
         </button>
       </div>
+
+      <span {...stylex.props(styles.divider)} />
 
       <div {...withDomClass(styles.group, DOM.toolbarGroup)}>
         <button
+          {...stylex.props(styles.menuTrigger)}
           type="button"
-          title="Store the current view as this project's thumbnail"
-          disabled={editorLocked}
-          onClick={() => {
-            const dataUrl = viewport.current?.captureThumbnail();
-            if (!dataUrl) return;
-            void session.setThumbnail(dataUrlToBytes(dataUrl));
-          }}
+          disabled={editorLocked || exporting}
+          onClick={onExport}
         >
-          Set thumbnail
+          <IconExport />
+          {exporting ? 'Exporting…' : 'Export'}
         </button>
-      </div>
-
-      <div {...withDomClass(styles.group, DOM.toolbarGroup)}>
-        <button type="button" disabled={editorLocked || exporting} onClick={onExport}>
-          {exporting ? 'Exporting…' : 'Export Game'}
-        </button>
+        <div {...stylex.props(styles.menuHost)}>
+          <button
+            {...stylex.props(styles.iconButton)}
+            type="button"
+            title="More actions"
+            aria-label="More actions"
+            aria-expanded={moreOpen}
+            onClick={() => setMoreOpen((open) => !open)}
+          >
+            <IconMore />
+          </button>
+          {moreOpen && (
+            <div {...withDomClass(surface.menu, styles.menuPlacement, styles.menuPlacementEnd, DOM.menu)}>
+              <button
+                {...stylex.props(styles.menuItem)}
+                type="button"
+                disabled={editorLocked}
+                onClick={() => {
+                  setMoreOpen(false);
+                  const dataUrl = viewport.current?.captureThumbnail();
+                  if (!dataUrl) return;
+                  void session.setThumbnail(dataUrlToBytes(dataUrl));
+                }}
+              >
+                <IconCameraCapture />
+                Set thumbnail
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );
@@ -328,7 +492,33 @@ function dataUrlToBytes(dataUrl: string): Uint8Array {
   return bytes;
 }
 
-function SaveIndicator({ state, lastSavedAt }: { state: string; lastSavedAt: string | null }): JSX.Element {
+const saveStyles = stylex.create({
+  indicator: {
+    color: color.dim,
+    fontSize: fontSize.xs,
+    fontVariantNumeric: 'tabular-nums',
+  },
+  dirty: {
+    color: color.warn,
+  },
+  error: {
+    color: color.danger,
+  },
+  saving: {
+    color: color.dim,
+  },
+  flash: {
+    color: color.ok,
+  },
+});
+
+/**
+ * The save state, rendered by the shell in the status bar.
+ *
+ * It reports rather than acts, which is why it is not a button: the previous arrangement put
+ * "Saved" / "Unsaved changes" immediately after Save, where it read as a second, disabled Save.
+ */
+export function SaveIndicator({ state, lastSavedAt }: { state: string; lastSavedAt: string | null }): JSX.Element {
   const [flash, setFlash] = useState(false);
   const previous = useRef(state);
   useEffect(() => {
@@ -354,11 +544,11 @@ function SaveIndicator({ state, lastSavedAt }: { state: string; lastSavedAt: str
   return (
     <span
       {...withDomClass(
-        styles.saveIndicator,
-        state === 'dirty' && styles.saveDirty,
-        state === 'error' && styles.saveError,
-        state === 'saving' && styles.saveSaving,
-        flash && styles.saveFlash,
+        saveStyles.indicator,
+        state === 'dirty' && saveStyles.dirty,
+        state === 'error' && saveStyles.error,
+        state === 'saving' && saveStyles.saving,
+        flash && saveStyles.flash,
         DOM.saveIndicator,
         // The state word rides along as a class as well as an attribute: `data-save-state` is what the
         // gates read, and `.save-indicator.dirty` is what a person reads in devtools. The flash class

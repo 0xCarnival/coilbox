@@ -375,7 +375,7 @@ async function main(): Promise<void> {
     await page.screenshot({ path: join(evidenceDir, 'editor-agent-game.png') });
 
     // ------------------------------------------------------------ independence
-    await page.click('button:has-text("◀ Projects")');
+    await page.click('button:has-text("Projects")');
     await page.waitForSelector('.card', { timeout: 15_000 });
     await page.click('.card:has-text("Collect Room") button:has-text("Open")');
     await page.waitForSelector('.tree-row', { timeout: 20_000 });

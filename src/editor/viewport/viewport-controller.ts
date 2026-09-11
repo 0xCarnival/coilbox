@@ -123,7 +123,7 @@ export class EditorViewport {
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
 
-    this.scene.background = new THREE.Color('#1b1f29');
+    this.scene.background = new THREE.Color('#141519');
 
     this.camera = new THREE.PerspectiveCamera(55, 1, 0.05, 2000);
     this.camera.position.set(7, 5.5, 9);
@@ -253,7 +253,7 @@ export class EditorViewport {
       projection.object.renderOrder = entity.order;
     }
     this.scene.background = new THREE.Color(
-      scene.environment.background.type === 'color' ? scene.environment.background.color : '#1b1f29',
+      scene.environment.background.type === 'color' ? scene.environment.background.color : '#141519',
     );
     this.updateSelectionHelper();
   }

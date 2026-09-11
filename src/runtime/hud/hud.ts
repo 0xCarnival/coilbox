@@ -194,7 +194,17 @@ function injectStyles(documentRef: Document): void {
   const style = documentRef.createElement('style');
   style.id = 'coilbox-hud-styles';
   style.textContent = `
-.coilbox-hud { position: fixed; inset: 0; pointer-events: none; font: 14px/1.4 ui-sans-serif, -apple-system, "Segoe UI", sans-serif; }
+/*
+ * The HUD is styled here rather than in the editor's stylesheet because an export ships the runtime
+ * and the player with no styling compiler of their own: this <style> element is the whole dependency.
+ * See coilbox/no-stylex-outside-editor.
+ *
+ * The values below are the editor palette's, spelled literally because this file cannot import the
+ * editor's tokens. They are duplicated deliberately and not by accident — the overlay floats over
+ * the same render the editor's viewport shows, so a blue button here would be the one cool pixel in
+ * an otherwise warm-neutral product. Keep them in step with src/editor/styles/tokens.stylex.ts.
+ */
+.coilbox-hud { position: fixed; inset: 0; pointer-events: none; font: 14px/1.4 Inter, ui-sans-serif, -apple-system, "Segoe UI", sans-serif; }
 .hud-host > .coilbox-hud { position: absolute; }
 .coilbox-hud .hud-element { position: absolute; padding: 4px 8px; }
 .coilbox-hud .hud-top-left { top: 10px; left: 12px; }
@@ -204,11 +214,11 @@ function injectStyles(documentRef: Document): void {
 .coilbox-hud .hud-bottom-center { bottom: 12px; left: 50%; transform: translateX(-50%); }
 .coilbox-hud .hud-bottom-right { bottom: 12px; right: 12px; }
 .coilbox-hud .hud-center { inset: 0; display: flex; align-items: center; justify-content: center; }
-.coilbox-hud .hud-overlay > * { background: rgba(16, 19, 25, 0.92); border: 1px solid #2a3140; border-radius: 12px; padding: 22px 26px; text-align: center; min-width: 240px; pointer-events: auto; }
-.coilbox-hud .hud-overlay h2 { margin: 0 0 6px; font-size: 20px; }
-.coilbox-hud .hud-overlay p { margin: 0 0 14px; color: #b9c2d4; }
-.coilbox-hud button { pointer-events: auto; background: #22406e; color: #e6e9ef; border: 1px solid #35619f; border-radius: 7px; padding: 6px 14px; font: inherit; cursor: pointer; }
-.coilbox-hud button:hover { border-color: #5b9dff; }
+.coilbox-hud .hud-overlay > * { background: rgba(18, 19, 22, 0.94); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 10px; padding: 22px 26px; text-align: center; min-width: 240px; pointer-events: auto; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55); }
+.coilbox-hud .hud-overlay h2 { margin: 0 0 6px; font-size: 20px; letter-spacing: -0.01em; }
+.coilbox-hud .hud-overlay p { margin: 0 0 14px; color: #a8aab1; }
+.coilbox-hud button { pointer-events: auto; background: #e0a458; color: #1a1408; border: 0; border-radius: 6px; padding: 7px 16px; font: inherit; font-weight: 600; cursor: pointer; }
+.coilbox-hud button:hover { background: #eeb268; }
 .coilbox-hud .hud-counter, .coilbox-hud .hud-label { font-variant-numeric: tabular-nums; text-shadow: 0 1px 3px rgba(0,0,0,0.6); }
 `;
   documentRef.head.appendChild(style);

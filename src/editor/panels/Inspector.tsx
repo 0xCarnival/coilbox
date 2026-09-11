@@ -3,7 +3,7 @@ import type { JSX } from 'react';
 import * as stylex from '@stylexjs/stylex';
 import type { AssetEntry, Component, ComponentType, Entity, JsonValue, Quat, Vec3 } from '@schema/index.js';
 import { COMPONENT_TYPES, COMPONENT_LABELS, IDENTITY_QUAT, ZERO_VEC3 } from '@schema/index.js';
-import { color, fontSize, radius, space } from '../styles/tokens.stylex.js';
+import { color, fontFamily, fontSize, radius, space, surface } from '../styles/tokens.stylex.js';
 import { DOM, withDomClass } from '../dom-contract.js';
 import { useSession, useSessionSnapshot } from '../hooks.js';
 import {
@@ -17,6 +17,7 @@ import {
 import type { BehaviorPropertyDescriptor } from '@runtime/behaviors/types.js';
 import { componentsFor, type CreatableKind } from '../document/factory.js';
 import { isFiniteJsonNumber, isJsonString, jsonQuaternion, jsonVec3 } from '../json-values.js';
+import { IconChevron } from './icons.js';
 
 /**
  * Inspector (plan §3): only the selected object's applicable properties, with readable
@@ -38,74 +39,126 @@ import { isFiniteJsonNumber, isJsonString, jsonQuaternion, jsonVec3 } from '../j
  * StyleX's atomic classes coexist on the same element instead of one replacing the other.
  */
 const styles = stylex.create({
+  /**
+   * The panel scrolls as one column, and its padding lives here rather than on each section so
+   * every row in the inspector starts on the same vertical line.
+   */
   inspector: {
     overflow: 'auto',
     height: '100%',
-    paddingBottom: '20px',
+    paddingBlockEnd: space.lg,
+    paddingInline: space.sm,
     position: 'relative',
   },
+  /**
+   * The object's name is the panel's title, so it is the one text field in the inspector that does
+   * not look like a field until it is hovered. `name-field` is a gate hook, so it keeps its class.
+   */
   inspectorTitle: {
     display: 'flex',
     alignItems: 'center',
-    gap: '8px',
-    padding: '8px',
-    borderBlockEndWidth: '1px',
-    borderBlockEndStyle: 'solid',
-    borderBlockEndColor: color.line,
+    gap: space.sm,
+    paddingBlock: space.md,
+    paddingInline: space.xs,
   },
   nameField: {
     flex: 1,
     fontWeight: 600,
+    fontSize: fontSize.md,
+    backgroundColor: 'transparent',
+    borderColor: 'transparent',
+    paddingInline: space.xs,
   },
   enabledToggle: {
     display: 'flex',
     alignItems: 'center',
     gap: space.xs,
     color: color.muted,
+    fontSize: fontSize.xs,
     whiteSpace: 'nowrap',
-  },
-  section: {
-    borderBlockEndWidth: '1px',
-    borderBlockEndStyle: 'solid',
-    borderBlockEndColor: color.line,
+    cursor: 'pointer',
   },
   /**
-   * `.section-header` declared the whole chrome of the button it sits on — background, border,
-   * radius, and padding included — so all of it is translated rather than left to the element rule.
+   * A section is separated from the next by a hairline, which is the only rule left in the panel.
+   * The previous treatment gave every section a filled header band *and* a bottom border, so the
+   * inspector read as a stack of stripes rather than a column of properties.
+   */
+  section: {
+    borderBlockStartWidth: '1px',
+    borderBlockStartStyle: 'solid',
+    borderBlockStartColor: color.line,
+    paddingBlock: space.sm,
+  },
+  /**
+   * The section header is an uppercase micro-label with a rotating chevron.
+   *
+   * It carries no background, no border, and no radius — those all came from the old translated
+   * `button` element rule and are exactly what made a disclosure look like a form field. Hierarchy
+   * now comes from the label itself: at 10px, tracked and uppercase, it reads as a heading at a
+   * glance while staying quieter than the values underneath it.
    */
   sectionHeader: {
     width: '100%',
     display: 'flex',
     alignItems: 'center',
-    gap: space.sm,
-    backgroundColor: color['panel-2'],
+    gap: space.xs,
+    backgroundColor: 'transparent',
     borderWidth: 0,
     borderStyle: 'none',
     borderRadius: 0,
-    paddingBlock: space.sm,
-    paddingInline: '8px',
+    paddingBlock: space.xs,
+    paddingInline: space.xs,
     textAlign: 'left',
+    color: color.dim,
+    ':hover': {
+      color: color.muted,
+    },
   },
   sectionTitle: {
+    fontSize: fontSize.micro,
     fontWeight: 600,
+    letterSpacing: '0.09em',
+    textTransform: 'uppercase',
   },
+  /**
+   * The subtitle is the technical name — `box 1 x 2.4 x 1 m`, a behavior id, `dynamic`. It sits on
+   * the far side of the header in mono so it cannot be confused with the heading itself.
+   */
   sectionSubtitle: {
-    color: color.muted,
+    color: color.dim,
     marginInlineStart: 'auto',
     fontSize: fontSize.xs,
+    fontFamily: fontFamily.mono,
+  },
+  /**
+   * Pushes the disclosure chevron to the trailing edge when there is no subtitle to push it.
+   * A section with a subtitle gets its spacing from the subtitle's own `marginInlineStart: auto`.
+   */
+  chevronTrailing: {
+    marginInlineStart: 'auto',
+    display: 'flex',
+    alignItems: 'center',
   },
   sectionBody: {
-    paddingBlockStart: space.sm,
-    paddingInline: '8px',
-    paddingBlockEnd: space.md,
     display: 'flex',
     flexDirection: 'column',
-    gap: space.sm,
+    gap: space.xs,
+    paddingBlockStart: space.xs,
+    paddingBlockEnd: space.sm,
+    paddingInline: space.xs,
   },
+  /**
+   * The field rhythm: a fixed label column, then a control that fills the rest.
+   *
+   * The fixed basis is what makes the panel scannable — with a content-sized label, every row's
+   * control started at a different x and the column of values had no edge to read down. `start`
+   * alignment rather than `center` keeps a label on the first line of a vector row.
+   */
   field: {
     display: 'flex',
     alignItems: 'center',
-    gap: '8px',
+    gap: space.sm,
+    minHeight: '24px',
   },
   /** `.field.checkbox` — the tighter gap of a checkbox row. */
   fieldCheckbox: {
@@ -114,8 +167,12 @@ const styles = stylex.create({
   fieldLabel: {
     flexGrow: 0,
     flexShrink: 0,
-    flexBasis: '108px',
-    color: color.muted,
+    flexBasis: '96px',
+    color: color.dim,
+    fontSize: fontSize.sm,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   },
   /**
    * `.field input[type='number']`, `.field input[type='text']`, and `.field select` were one
@@ -124,15 +181,17 @@ const styles = stylex.create({
    */
   fieldControl: {
     flex: 1,
+    minWidth: 0,
   },
   /** `.field.checkbox span` — the label text carries its own colour instead of inheriting it. */
   checkboxText: {
     color: color.text,
+    fontSize: fontSize.sm,
   },
   vectorField: {
     display: 'flex',
     alignItems: 'center',
-    gap: '8px',
+    gap: '6px',
     width: '100%',
   },
   vectorInputs: {
@@ -147,63 +206,62 @@ const styles = stylex.create({
     gap: '3px',
   },
   /**
-   * `.axis span`. 10px is off the type scale, so the pixel value is kept rather than snapped to
-   * `fontSize.xs` (11px), which would quietly resize the axis letters.
+   * `.axis span`. The axis letter stays at 10px: it is a colour-coded suffix on a number, not a
+   * label the reader parses, so it has to be quieter than the value beside it.
    */
   axisLabel: {
-    color: color.muted,
+    color: color.dim,
     fontSize: '10px',
+    fontWeight: 600,
   },
   /** `.axis input` — the width moves onto the input itself. */
   axisInput: {
     width: '100%',
   },
   /**
-   * `.advanced button`: the disclosure row's own chrome. The class declared padding and border in
-   * full, so overriding the button element rule here is intended.
+   * `.advanced button`: the disclosure row's own chrome. A quiet text disclosure with a chevron,
+   * rather than a bordered control — several of these appear inside one section and the borders
+   * were what made a component look like it had a dozen buttons.
    */
   advancedToggle: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: space.xs,
     backgroundColor: 'transparent',
     borderWidth: 0,
     borderStyle: 'none',
-    color: color.muted,
+    color: color.dim,
+    fontSize: fontSize.xs,
     paddingBlock: space.xxs,
     paddingInline: 0,
+    ':hover': {
+      color: color.muted,
+    },
   },
   componentActions: {
     display: 'flex',
     justifyContent: 'flex-end',
   },
-  /** `.component-actions button` — moved onto the button. */
+  /** `.component-actions button` — moved onto the button, and demoted to a hover affordance. */
   componentActionButton: {
     fontSize: fontSize.xs,
-    color: color.muted,
+    color: color.dim,
+    ':hover': {
+      color: color.danger,
+    },
   },
   addComponent: {
-    padding: '8px',
+    paddingBlock: space.sm,
+    paddingInline: space.xs,
     position: 'relative',
   },
   /**
-   * `.add-menu` inherits the shared `.menu` block and is then overridden to `position: static` with
-   * a top margin, so the menu flows inside the panel instead of floating over it. The shared block's
-   * offsets are kept for fidelity; they are inert while the position is static.
+   * The add-component menu flows inside the panel rather than floating over it, so it keeps
+   * `position: static` and a top margin. The shared surface treatment is applied at the call site.
    */
   addMenu: {
     position: 'static',
-    zIndex: 20,
-    top: 'calc(100% + 4px)',
-    left: 0,
     marginTop: space.sm,
-    backgroundColor: color['panel-2'],
-    borderWidth: '1px',
-    borderStyle: 'solid',
-    borderColor: color.line,
-    borderRadius: radius.lg,
-    padding: space.xs,
-    display: 'flex',
-    flexDirection: 'column',
-    minWidth: '170px',
-    boxShadow: '0 12px 28px rgba(0, 0, 0, 0.45)',
   },
   /** `.add-menu button` — the menu owns its buttons' chrome, so this is an intentional override. */
   addMenuButton: {
@@ -211,13 +269,13 @@ const styles = stylex.create({
     borderWidth: 0,
     borderStyle: 'none',
     textAlign: 'left',
-    borderRadius: radius.sm,
+    borderRadius: radius.md,
     ':hover': {
-      backgroundColor: '#212838',
+      backgroundColor: color.wash,
     },
   },
   menuHint: {
-    color: color.muted,
+    color: color.dim,
     padding: space.sm,
     maxWidth: '220px',
     fontSize: fontSize.xs,
@@ -226,14 +284,18 @@ const styles = stylex.create({
   muted: {
     color: color.muted,
     margin: 0,
+    fontSize: fontSize.sm,
   },
   warn: {
     color: color.warn,
+    margin: 0,
+    fontSize: fontSize.sm,
   },
   empty: {
-    color: color.muted,
-    padding: '14px',
+    color: color.dim,
+    padding: space.lg,
     textAlign: 'center',
+    fontSize: fontSize.sm,
   },
 });
 
@@ -327,7 +389,7 @@ export function Inspector({ locked }: { locked: boolean }): JSX.Element {
           + Add component
         </button>
         {addMenuOpen && (
-          <div {...withDomClass(styles.addMenu, DOM.addMenu)}>
+          <div {...withDomClass(surface.menu, styles.addMenu, DOM.addMenu)}>
             {COMPONENT_TYPES.filter((type) => isAddable(entity, type))
               .map((type) => ({ type, component: defaultComponent(type, snapshot.assets) }))
               .filter((entry): entry is { type: ComponentType; component: Component } => entry.component !== null)
@@ -475,7 +537,8 @@ function BehaviorSection({ entity, component, locked }: { entity: Entity; compon
       {advanced.length > 0 && (
         <div>
           <button {...stylex.props(styles.advancedToggle)} type="button" onClick={() => setAdvancedOpen((open) => !open)}>
-            {advancedOpen ? '− Hide advanced' : `+ ${advanced.length} advanced`}
+            <IconChevron open={advancedOpen} size={11} />
+            {advancedOpen ? 'Hide advanced' : `${advanced.length} advanced`}
           </button>
           {advancedOpen &&
             advanced.map((field) => (
@@ -563,7 +626,8 @@ function ComponentSection({
       {advanced.length > 0 && (
         <div>
           <button {...stylex.props(styles.advancedToggle)} type="button" onClick={() => setAdvancedOpen((open) => !open)}>
-            {advancedOpen ? '− Hide advanced' : `+ ${advanced.length} advanced`}
+            <IconChevron open={advancedOpen} size={11} />
+            {advancedOpen ? 'Hide advanced' : `${advanced.length} advanced`}
           </button>
           {advancedOpen &&
             advanced.map((field) => (
@@ -893,9 +957,16 @@ function Section({
   return (
     <section {...withDomClass(styles.section, DOM.section)}>
       <button {...stylex.props(styles.sectionHeader)} type="button" onClick={() => setOpen((value) => !value)} aria-expanded={open}>
-        <span>{open ? '▾' : '▸'}</span>
         <span {...withDomClass(styles.sectionTitle, DOM.sectionTitle)}>{title}</span>
         {subtitle && <span {...stylex.props(styles.sectionSubtitle)}>{subtitle}</span>}
+        {/**
+         * The disclosure sits after the subtitle, not before the title. A leading chevron indents
+         * every heading by its own width, which breaks the left edge the labels below depend on;
+         * trailing it keeps one alignment line down the whole panel.
+         */}
+        <span {...stylex.props(subtitle ? undefined : styles.chevronTrailing)}>
+          <IconChevron open={open} size={12} />
+        </span>
       </button>
       {open && <div {...stylex.props(styles.sectionBody)}>{children}</div>}
     </section>

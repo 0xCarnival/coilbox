@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import type { JSX } from 'react';
 import * as stylex from '@stylexjs/stylex';
 import type { AssetEntry } from '@schema/index.js';
-import { button, color, fontFamily, fontSize, space } from '../styles/tokens.stylex.js';
+import { button, color, fontFamily, fontSize, radius, space } from '../styles/tokens.stylex.js';
 import { DOM, withDomClass } from '../dom-contract.js';
 import { useSession, useSessionSnapshot } from '../hooks.js';
 
@@ -16,28 +16,30 @@ import { useSession, useSessionSnapshot } from '../hooks.js';
 
 const styles = stylex.create({
   browser: {
-    paddingBlock: '8px',
+    paddingBlock: space.sm,
     paddingInline: space.md,
     display: 'flex',
     flexDirection: 'column',
-    gap: '8px',
+    gap: space.sm,
     minHeight: 0,
   },
   dragging: {
-    outlineWidth: '2px',
+    outlineWidth: '1px',
     outlineStyle: 'dashed',
     outlineColor: color.accent,
-    outlineOffset: '-6px',
+    outlineOffset: '-4px',
+    borderRadius: radius.lg,
   },
   toolbar: {
     display: 'flex',
     alignItems: 'center',
-    gap: space.md,
+    gap: space.sm,
     flexWrap: 'wrap',
   },
   muted: {
-    color: color.muted,
+    color: color.dim,
     margin: 0,
+    fontSize: fontSize.xs,
   },
   mono: {
     fontFamily: fontFamily.mono,
@@ -45,11 +47,13 @@ const styles = stylex.create({
   },
   warn: {
     color: color.warn,
+    fontSize: fontSize.xs,
   },
   empty: {
-    color: color.muted,
-    padding: '14px',
+    color: color.dim,
+    padding: space.lg,
     textAlign: 'center',
+    fontSize: fontSize.sm,
   },
   table: {
     width: '100%',
@@ -61,23 +65,32 @@ const styles = stylex.create({
    * instead, which removes the selector entirely — and because a class beats a bare element
    * selector, the earlier `td { padding: 4px 6px }` from `base.css` no longer competes with it.
    */
+  /**
+   * The header row is a tracked micro-label, which is what lets it stay quiet: at 10px uppercase
+   * it reads as a column heading without needing a rule beneath it to separate it from the data.
+   */
   headCell: {
     textAlign: 'left',
-    color: color.muted,
-    fontWeight: 500,
+    color: color.dim,
+    fontSize: fontSize.micro,
+    fontWeight: 600,
+    letterSpacing: '0.09em',
+    textTransform: 'uppercase',
     borderBlockEndWidth: '1px',
     borderBlockEndStyle: 'solid',
     borderBlockEndColor: color.line,
-    paddingBlock: space.xs,
+    paddingBlock: space.sm,
     paddingInline: space.sm,
   },
+  /**
+   * Rows are separated by a tint rather than a border per cell. A rule under every row is what made
+   * a four-row table read as a spreadsheet; at this density the row hover already marks the row.
+   */
   cell: {
-    paddingBlock: space.xs,
+    paddingBlock: space.sm,
     paddingInline: space.sm,
-    borderBlockEndWidth: '1px',
-    borderBlockEndStyle: 'solid',
-    borderBlockEndColor: '#1b202b',
     verticalAlign: 'top',
+    fontSize: fontSize.sm,
   },
   /**
    * `.asset-table tr:hover td` tinted the *cells*, not the row box. A collapsed table's row box is
@@ -85,7 +98,7 @@ const styles = stylex.create({
    * by a `:hover` rule on the row — same pixels, no dependence on row-box painting.
    */
   cellHovered: {
-    backgroundColor: '#171d29',
+    backgroundColor: color.wash,
   },
   actions: {
     display: 'flex',

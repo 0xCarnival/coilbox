@@ -558,10 +558,10 @@ async function main(): Promise<void> {
       join(root, 'tests', 'fixtures', 'models', 'animated-limb.glb'),
     ]);
     await studio.waitForFunction(() => document.querySelectorAll('.asset-table tbody tr').length >= 2, undefined, { timeout: 30_000 });
-    await studio.click('button:has-text("+ Create")');
+    await studio.click('button:has-text("Create")');
     await studio.click('.menu button:has-text("Box")');
     await enterName(studio, 'Model Swap');
-    await studio.click('.add-component button:has-text("+ Add component")');
+    await studio.click('.add-component button:has-text("Add component")');
     await studio.click('.add-menu button:has-text("Model")');
     await studio.waitForSelector('.section-title:has-text("Model")', { timeout: 10_000 });
     await selectComponentField(studio, 'Asset', 'spinning-crate');
@@ -654,7 +654,7 @@ async function main(): Promise<void> {
     });
 
     // Acceptance: export without touching code. This is the export the release checks below serve.
-    await studio.click('button:has-text("Export Game")');
+    await studio.click('button:has-text("Export")');
     await studio.waitForFunction(() => document.querySelector('.statusbar')?.textContent?.includes('Exported to') === true, undefined, { timeout: 120_000 });
     const exported = await studio.evaluate(() => document.querySelector('.statusbar')?.textContent ?? '');
     const exportedProject = join(workspaceRoot, 'gem-rush', '.coilbox', 'export', 'project');
