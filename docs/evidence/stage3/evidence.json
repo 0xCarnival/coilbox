@@ -1,8 +1,8 @@
 {
   "stage": 3,
-  "generatedAt": "2026-09-11T13:56:34.417Z",
+  "generatedAt": "2026-09-11T14:17:20.254Z",
   "node": "v24.18.0",
-  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage3-ECwaeT",
+  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage3-ZiltG1",
   "steps": [
     {
       "name": "typecheck",
@@ -68,19 +68,19 @@
       "id": "collect-room-input",
       "title": "Keyboard input drives the character mover, and it stays on the floor",
       "passed": true,
-      "detail": "player moved 5.38 m from (0.0, -6.0) to (0.0, -0.6); y went -0.00 → 0.00",
+      "detail": "player moved 5.46 m from (0.0, -6.0) to (0.0, -0.5); y went 0.00 → 0.00",
       "observed": {
         "beforeWalk": {
           "x": 0,
-          "y": -9.934105982267738e-9,
+          "y": 1.986822706356861e-9,
           "z": -6
         },
         "afterWalk": {
           "x": 0,
           "y": 7.947288160892185e-9,
-          "z": -0.6249790191650391
+          "z": -0.5416485071182251
         },
-        "walked": 5.375020980834961,
+        "walked": 5.458351492881775,
         "grounded": true
       }
     },
@@ -181,14 +181,14 @@
       "id": "targets-physics",
       "title": "Clicking launches the ball and knocking targets down updates the score",
       "passed": true,
-      "detail": "5 targets knocked down, score 5, launches 7",
+      "detail": "5 targets knocked down, score 5, launches 8",
       "observed": {
         "knocked": 5,
         "boardState": {
           "score": 5,
           "targetsDown": 5,
-          "launches": 7,
-          "timeRemaining": 51.92,
+          "launches": 8,
+          "timeRemaining": 50.78,
           "won": true,
           "lost": false,
           "scoreTarget": 5,
@@ -222,18 +222,18 @@
       "id": "editor-tuning-affects-play",
       "title": "The edited tuning value changes how the game plays",
       "passed": true,
-      "detail": "with move speed 12 the player covered 10.47 m in 1.2 s (about 5 m at the default speed)",
+      "detail": "with move speed 12 the player covered 10.66 m in 1.2 s (about 5 m at the default speed)",
       "observed": {
-        "studioWalked": 10.465864658355713,
+        "studioWalked": 10.662205219268799,
         "before": {
           "x": 0,
-          "y": -3.973641860000043e-9,
+          "y": 7.947287272713766e-9,
           "z": -6
         },
         "after": {
           "x": 0,
           "y": 7.947288160892185e-9,
-          "z": 4.465864658355713
+          "z": 4.662205219268799
         }
       }
     },

@@ -1,8 +1,8 @@
 {
   "stage": 1,
-  "generatedAt": "2026-09-11T13:55:35.703Z",
+  "generatedAt": "2026-09-11T14:16:27.182Z",
   "node": "v24.18.0",
-  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage1-ybFQuU",
+  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage1-3uOBlu",
   "steps": [
     {
       "name": "typecheck",
@@ -95,12 +95,12 @@
         },
         "stats": {
           "state": "running",
-          "frames": 89,
+          "frames": 88,
           "steps": 90,
-          "fps": 59.989737201584376,
-          "frameTimeMs": 16.669517931703645,
-          "physicsTimeMs": 0.015881582804381116,
-          "droppedTime": 0.14997466666666667,
+          "fps": 59.98761236828101,
+          "frameTimeMs": 16.6701083860567,
+          "physicsTimeMs": 0.04081699190067175,
+          "droppedTime": 0.14994066666666658,
           "clampedTime": 0,
           "drawCalls": 4,
           "triangles": 1112,
@@ -145,16 +145,16 @@
       "id": "export-produces-build",
       "title": "Export Game produces a standalone player plus the project documents",
       "passed": true,
-      "detail": "index.html and project documents present in /var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage1-ybFQuU/stage1-room/.coilbox/export",
+      "detail": "index.html and project documents present in /var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage1-3uOBlu/stage1-room/.coilbox/export",
       "observed": {
-        "exportDir": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage1-ybFQuU/stage1-room/.coilbox/export"
+        "exportDir": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage1-3uOBlu/stage1-room/.coilbox/export"
       }
     },
     {
       "id": "export-runs-standalone",
       "title": "The export runs with the editor and workspace service switched off",
       "passed": true,
-      "detail": "running at http://127.0.0.1:54574/games/stage1/ — 37.9% rendered, 799 colours, 0 failed requests",
+      "detail": "running at http://127.0.0.1:56492/games/stage1/ — 37.9% rendered, 799 colours, 0 failed requests",
       "observed": {
         "requests": 7,
         "failures": 0

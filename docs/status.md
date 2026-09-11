@@ -11,7 +11,7 @@ gaps that are knowingly left open.
 | 2. Comfortable scene editing | complete | `pnpm verify:stage2` — 13/13 checks |
 | 3. Actual games | complete | `pnpm verify:stage3` — 13/13 checks |
 | 4. Agent and management workflow | complete | `pnpm verify:stage4` — 18/18 checks |
-| 5. Reliability and release | complete | `pnpm verify:stage5` — 22/22 checks |
+| 5. Reliability and release | complete | `pnpm verify:stage5` — 23/23 checks |
 
 ## Stage 0 — compatibility probe — **complete**
 
@@ -377,18 +377,20 @@ pnpm verify                        # every gate in order
 
 ### Demonstrated result
 
-`tools/verify-stage5.ts` passes 22/22 checks. The measured and observed results:
+`tools/verify-stage5.ts` passes 23/23 checks (22 with `--skip-clean-clone`, which drops the
+clean-checkout check). `pnpm verify` runs every gate in order and reports 6/6 passing:
+`14/14`, `11/11`, `13/13`, `13/13`, `18/18`, `23/23`. The measured and observed results:
 
 | Requirement | Observed |
 |---|---|
 | Compatibility fixtures | `tests/fixtures/projects/{compat-current,compat-future,compat-invalid}`: the current version loads, a newer `schemaVersion` is refused with an explicit message, an invalid document is refused |
 | Clean checkout | A fresh `git clone` of the committed tree installs from the frozen lockfile, typechecks, tests, and builds |
 | Resource ownership | 20 Play/Stop cycles on `collect-room`: geometries 10→10, textures 3→3, listeners 2→2, physics bodies 10→10, HUD elements 4→4 |
-| Reference scene | 203 entities, 26 physics bodies, 401 draw calls, 4812 triangles; median frame 36.2 ms, p95 38.0 ms, physics 0.03 ms under SwiftShader |
-| Frame-rate independence | A 400 ms stall produced 21 steps with 0.183 s dropped and 0.117 s clamped, and a 1.2 s wait produced 73 steps (about 72 expected at 60 Hz) |
-| Narrow viewport | 390×844: 60.7% of pixels rendered, 77 steps — a viewport test, not a phone test |
-| User acceptance session | Open `gem-rush`; move five objects to x=1.25; replace a model (`spinning-crate` → `animated-limb`, both loaded in the viewport); set move speed 7, undo to 6, redo to 7; Play 67 steps with 9 behaviors; Stop; reopen with every edit intact; export from the editor |
-| Export independence | The export runs from `/releases/2026/gem-rush/` on a separate static server with the workspace service shut down: 8 requests, 0 failures, 1 WASM served as `application/wasm`, no dev URLs, 111 steps of gameplay, audio activated by a user gesture, and restart returning the run to its authored initial state (`score 2 → 0`, collectibles `3 → 5`, new world) |
+| Reference scene | 203 entities, 26 physics bodies, 401 draw calls, 4812 triangles; median frame 36.3 ms, p95 37.8 ms, physics 0.03 ms under SwiftShader |
+| Frame-rate independence | A 400 ms stall produced 20 steps with 0.183 s dropped and 0.117 s clamped, and a 1.2 s wait produced about the 72 steps a 60 Hz loop owes |
+| Narrow viewport | 390×844: 60.7% of pixels rendered, 76 steps — a viewport test, not a phone test |
+| User acceptance session | Open `gem-rush`; move five objects to x=1.25; replace a model (`spinning-crate` → `animated-limb`, both loaded in the viewport); set move speed 7, undo to 6, redo to 7; Play 66 steps with 9 behaviors; Stop; reopen with every edit intact; export from the editor |
+| Export independence | The export runs from `/releases/2026/gem-rush/` on a separate static server with the workspace service shut down: 8 requests, 0 failures, 1 WASM served as `application/wasm`, no dev URLs, 78 steps of gameplay, audio activated by a user gesture, and restart returning the run to its authored initial state (`score 2 → 0`, collectibles `3 → 5`, new world) |
 | Bounded project tests | `collect-room`, `physics-targets`, and `gem-rush` each pass 9/9 checks |
 | Console | No page errors in the studio, the games, or the export |
 

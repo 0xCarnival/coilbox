@@ -9,11 +9,11 @@ stage gates is tracked in `docs/status.md`.
 
 ## Status
 
-**Stages 0–4 are complete and verified.** The studio can create and open projects, edit a scene
-in a viewport with a transform inspector, import models/images/audio, place models and play
-their animation clips, undo/redo, save through the workspace service, play the scene with the
-same runtime an export uses, stop without disturbing the authored document, and export a
-standalone playable web build. Three complete games — `games/collect-room`,
+**Every stage of the plan is complete and verified.** The studio can create and open projects,
+edit a scene in a viewport with a transform inspector, import models/images/audio, place models
+and play their animation clips, undo/redo, save through the workspace service, play the scene
+with the same runtime an export uses, stop without disturbing the authored document, and export
+a standalone playable web build. Three complete games — `games/collect-room`,
 `games/physics-targets`, and `games/gem-rush` (built by a separate agent from the documented
 contract alone) — run on that shared runtime with registered behaviors, input, a HUD, and game
 rules.
@@ -23,8 +23,12 @@ rules.
 - `pnpm verify:stage2` — 13/13 checks (assets, clips, property controls, understandable errors)
 - `pnpm verify:stage3` — 13/13 checks (both demo games played end to end, tuning editable)
 - `pnpm verify:stage4` — 18/18 checks (agent-built game, human edit, independence, management)
+- `pnpm verify:stage5` — 23/23 checks (compatibility, resource ownership, reference-scene
+  performance, the release acceptance session, and an export served with the service shut down)
+- `pnpm verify` — every gate in order; 6/6 gates pass
 
-See `docs/status.md` for the per-stage detail and `docs/evidence/` for the raw results.
+See `docs/status.md` for the per-stage detail, `docs/runbook.md` for start-up and recovery, and
+`docs/evidence/` for the raw results.
 
 ## Requirements
 
@@ -51,6 +55,8 @@ pnpm studio build my-game         # export a standalone playable build
 pnpm verify:stage2    # stage 2 gate: assets, model instancing, clip playback
 pnpm verify:stage3    # stage 3 gate: plays both demo games in a headless browser
 pnpm verify:stage4    # stage 4 gate: agent contract, management, external-change conflicts
+pnpm verify:stage5    # stage 5 gate: release checks, acceptance session, export independence
+pnpm verify           # every gate in order, with one exit status
 pnpm fixtures         # regenerate the binary test fixtures from code
 pnpm games            # regenerate the two demo games from code
 ```
