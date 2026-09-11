@@ -256,10 +256,37 @@ async function main(): Promise<void> {
 
     await page.screenshot({ path: join(evidenceDir, 'play-mode.png') });
 
+    // Pause and Step must advance exactly the tick that was asked for, and nothing while paused
+    // (plan §16). Reading the play world's step counter is the only honest way to say that.
+    const stepCount = () =>
+      page.evaluate(
+        () =>
+          (window as unknown as { __STUDIO__?: { viewport?: () => { playStats(): { steps: number } | null } | null } }).__STUDIO__
+            ?.viewport?.()
+            ?.playStats()?.steps ?? -1,
+      );
     await page.click('button:has-text("Pause")');
-    await page.waitForTimeout(200);
+    await page.waitForTimeout(300);
+    const pausedSteps = await stepCount();
+    await page.waitForTimeout(400);
+    const stillPausedSteps = await stepCount();
     await page.click('button:has-text("Step")');
-    await page.waitForTimeout(200);
+    await page.waitForTimeout(300);
+    const steppedSteps = await stepCount();
+    await page.waitForTimeout(400);
+    const afterStepSteps = await stepCount();
+    record({
+      id: 'pause-and-step',
+      title: 'Pause stops the clock and Step advances exactly one tick',
+      passed:
+        pausedSteps > 0 &&
+        stillPausedSteps === pausedSteps &&
+        steppedSteps === pausedSteps + 1 &&
+        afterStepSteps === steppedSteps,
+      detail: `paused at ${pausedSteps} steps, still ${stillPausedSteps} after 400 ms, ${steppedSteps} after one Step (and ${afterStepSteps} 400 ms later)`,
+      observed: { pausedSteps, stillPausedSteps, steppedSteps, afterStepSteps },
+    });
+
     await page.click('button:has-text("Stop")');
     await page.waitForSelector('.viewport-badge', { state: 'detached', timeout: 10_000 });
     await page.waitForTimeout(300);

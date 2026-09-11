@@ -19,7 +19,7 @@ contract alone) — run on that shared runtime with registered behaviors, input,
 rules.
 
 - `pnpm verify:stage0` — 14/14 checks (runtime, physics, teardown, WASM delivery)
-- `pnpm verify:stage1` — 11/11 checks (authoring loop end to end)
+- `pnpm verify:stage1` — 12/12 checks (authoring loop end to end, pause and step)
 - `pnpm verify:stage2` — 15/15 checks (assets, clips, property controls, keyboard focus, drag cancellation)
 - `pnpm verify:stage3` — 14/14 checks (both demo games played end to end, wall contact, tuning editable)
 - `pnpm verify:stage4` — 18/18 checks (agent-built game, human edit, independence, management)

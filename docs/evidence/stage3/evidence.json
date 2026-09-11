@@ -1,8 +1,8 @@
 {
   "stage": 3,
-  "generatedAt": "2026-09-11T14:41:05.557Z",
+  "generatedAt": "2026-09-11T14:45:02.490Z",
   "node": "v24.18.0",
-  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage3-E5D4Dr",
+  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage3-zcLRJz",
   "steps": [
     {
       "name": "typecheck",
@@ -78,19 +78,19 @@
       "id": "collect-room-input",
       "title": "Keyboard input drives the character mover, and it stays on the floor",
       "passed": true,
-      "detail": "player moved 5.54 m from (0.0, -6.0) to (0.0, -0.5); y went 0.00 → -0.00",
+      "detail": "player moved 5.43 m from (0.0, -6.0) to (0.0, -0.6); y went -0.00 → -0.00",
       "observed": {
         "beforeWalk": {
           "x": 0,
-          "y": 1.986822706356861e-9,
+          "y": -9.934105982267738e-9,
           "z": -6
         },
         "afterWalk": {
           "x": 0,
           "y": -3.973640971821624e-9,
-          "z": -0.4583176076412201
+          "z": -0.5735003352165222
         },
-        "walked": 5.54168239235878,
+        "walked": 5.426499664783478,
         "grounded": true
       }
     },
@@ -98,7 +98,7 @@
       "id": "collect-room-wall-contact",
       "title": "A wall stops the character, and a diagonal push slides along it",
       "passed": true,
-      "detail": "walked into the wall at z=7.75: stopped at (0.00, -0.00, 7.40); 1.5 s later z=7.400 (moved 0.0000 m); walking forward and right slid 2.86 m along the wall to x=2.86 at z=7.400",
+      "detail": "walked into the wall at z=7.75: stopped at (0.00, -0.00, 7.40); 1.5 s later z=7.400 (moved 0.0000 m); walking forward and right slid 2.80 m along the wall to x=2.80 at z=7.400",
       "observed": {
         "atWall": {
           "x": 0,
@@ -111,12 +111,12 @@
           "z": 7.400000095367432
         },
         "slid": {
-          "x": 2.8580360412597656,
-          "y": -3.973637863197155e-9,
+          "x": 2.799133062362671,
+          "y": 7.947290825427444e-9,
           "z": 7.400000095367432
         },
         "approachGap": 0,
-        "slideDistance": 2.8580360412597656,
+        "slideDistance": 2.799133062362671,
         "pinned": true
       }
     },
@@ -153,10 +153,10 @@
       "id": "collect-room-restart-position",
       "title": "After a restart the player is standing in the rebuilt level, not falling",
       "passed": true,
-      "detail": "player at (0.0, -0.00, -6.0) after restart",
+      "detail": "player at (0.0, 0.00, -6.0) after restart",
       "observed": {
         "x": 0,
-        "y": -3.9736414159108335e-9,
+        "y": 7.947287272713766e-9,
         "z": -6
       }
     },
@@ -224,7 +224,7 @@
           "score": 5,
           "targetsDown": 5,
           "launches": 8,
-          "timeRemaining": 50.78,
+          "timeRemaining": 50.8,
           "won": true,
           "lost": false,
           "scoreTarget": 5,

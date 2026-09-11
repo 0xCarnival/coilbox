@@ -1,8 +1,8 @@
 {
   "stage": 2,
-  "generatedAt": "2026-09-11T14:40:21.087Z",
+  "generatedAt": "2026-09-11T14:44:18.204Z",
   "node": "v24.18.0",
-  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage2-dbEts0",
+  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage2-WuW0oX",
   "steps": [
     {
       "name": "typecheck",
@@ -68,10 +68,10 @@
       "id": "clip-playback",
       "title": "The imported clip is discoverable and plays in the editor preview",
       "passed": true,
-      "detail": "clips offered: First clip, Hop; preview time advanced from 0.11759999990463257 to 0.618",
+      "detail": "clips offered: First clip, Hop; preview time advanced from 0.12790000009536742 to 0.6305999999046327",
       "observed": {
-        "before": 0.11759999990463257,
-        "after": 0.618,
+        "before": 0.12790000009536742,
+        "after": 0.6305999999046327,
         "clip": "Hop"
       }
     },
@@ -118,7 +118,7 @@
       "id": "drag-cancellation",
       "title": "A transform drag abandoned with Escape changes nothing and records nothing",
       "passed": true,
-      "detail": "grabbed=true; during the drag the projection moved to [-0.5,1,0] while the document stayed [0,1,0]; after Escape the projection is [0,1,0] and the undo label is still Rename Crate Awer to Crate A",
+      "detail": "grabbed=true; during the drag the projection moved to [0,1,-0.5] while the document stayed [0,1,0]; after Escape the projection is [0,1,0] and the undo label is still Rename Crate Awer to Crate A",
       "observed": {
         "beforeDrag": {
           "id": "box",
@@ -146,9 +146,9 @@
             0
           ],
           "projected": [
-            -0.5,
+            0,
             1,
-            0
+            -0.5
           ],
           "dragging": true,
           "undoLabel": "Rename Crate Awer to Crate A",
@@ -255,13 +255,13 @@
         },
         "stats": {
           "state": "running",
-          "frames": 5,
+          "frames": 6,
           "steps": 8,
-          "fps": 19.174881825203336,
-          "frameTimeMs": 52.15155999999993,
-          "physicsTimeMs": 0.06727367908059599,
-          "droppedTime": 0.18330666666666656,
-          "clampedTime": 0.26660000000000017,
+          "fps": 20.57765426429491,
+          "frameTimeMs": 48.596404000000085,
+          "physicsTimeMs": 0.08517592519081595,
+          "droppedTime": 0.18330666666666678,
+          "clampedTime": 0.25,
           "drawCalls": 6,
           "triangles": 1268,
           "geometries": 4,

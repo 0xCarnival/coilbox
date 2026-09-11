@@ -7,7 +7,7 @@ gaps that are knowingly left open.
 | Stage | State | Gate |
 |---|---|---|
 | 0. Compatibility probe | complete | `pnpm verify:stage0` — 14/14 checks |
-| 1. End-to-end authoring loop | complete | `pnpm verify:stage1` — 11/11 checks |
+| 1. End-to-end authoring loop | complete | `pnpm verify:stage1` — 12/12 checks |
 | 2. Comfortable scene editing | complete | `pnpm verify:stage2` — 15/15 checks |
 | 3. Actual games | complete | `pnpm verify:stage3` — 14/14 checks |
 | 4. Agent and management workflow | complete | `pnpm verify:stage4` — 18/18 checks |
@@ -124,6 +124,7 @@ workspace, using the same commands the UI uses:
 | Save | `PUT` reaches the workspace service, the file on disk is at revision 1 with the moved object, and the indicator only reads "Saved" after the write is acknowledged |
 | Reopen | Reloading the page and reopening the project loads the saved scene (x = 3) |
 | Simulate a fresh copy | Play builds a runtime world on its own canvas: 799 distinct colours rendered, 60+ fixed steps, physics bodies present |
+| Pause and Step | Paused at 115 steps, still 115 after 400 ms, 116 after one Step, and still 116 400 ms later — Pause stops the clock and Step advances exactly the tick that was asked for |
 | Stop without changing authoring state | Authored x is 3 before Play and 3 after Stop |
 | Export independently | Export Game writes `index.html`, the compiled player, the WASM binary, and `project/`; served on a separate static server with the workspace service shut down, it runs (37.9% of the frame rendered, 0 failed requests) |
 
@@ -394,7 +395,7 @@ pnpm verify                        # every gate in order
 
 `tools/verify-stage5.ts` passes 23/23 checks (22 with `--skip-clean-clone`, which drops the
 clean-checkout check). `pnpm verify` runs every gate in order and reports 6/6 passing:
-`14/14`, `11/11`, `15/15`, `14/14`, `18/18`, `23/23`. The measured and observed results:
+`14/14`, `12/12`, `15/15`, `14/14`, `18/18`, `23/23`. The measured and observed results:
 
 | Requirement | Observed |
 |---|---|
