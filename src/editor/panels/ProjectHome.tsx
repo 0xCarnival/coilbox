@@ -183,11 +183,19 @@ const styles = stylex.create({
     borderColor: color['border-strong'],
     backgroundColor: color['panel-2'],
   },
+  /**
+   * The thumbnail well is a short banner, not a 16:9 frame.
+   *
+   * A project has a captured thumbnail only after someone sets one, so most cards showed a large
+   * empty rectangle with a small glyph floating in it — the placeholder was most of the card and the
+   * information was squeezed underneath. A 3:1 banner keeps the shape for the projects that do have
+   * a capture and stops the empty case from dominating.
+   */
   cardThumb: {
-    aspectRatio: '16 / 9',
+    aspectRatio: '3 / 1',
     display: 'grid',
     placeItems: 'center',
-    backgroundColor: color.bg,
+    backgroundColor: color.sunken,
     borderBlockEndWidth: '1px',
     borderBlockEndStyle: 'solid',
     borderBlockEndColor: color.border,
@@ -216,10 +224,25 @@ const styles = stylex.create({
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
   },
-  /** One metadata line, not two. The id is what a terminal user needs; the date is what a human does. */
+  /**
+   * Two metadata lines rather than one crowded run.
+   *
+   * The single line held the folder id, the scene count, and the date, separated by dots, and
+   * ellipsised in the middle of whichever mattered least. Split, each line says one thing: what the
+   * project is on disk, and how far along it is.
+   */
   cardMeta: {
     ...muted,
     fontSize: fontSize.xs,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  /** The folder id, in mono: it is the thing a terminal command needs, not prose. */
+  cardId: {
+    fontFamily: fontFamily.mono,
+    fontSize: fontSize.xs,
+    color: color.dim,
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
@@ -373,11 +396,21 @@ export function ProjectHome(): JSX.Element {
   };
 
   const needle = filter.trim().toLowerCase();
+  /**
+   * Most recently touched first.
+   *
+   * The service returns projects in directory order, which is stable and meaningless as a way to find
+   * something: the one you were working on this morning sits wherever its name happens to fall. This
+   * is a launcher, and the thing you want is almost always the thing you touched last.
+   */
+  const ordered = [...snapshot.projects].sort(
+    (a, b) => new Date(b.modifiedAt).getTime() - new Date(a.modifiedAt).getTime(),
+  );
   const visibleProjects = needle
-    ? snapshot.projects.filter(
+    ? ordered.filter(
         (project) => project.name.toLowerCase().includes(needle) || project.id.toLowerCase().includes(needle),
       )
-    : snapshot.projects;
+    : ordered;
 
   return (
     <div {...withDomClass(styles.home, DOM.home)}>
@@ -547,6 +580,32 @@ export function ProjectHome(): JSX.Element {
   );
 }
 
+/**
+ * "3 days ago" rather than an absolute date.
+ *
+ * On a launcher the useful question is "which of these did I just touch", and a date answers it only
+ * after the reader does arithmetic. `Intl.RelativeTimeFormat` does that arithmetic, so this is a
+ * formatting helper and not a date-maths one.
+ */
+function relativeTime(iso: string): string {
+  const then = new Date(iso).getTime();
+  if (!Number.isFinite(then)) return 'unknown';
+  const seconds = Math.round((then - Date.now()) / 1000);
+  const format = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
+  const steps: ReadonlyArray<[Intl.RelativeTimeFormatUnit, number]> = [
+    ['year', 60 * 60 * 24 * 365],
+    ['month', 60 * 60 * 24 * 30],
+    ['week', 60 * 60 * 24 * 7],
+    ['day', 60 * 60 * 24],
+    ['hour', 60 * 60],
+    ['minute', 60],
+  ];
+  for (const [unit, secondsPerUnit] of steps) {
+    if (Math.abs(seconds) >= secondsPerUnit) return format.format(Math.round(seconds / secondsPerUnit), unit);
+  }
+  return format.format(seconds, 'second');
+}
+
 function ProjectCard({
   project,
   onOpen,
@@ -606,9 +665,10 @@ function ProjectCard({
       </div>
       <div {...stylex.props(styles.cardBody)}>
         <h2 {...stylex.props(styles.cardTitle)}>{project.name}</h2>
+        <p {...stylex.props(styles.cardId)}>{project.id}</p>
         <p {...stylex.props(styles.cardMeta)}>
-          {project.id} · {project.sceneCount} scene{project.sceneCount === 1 ? '' : 's'} · updated{' '}
-          {new Date(project.modifiedAt).toLocaleDateString()}
+          Starts in {project.startScene} · {project.sceneCount} scene
+          {project.sceneCount === 1 ? '' : 's'} · {relativeTime(project.modifiedAt)}
         </p>
       </div>
       <div {...stylex.props(styles.cardFooter)}>
