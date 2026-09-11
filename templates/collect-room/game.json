@@ -1,0 +1,114 @@
+{
+  "schemaVersion": 1,
+  "engineVersion": "0.1.0",
+  "engineCompat": "0.1.0",
+  "id": "collect-room",
+  "name": "Collect Room",
+  "description": "Walk around a room, collect every gem, and reach the exit.",
+  "scenes": [
+    {
+      "id": "main",
+      "name": "Collect Room",
+      "path": "scenes/main.scene.json"
+    }
+  ],
+  "startScene": "main",
+  "assetManifest": "assets/manifest.json",
+  "behaviorRegistry": "scripts/registry.json",
+  "settings": {
+    "physics": {
+      "fixedTimeStep": 0.016666666666666666,
+      "subStepCount": 4,
+      "maxSubSteps": 5,
+      "enableSleep": true,
+      "hitEventThreshold": 1
+    },
+    "render": {
+      "antialias": true,
+      "shadows": true,
+      "pixelRatioCap": 2,
+      "toneMapping": "aces",
+      "exposure": 1
+    },
+    "initialGameState": {
+      "score": 0,
+      "collectiblesRemaining": 3,
+      "objective": "Collect 3 gems",
+      "won": false,
+      "lost": false
+    },
+    "hud": [
+      {
+        "type": "counter",
+        "id": "score-counter",
+        "label": "Gems",
+        "bind": "score",
+        "target": 3,
+        "position": "top-right",
+        "color": "#ffffff",
+        "size": 20
+      },
+      {
+        "type": "label",
+        "id": "objective-label",
+        "text": "Objective: {value}",
+        "bind": "objective",
+        "position": "top-left",
+        "color": "#c8d3e8",
+        "size": 15
+      },
+      {
+        "type": "overlay",
+        "id": "start-overlay",
+        "kind": "start",
+        "title": "Collect Room",
+        "message": "WASD or arrow keys to move, Space to jump. Collect every gem, then reach the blue exit.",
+        "actionLabel": "Start",
+        "action": "resume",
+        "background": "#101319",
+        "color": "#ffffff"
+      },
+      {
+        "type": "overlay",
+        "id": "win-overlay",
+        "kind": "win",
+        "title": "You escaped!",
+        "message": "Every gem collected.",
+        "actionLabel": "Play again",
+        "action": "restart",
+        "background": "#101319",
+        "color": "#ffffff"
+      }
+    ],
+    "inputBindings": {
+      "moveForward": [
+        "KeyW",
+        "ArrowUp"
+      ],
+      "moveBackward": [
+        "KeyS",
+        "ArrowDown"
+      ],
+      "moveLeft": [
+        "KeyA",
+        "ArrowLeft"
+      ],
+      "moveRight": [
+        "KeyD",
+        "ArrowRight"
+      ],
+      "jump": [
+        "Space"
+      ],
+      "interact": [
+        "KeyE"
+      ],
+      "restart": [
+        "KeyR"
+      ],
+      "primary": [
+        "Mouse0"
+      ]
+    }
+  }
+}

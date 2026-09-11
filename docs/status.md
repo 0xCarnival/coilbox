@@ -10,7 +10,7 @@ gaps that are knowingly left open.
 | 1. End-to-end authoring loop | complete | `pnpm verify:stage1` — 11/11 checks |
 | 2. Comfortable scene editing | complete | `pnpm verify:stage2` — 13/13 checks |
 | 3. Actual games | complete | `pnpm verify:stage3` — 13/13 checks |
-| 4. Agent and management workflow | not started | — |
+| 4. Agent and management workflow | complete | `pnpm verify:stage4` — 18/18 checks |
 | 5. Reliability and release | not started | — |
 
 ## Stage 0 — compatibility probe — **complete**

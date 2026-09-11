@@ -1,6 +1,7 @@
 import { createReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
+import { Readable } from 'node:stream';
 import { extname, join, normalize, resolve, sep } from 'node:path';
 
 /**
@@ -200,10 +201,33 @@ async function forward(
     headers,
     body: payload.length > 0 ? payload : undefined,
   });
+  const contentType = upstream.headers.get('content-type') ?? 'application/octet-stream';
+
+  // Stream the body through instead of buffering it: an event stream never completes, so a
+  // buffered proxy would hang both the stream and anything waiting on it.
+  const isStream = contentType.includes('text/event-stream') || upstream.headers.get('transfer-encoding') === 'chunked';
+  if (isStream || !upstream.body) {
+    response.writeHead(upstream.status, {
+      'content-type': contentType,
+      'cache-control': 'no-store',
+      connection: isStream ? 'keep-alive' : 'close',
+    });
+    if (!upstream.body) {
+      response.end();
+      log(upstream.status, 0, contentType);
+      return;
+    }
+    const stream = Readable.fromWeb(upstream.body as Parameters<typeof Readable.fromWeb>[0]);
+    stream.on('error', () => response.end());
+    response.on('close', () => stream.destroy());
+    stream.pipe(response);
+    log(upstream.status, 0, contentType);
+    return;
+  }
+
   const responseBody = Buffer.from(await upstream.arrayBuffer());
-  const contentType = upstream.headers.get('content-type');
   response.writeHead(upstream.status, {
-    'content-type': contentType ?? 'application/octet-stream',
+    'content-type': contentType,
     'content-length': responseBody.length,
     'cache-control': 'no-store',
   });

@@ -91,7 +91,8 @@
           "default": 8,
           "min": 0,
           "max": 40,
-          "step": 0.5
+          "step": 0.5,
+          "description": "Used when following behind the target."
         },
         {
           "key": "height",
@@ -101,6 +102,26 @@
           "min": 0,
           "max": 30,
           "step": 0.5
+        },
+        {
+          "key": "offsetX",
+          "label": "Fixed offset X",
+          "type": "number",
+          "default": 6,
+          "min": -60,
+          "max": 60,
+          "step": 0.5,
+          "description": "Used when \"Fixed world offset\" is on, in metres."
+        },
+        {
+          "key": "offsetZ",
+          "label": "Fixed offset Z",
+          "type": "number",
+          "default": 6,
+          "min": -60,
+          "max": 60,
+          "step": 0.5,
+          "description": "Used when \"Fixed world offset\" is on, in metres."
         },
         {
           "key": "damping",
@@ -273,7 +294,8 @@
           "default": 3,
           "min": 0,
           "max": 100,
-          "step": 1
+          "step": 1,
+          "description": "Wins the level as soon as the score reaches this value. 0 disables the score-only win and leaves the exit to decide."
         },
         {
           "key": "timeLimit",
@@ -284,6 +306,13 @@
           "max": 3600,
           "step": 5,
           "description": "0 disables the time limit."
+        },
+        {
+          "key": "initialObjective",
+          "label": "Initial objective",
+          "type": "text",
+          "default": "",
+          "description": "Shown in the HUD label bound to \"objective\" until something replaces it."
         },
         {
           "key": "nextScene",
@@ -297,6 +326,13 @@
           "label": "Show start overlay",
           "type": "boolean",
           "default": true
+        },
+        {
+          "key": "waitForStart",
+          "label": "Clock waits for start",
+          "type": "boolean",
+          "default": true,
+          "description": "Only count the time limit after the start overlay is dismissed."
         },
         {
           "key": "allowRestartKey",

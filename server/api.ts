@@ -4,6 +4,8 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { Workspace, WorkspaceError } from './workspace.js';
 import { buildGame } from './build.js';
 import { AssetService } from './assets.js';
+import { ProjectManager } from './management.js';
+import { ProjectWatcher } from './watcher.js';
 import { UnsafePathError } from './paths.js';
 
 /**
@@ -59,6 +61,56 @@ export async function startApiServer(options: ApiServerOptions): Promise<ApiServ
   const logger = options.logger ?? (() => {});
   const requests: RequestLogEntry[] = [];
   const extraOrigins = new Set(options.allowedOrigins ?? []);
+  const managers = new Map<string, ProjectManager>();
+  const watchers = new Map<string, { watcher: ProjectWatcher; clients: Set<ServerResponse> }>();
+
+  const managerFor = (): ProjectManager => {
+    const existing = managers.get('singleton');
+    if (existing) return existing;
+    const created = new ProjectManager(workspace);
+    managers.set('singleton', created);
+    return created;
+  };
+
+  /**
+   * Server-sent events for external file changes. One watcher per project, one stream per open
+   * editor, and everything is torn down when the last client disconnects.
+   */
+  const subscribe = async (projectId: string, response: ServerResponse): Promise<void> => {
+    let entry = watchers.get(projectId);
+    if (!entry) {
+      const clients = new Set<ServerResponse>();
+      const watcher = new ProjectWatcher({
+        workspace,
+        projectId,
+        onEvent: (event) => {
+          const payload = `event: ${event.kind}\ndata: ${JSON.stringify(event)}\n\n`;
+          for (const client of clients) client.write(payload);
+        },
+      });
+      await watcher.start();
+      entry = { watcher, clients };
+      watchers.set(projectId, entry);
+    }
+    entry.clients.add(response);
+    response.writeHead(200, {
+      'content-type': 'text/event-stream; charset=utf-8',
+      'cache-control': 'no-store',
+      connection: 'keep-alive',
+    });
+    response.write(`event: ready\ndata: ${JSON.stringify({ projectId })}\n\n`);
+    const keepAlive = setInterval(() => response.write(': keep-alive\n\n'), 15_000);
+    response.on('close', () => {
+      clearInterval(keepAlive);
+      const current = watchers.get(projectId);
+      if (!current) return;
+      current.clients.delete(response);
+      if (current.clients.size === 0) {
+        current.watcher.close();
+        watchers.delete(projectId);
+      }
+    });
+  };
 
   const server: Server = createServer((request, response) => {
     const started = Date.now();
@@ -99,6 +151,12 @@ export async function startApiServer(options: ApiServerOptions): Promise<ApiServ
         return;
       }
 
+      // GET /api/projects/:id/events - server-sent events for external file changes
+      if (route[0] === 'projects' && route[2] === 'events' && route.length === 3 && request.method === 'GET') {
+        await subscribe(route[1] ?? '', response);
+        return;
+      }
+
       // GET /api/health
       if (route[0] === 'health' && route.length === 1 && request.method === 'GET') {
         sendJson(response, 200, { ok: true, workspaceRoot: workspace.root });
@@ -119,6 +177,25 @@ export async function startApiServer(options: ApiServerOptions): Promise<ApiServ
           sendJson(response, 401, { error: 'unauthorized', message: 'a valid session token is required for writes' });
           return;
         }
+      }
+
+      // POST /api/projects/import - import a source archive
+      if (route[0] === 'projects' && route[1] === 'import' && route.length === 2 && request.method === 'POST') {
+        const projectId = url.searchParams.get('projectId') ?? undefined;
+        const name = url.searchParams.get('name') ?? undefined;
+        const bytes = await readBinaryBody(request, maxBodyBytes);
+        sendJson(response, 201, await managerFor().importSource(bytes, { projectId, name }));
+        return;
+      }
+
+      // GET /api/archives - archived projects
+      if (route[0] === 'archives' && route.length === 1 && request.method === 'GET') {
+        sendJson(response, 200, { archives: await managerFor().listArchived() });
+        return;
+      }
+      if (route[0] === 'archives' && route.length === 3 && route[2] === 'restore' && request.method === 'POST') {
+        sendJson(response, 200, await managerFor().restore(route[1] ?? ''));
+        return;
       }
 
       // GET /api/projects
@@ -149,6 +226,52 @@ export async function startApiServer(options: ApiServerOptions): Promise<ApiServ
         if (route.length === 2 && request.method === 'DELETE') {
           sendJson(response, 405, { error: 'method-not-allowed', message: 'archiving arrives with project management' });
           return;
+        }
+        // --- project management ------------------------------------------------
+        if (route[2] === 'duplicate' && route.length === 3 && request.method === 'POST') {
+          const body = await readJsonBody(request, maxBodyBytes);
+          const result = await managerFor().duplicate(projectId, {
+            newId: String(body.newId ?? `${projectId}-copy`),
+            newName: body.newName === undefined ? undefined : String(body.newName),
+          });
+          sendJson(response, 201, result);
+          return;
+        }
+        if (route[2] === 'archive' && route.length === 3 && request.method === 'POST') {
+          const body = await readJsonBody(request, maxBodyBytes);
+          sendJson(response, 200, await managerFor().archive(projectId, { reason: body.reason === undefined ? undefined : String(body.reason) }));
+          return;
+        }
+        if (route[2] === 'export-source' && route.length === 3 && request.method === 'GET') {
+          const exported = await managerFor().exportSource(projectId);
+          response.writeHead(200, {
+            'content-type': 'application/gzip',
+            'content-length': exported.bytes.byteLength,
+            'content-disposition': `attachment; filename="${projectId}-source.tar.gz"`,
+            'cache-control': 'no-store',
+          });
+          response.end(exported.bytes);
+          return;
+        }
+
+        if (route.length === 2 && request.method === 'PATCH') {
+          const body = await readJsonBody(request, maxBodyBytes);
+          sendJson(response, 200, { project: await workspace.renameProject(projectId, String(body.name ?? '')) });
+          return;
+        }
+        if (route[2] === 'thumbnail' && route.length === 3) {
+          if (request.method === 'POST') {
+            const bytes = await readBinaryBody(request, maxBodyBytes);
+            sendJson(response, 200, { bytes: await workspace.writeThumbnail(projectId, bytes) });
+            return;
+          }
+          if (request.method === 'GET') {
+            const path = await workspace.readThumbnail(projectId);
+            const bytes = await readFile(path);
+            response.writeHead(200, { 'content-type': 'image/png', 'content-length': bytes.byteLength, 'cache-control': 'no-store' });
+            response.end(bytes);
+            return;
+          }
         }
         if (route[2] === 'registry' && route.length === 3 && request.method === 'GET') {
           sendJson(response, 200, await workspace.readBehaviorRegistry(projectId));
@@ -264,6 +387,16 @@ export async function startApiServer(options: ApiServerOptions): Promise<ApiServ
     token,
     requests,
     async close() {
+      // An open event stream keeps the connection alive, and `server.close()` waits for every
+      // connection to end — so streams are ended first and any straggler is destroyed, otherwise
+      // shutting the service down would hang while an editor tab is open.
+      for (const entry of watchers.values()) {
+        for (const client of entry.clients) client.end();
+        entry.clients.clear();
+        entry.watcher.close();
+      }
+      watchers.clear();
+      server.closeAllConnections?.();
       await new Promise<void>((resolveClose, rejectClose) => {
         server.close((error) => (error ? rejectClose(error) : resolveClose()));
       });

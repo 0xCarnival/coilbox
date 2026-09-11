@@ -1,0 +1,283 @@
+{
+  "stage": 4,
+  "generatedAt": "2026-09-11T13:37:58.094Z",
+  "node": "v24.18.0",
+  "agentGame": "gem-rush",
+  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage4-c8R6CQ",
+  "steps": [
+    {
+      "name": "typecheck",
+      "ok": true,
+      "detail": "exit 0"
+    },
+    {
+      "name": "unit tests",
+      "ok": true,
+      "detail": "exit 0"
+    },
+    {
+      "name": "studio test (agent game)",
+      "ok": true,
+      "detail": "exit 0"
+    }
+  ],
+  "checks": [
+    {
+      "id": "agent-docs",
+      "title": "The agent-facing documentation exists and covers the contract, the format, and the SDK",
+      "passed": true,
+      "detail": "AGENTS.md (4648 B), docs/agent-contract.md (7741 B), docs/project-format.md (7854 B), docs/engine-sdk.md (8128 B)",
+      "observed": {
+        "AGENTS.md": 4648,
+        "docs/agent-contract.md": 7741,
+        "docs/project-format.md": 7854,
+        "docs/engine-sdk.md": 8128
+      }
+    },
+    {
+      "id": "templates",
+      "title": "Whole-project templates ship for the blank scene and both demonstration games",
+      "passed": true,
+      "detail": "templates: blank, collect-room, physics-targets",
+      "observed": [
+        "blank",
+        "collect-room",
+        "physics-targets"
+      ]
+    },
+    {
+      "id": "agent-game-exists",
+      "title": "The agent created a third game (gem-rush) as an ordinary project folder",
+      "passed": true,
+      "detail": "games/gem-rush exists with a manifest"
+    },
+    {
+      "id": "agent-game-validates",
+      "title": "The agent game passes the same validation every project must pass",
+      "passed": true,
+      "detail": "no validation errors",
+      "observed": []
+    },
+    {
+      "id": "agent-game-cli",
+      "title": "The documented CLI (validate → test → build) works on the agent game unmodified",
+      "passed": true,
+      "detail": "studio test reported 9/9 checks passed",
+      "observed": [
+        "ok   no-errors: clean console",
+        "ok   hud-or-canvas: the game canvas is present",
+        "",
+        "9/9 checks passed in 3.6s",
+        "[plugin rolldown:vite-resolve] Module \"node:path\" has been externalized for browser compatibility, imported by \"<repo>/Desktop/Coilbox/node_modules/.pnpm/box3d.js@0.1.1/node_modules/box3d.js/dist/box3d.mjs\". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.",
+        "[plugin rolldown:vite-resolve] Module \"node:fs\" has been externalized for browser compatibility, imported by \"<repo>/Desktop/Coilbox/node_modules/.pnpm/box3d.js@0.1.1/node_modules/box3d.js/dist/box3d.mjs\". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.",
+        "[plugin rolldown:vite-resolve] Module \"node:url\" has been externalized for browser compatibility, imported by \"<repo>/Desktop/Coilbox/node_modules/.pnpm/box3d.js@0.1.1/node_modules/box3d.js/dist/box3d.mjs\". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.",
+        "[plugin builtin:vite-reporter] ",
+        "(!) Some chunks are larger than 500 kB after minification. Consider:",
+        "- Using dynamic import() to code-split the application",
+        "- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting",
+        "- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit."
+      ]
+    },
+    {
+      "id": "agent-game-hud",
+      "title": "The agent game exposes its score and clock through HUD bindings",
+      "passed": true,
+      "detail": "HUD elements: label(objective), label(timeRemaining), counter(score), button, overlay, overlay, overlay",
+      "observed": [
+        {
+          "type": "label",
+          "id": "objective-label",
+          "text": "Objective: {value}",
+          "bind": "objective",
+          "position": "top-left",
+          "color": "#c8d3e8",
+          "size": 15
+        },
+        {
+          "type": "label",
+          "id": "time-label",
+          "text": "Time: {value}s",
+          "bind": "timeRemaining",
+          "position": "top-center",
+          "color": "#ffe6a3",
+          "size": 22
+        },
+        {
+          "type": "counter",
+          "id": "score-counter",
+          "label": "Gems",
+          "bind": "score",
+          "target": 5,
+          "position": "top-right",
+          "color": "#ffffff",
+          "size": 20
+        },
+        {
+          "type": "button",
+          "id": "restart-button",
+          "label": "Restart (R)",
+          "action": "restart",
+          "position": "bottom-right",
+          "color": "#c8d3e8",
+          "size": 14
+        },
+        {
+          "type": "overlay",
+          "id": "start-overlay",
+          "kind": "start",
+          "title": "Gem Rush",
+          "message": "Five gems are scattered around the room. Grab all five, then run for the blue exit gate before the 45-second clock runs out. WASD or arrow keys to move, Space to jump, R to restart.",
+          "actionLabel": "Start",
+          "action": "resume",
+          "background": "#101319",
+          "color": "#ffffff"
+        },
+        {
+          "type": "overlay",
+          "id": "win-overlay",
+          "kind": "win",
+          "title": "You escaped!",
+          "message": "All five gems collected and the gate opened in time.",
+          "actionLabel": "Play again",
+          "action": "restart",
+          "background": "#101319",
+          "color": "#ffffff"
+        },
+        {
+          "type": "overlay",
+          "id": "lose-overlay",
+          "kind": "lose",
+          "title": "Out of time!",
+          "message": "The clock ran out before you reached the exit gate. Collect all five gems and escape faster.",
+          "actionLabel": "Try again",
+          "action": "restart",
+          "background": "#101319",
+          "color": "#ffffff"
+        }
+      ]
+    },
+    {
+      "id": "agent-game-behaviors-editable",
+      "title": "Every behavior the agent used is declared, so its properties are editable",
+      "passed": true,
+      "detail": "used: player.mover, game.collectible, game.exit-zone, camera.follow, game.rules; undeclared: none",
+      "observed": {
+        "used": [
+          "player.mover",
+          "game.collectible",
+          "game.exit-zone",
+          "camera.follow",
+          "game.rules"
+        ],
+        "declared": [
+          "camera.follow",
+          "game.collectible",
+          "game.exit-zone",
+          "game.rules",
+          "player.mover"
+        ]
+      }
+    },
+    {
+      "id": "human-edit-in-inspector",
+      "title": "The human edits the agent game in the inspector without touching code",
+      "passed": true,
+      "detail": "move speed is now 9",
+      "observed": {
+        "moveSpeed": 9,
+        "jumpStrength": 6.5,
+        "gravity": 20,
+        "turnSpeed": 14,
+        "acceleration": 45,
+        "groundCheckDistance": 0.35,
+        "spawnHeight": 1
+      }
+    },
+    {
+      "id": "human-edit-persists",
+      "title": "The human edit is written through the workspace service and survives a reopen",
+      "passed": true,
+      "detail": "revision 1, move speed on disk 9",
+      "observed": {
+        "revision": 1,
+        "savedSpeed": 9
+      }
+    },
+    {
+      "id": "agent-game-reopens",
+      "title": "Reopening the agent game shows the human edit still in place",
+      "passed": true,
+      "detail": "move speed after reopening is 9",
+      "observed": 9
+    },
+    {
+      "id": "external-change-conflict",
+      "title": "An external edit while the editor has unsaved changes surfaces a conflict",
+      "passed": true,
+      "detail": "banner: The file changed on disk. Reload from disk Keep my version",
+      "observed": {
+        "before": "Player",
+        "conflictText": "The file changed on disk.\nReload from disk\nKeep my version"
+      }
+    },
+    {
+      "id": "conflict-resolution",
+      "title": "Reloading from disk takes the external version and clears the conflict",
+      "passed": true,
+      "detail": "player name is now \"Player (renamed externally)\" and the banner is gone",
+      "observed": {
+        "afterReload": "Player (renamed externally)"
+      }
+    },
+    {
+      "id": "projects-independent",
+      "title": "Two projects stay independent: no leakage of scenes, tuning, assets, or history",
+      "passed": true,
+      "detail": "opened collect-room: player \"Player\", move speed 5, 14 entities, 0 assets, undo history fresh",
+      "observed": {
+        "project": "collect-room",
+        "playerName": "Player",
+        "moveSpeed": 5,
+        "entityCount": 14,
+        "assets": [],
+        "canUndo": false
+      }
+    },
+    {
+      "id": "duplicate",
+      "title": "Duplicate produces an independent copy of the agent game",
+      "passed": true,
+      "detail": "copy id gem-rush-copy, 1 scene(s)",
+      "observed": {
+        "projectId": "gem-rush-copy",
+        "directory": "gem-rush-copy",
+        "detail": "duplicated \"gem-rush\" to \"gem-rush-copy\" (1 scene(s))"
+      }
+    },
+    {
+      "id": "source-round-trip",
+      "title": "A source archive round-trips the agent game into a fresh project",
+      "passed": true,
+      "detail": "imported 6 files into gem-rush-imported"
+    },
+    {
+      "id": "archive-restore",
+      "title": "Archiving is recoverable: the project comes back intact",
+      "passed": true,
+      "detail": "archived as gem-rush-copy-2026-09-11t13-37-51-774z, restored as gem-rush-copy (1 scene(s))"
+    },
+    {
+      "id": "demo-games-still-pass",
+      "title": "Both demonstration games still pass their own bounded tests",
+      "passed": true,
+      "detail": "collect-room 9/9, physics-targets 9/9"
+    },
+    {
+      "id": "no-console-errors",
+      "title": "No page errors while editing the agent game",
+      "passed": true,
+      "detail": "clean console",
+      "observed": []
+    }
+  ]
+}

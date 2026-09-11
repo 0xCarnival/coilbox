@@ -48,7 +48,18 @@ export function Toolbar({
         <button type="button" className="link" onClick={() => session.closeProject()} title="Back to projects">
           ◀ Projects
         </button>
-        <span className="project-name">{snapshot.project?.name ?? 'No project'}</span>
+        <button
+          type="button"
+          className="project-name"
+          title="Rename this project (the folder and id stay the same)"
+          onClick={() => {
+            const current = snapshot.project?.name ?? '';
+            const next = globalThis.prompt('Project name', current);
+            if (next && next !== current) void session.renameProject(next);
+          }}
+        >
+          {snapshot.project?.name ?? 'No project'}
+        </button>
         <span className="scene-name">
           <input
             value={sceneNameDraft ?? scene?.name ?? ''}
@@ -160,12 +171,36 @@ export function Toolbar({
       </div>
 
       <div className="toolbar-group">
+        <button
+          type="button"
+          title="Store the current view as this project's thumbnail"
+          disabled={editorLocked}
+          onClick={() => {
+            const dataUrl = viewport.current?.captureThumbnail();
+            if (!dataUrl) return;
+            void session.setThumbnail(dataUrlToBytes(dataUrl));
+          }}
+        >
+          Set thumbnail
+        </button>
+      </div>
+
+      <div className="toolbar-group">
         <button type="button" disabled={editorLocked || exporting} onClick={onExport}>
           {exporting ? 'Exporting…' : 'Export Game'}
         </button>
       </div>
     </header>
   );
+}
+
+/** Decode a canvas data URL into bytes for the thumbnail upload. */
+function dataUrlToBytes(dataUrl: string): Uint8Array {
+  const base64 = dataUrl.slice(dataUrl.indexOf(',') + 1);
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+  return bytes;
 }
 
 function SaveIndicator({ state, lastSavedAt }: { state: string; lastSavedAt: string | null }): JSX.Element {

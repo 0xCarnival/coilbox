@@ -1,0 +1,144 @@
+{
+  "schemaVersion": 1,
+  "engineVersion": "0.1.0",
+  "engineCompat": "0.1.0",
+  "id": "gem-rush",
+  "name": "Gem Rush",
+  "description": "Collect all five gems and reach the exit gate before the 45-second clock runs out.",
+  "scenes": [
+    {
+      "id": "main",
+      "name": "Gem Rush",
+      "path": "scenes/main.scene.json"
+    }
+  ],
+  "startScene": "main",
+  "assetManifest": "assets/manifest.json",
+  "behaviorRegistry": "scripts/registry.json",
+  "settings": {
+    "physics": {
+      "fixedTimeStep": 0.016666666666666666,
+      "subStepCount": 4,
+      "maxSubSteps": 5,
+      "enableSleep": true,
+      "hitEventThreshold": 1
+    },
+    "render": {
+      "antialias": true,
+      "shadows": true,
+      "pixelRatioCap": 2,
+      "toneMapping": "aces",
+      "exposure": 1
+    },
+    "initialGameState": {
+      "score": 0,
+      "collectiblesRemaining": 5,
+      "timeRemaining": 45,
+      "objective": "Collect all 5 gems, then reach the exit gate",
+      "won": false,
+      "lost": false
+    },
+    "hud": [
+      {
+        "type": "label",
+        "id": "objective-label",
+        "text": "Objective: {value}",
+        "bind": "objective",
+        "position": "top-left",
+        "color": "#c8d3e8",
+        "size": 15
+      },
+      {
+        "type": "label",
+        "id": "time-label",
+        "text": "Time: {value}s",
+        "bind": "timeRemaining",
+        "position": "top-center",
+        "color": "#ffe6a3",
+        "size": 22
+      },
+      {
+        "type": "counter",
+        "id": "score-counter",
+        "label": "Gems",
+        "bind": "score",
+        "target": 5,
+        "position": "top-right",
+        "color": "#ffffff",
+        "size": 20
+      },
+      {
+        "type": "button",
+        "id": "restart-button",
+        "label": "Restart (R)",
+        "action": "restart",
+        "position": "bottom-right",
+        "color": "#c8d3e8",
+        "size": 14
+      },
+      {
+        "type": "overlay",
+        "id": "start-overlay",
+        "kind": "start",
+        "title": "Gem Rush",
+        "message": "Five gems are scattered around the room. Grab all five, then run for the blue exit gate before the 45-second clock runs out. WASD or arrow keys to move, Space to jump, R to restart.",
+        "actionLabel": "Start",
+        "action": "resume",
+        "background": "#101319",
+        "color": "#ffffff"
+      },
+      {
+        "type": "overlay",
+        "id": "win-overlay",
+        "kind": "win",
+        "title": "You escaped!",
+        "message": "All five gems collected and the gate opened in time.",
+        "actionLabel": "Play again",
+        "action": "restart",
+        "background": "#101319",
+        "color": "#ffffff"
+      },
+      {
+        "type": "overlay",
+        "id": "lose-overlay",
+        "kind": "lose",
+        "title": "Out of time!",
+        "message": "The clock ran out before you reached the exit gate. Collect all five gems and escape faster.",
+        "actionLabel": "Try again",
+        "action": "restart",
+        "background": "#101319",
+        "color": "#ffffff"
+      }
+    ],
+    "inputBindings": {
+      "moveForward": [
+        "KeyW",
+        "ArrowUp"
+      ],
+      "moveBackward": [
+        "KeyS",
+        "ArrowDown"
+      ],
+      "moveLeft": [
+        "KeyA",
+        "ArrowLeft"
+      ],
+      "moveRight": [
+        "KeyD",
+        "ArrowRight"
+      ],
+      "jump": [
+        "Space"
+      ],
+      "interact": [
+        "KeyE"
+      ],
+      "restart": [
+        "KeyR"
+      ],
+      "primary": [
+        "Mouse0"
+      ]
+    }
+  }
+}

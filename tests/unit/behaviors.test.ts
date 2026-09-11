@@ -348,7 +348,12 @@ describe('follow camera', () => {
         id: 'camera',
         name: 'Game Camera',
         physics: { bodyType: 'kinematic', position: [0, 6, 9], colliders: [{ shape: { kind: 'box', halfExtents: [0.1, 0.1, 0.1] } }] },
-        behaviors: [{ behaviorId: 'camera.follow', properties: { target: 'player', distance: 9, height: 7, damping: 0, lookHeight: 1, fixed: true } }],
+        behaviors: [
+          {
+            behaviorId: 'camera.follow',
+            properties: { target: 'player', distance: 9, height: 7, offsetX: 6.3, offsetZ: 6.3, damping: 0, lookHeight: 1, fixed: true },
+          },
+        ],
       },
     ];
     const { runtime } = buildRuntime(entities);
@@ -359,10 +364,10 @@ describe('follow camera', () => {
     world.readTransform('camera', camera);
     world.readTransform('player', player);
 
-    // Offset is distance * 0.7 in X and Z, plus height.
-    expect(camera[0]! - player[0]!).toBeCloseTo(9 * 0.7, 3);
+    // The fixed offset is authored in metres, plus height.
+    expect(camera[0]! - player[0]!).toBeCloseTo(6.3, 3);
     expect(camera[1]! - player[1]!).toBeCloseTo(7, 3);
-    expect(camera[2]! - player[2]!).toBeCloseTo(9 * 0.7, 3);
+    expect(camera[2]! - player[2]!).toBeCloseTo(6.3, 3);
 
     // The camera's forward (-Z rotated by its quaternion) points at the target.
     const [qx, qy, qz, qw] = [camera[3]!, camera[4]!, camera[5]!, camera[6]!];
@@ -385,7 +390,9 @@ describe('follow camera', () => {
         id: 'camera',
         name: 'Game Camera',
         physics: { bodyType: 'kinematic', position: [6.3, 7, 6.3], colliders: [{ shape: { kind: 'box', halfExtents: [0.1, 0.1, 0.1] } }] },
-        behaviors: [{ behaviorId: 'camera.follow', properties: { target: 'player', distance: 9, height: 7, damping: 0, fixed: true } }],
+        behaviors: [
+          { behaviorId: 'camera.follow', properties: { target: 'player', distance: 9, height: 7, offsetX: 6.3, offsetZ: 6.3, damping: 0, fixed: true } },
+        ],
       },
     ];
     const { runtime } = buildRuntime(entities);
@@ -509,11 +516,16 @@ describe('launcher', () => {
 describe('game rules', () => {
   it('wins when the score target is reached and restarts on the restart action', () => {
     const entities: EntityFixture[] = [
-      { id: 'rules', name: 'Game Rules', behaviors: [{ behaviorId: 'game.rules', properties: { scoreTarget: 3, showStartOverlay: false } }] },
+      {
+        id: 'rules',
+        name: 'Game Rules',
+        behaviors: [{ behaviorId: 'game.rules', properties: { scoreTarget: 3, showStartOverlay: false, initialObjective: 'Collect 3' } }],
+      },
     ];
     const { runtime } = buildRuntime(entities);
     step(runtime, 0.1);
     expect(state.get('won')).not.toBe(true);
+    expect(state.get('objective')).toBe('Collect 3');
 
     state.set('score', 3);
     step(runtime, 0.1);
@@ -522,6 +534,30 @@ describe('game rules', () => {
     input.pressAction('restart');
     step(runtime, 0.1);
     expect(hostRestarts()).toBeGreaterThan(0);
+    runtime.dispose();
+  });
+
+  it('does not count the clock down before the round starts, and never loses after winning', () => {
+    const entities: EntityFixture[] = [
+      {
+        id: 'rules',
+        name: 'Game Rules',
+        behaviors: [{ behaviorId: 'game.rules', properties: { scoreTarget: 0, timeLimit: 1, showStartOverlay: true, waitForStart: true } }],
+      },
+    ];
+    const { runtime } = buildRuntime(entities);
+    step(runtime, 1.5);
+    expect(Number(state.get('timeRemaining'))).toBeCloseTo(1, 2);
+
+    state.set('started', true);
+    step(runtime, 0.5);
+    expect(Number(state.get('timeRemaining'))).toBeLessThan(0.6);
+
+    // Winning first must make the clock's expiry harmless.
+    state.set('won', true);
+    state.set('timeRemaining', 0.05);
+    step(runtime, 0.5);
+    expect(state.get('lost')).not.toBe(true);
     runtime.dispose();
   });
 });

@@ -143,6 +143,13 @@ button:focus-visible {
 
 .project-name {
   font-weight: 600;
+  background: transparent;
+  border-color: transparent;
+  padding: 4px 6px;
+}
+
+.project-name:hover {
+  border-color: var(--line);
 }
 
 .scene-name input {
@@ -760,9 +767,60 @@ button:focus-visible {
   font-size: 20px;
 }
 
+.card-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
 .card-body {
   flex: 1;
   min-width: 0;
+}
+
+.home-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.card-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.card-actions button {
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.archives {
+  margin-top: 26px;
+}
+
+.archives h2 {
+  font-size: 14px;
+  margin: 0 0 8px;
+}
+
+.archives ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.archives li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
 }
 
 .card h2 {

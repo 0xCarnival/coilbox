@@ -42,8 +42,8 @@ export function BottomPanel({ onReloadScene }: { onReloadScene(): void }): JSX.E
         ))}
         <span className="toolbar-spacer" />
         {snapshot.conflict && (
-          <span className="conflict">
-            The file changed on disk.
+          <span className="conflict" role="alert">
+            {snapshot.conflict.source === 'external' ? 'The file changed on disk.' : 'Save was refused: the file changed on disk.'}
             <button type="button" onClick={() => void session.reloadScene()}>
               Reload from disk
             </button>
@@ -52,6 +52,7 @@ export function BottomPanel({ onReloadScene }: { onReloadScene(): void }): JSX.E
             </button>
           </span>
         )}
+        {!snapshot.conflict && snapshot.watching && <span className="muted">watching for external changes</span>}
         <button type="button" onClick={onReloadScene} title="Re-read the scene from disk">
           Reload
         </button>

@@ -44,6 +44,8 @@ export interface ViewportHandle {
   playGameState(): Record<string, unknown> | null;
   /** World position of an entity in the running play world. */
   playEntityTransform(entityId: string): [number, number, number] | null;
+  /** PNG data URL of the current editor view, for the project thumbnail. */
+  captureThumbnail(width?: number): string | null;
   /** Behavior instances of the running play world, for checks and debugging. */
   behaviorRuntime(): { size: number; list(): Array<{ entityId: string; behaviorId: string }> } | null;
 }
@@ -286,6 +288,20 @@ export function Viewport({ handleRef, tool, snap, onPlayStateChange, onStatus }:
       animationState: (entityId: string) => viewportRef.current?.animationState(entityId) ?? null,
       playAnimationState: (entityId: string) => sessionRef2.current?.current?.getAnimationState(entityId) ?? null,
       playGameState: () => sessionRef2.current?.current?.getGameState().snapshot() ?? null,
+      captureThumbnail: (width = 480) => {
+        const canvas = editorCanvasRef.current;
+        const viewport = viewportRef.current;
+        if (!canvas || !viewport) return null;
+        // Render, then read in the same task: the drawing buffer is not preserved between frames.
+        viewport.renderNow();
+        const target = document.createElement('canvas');
+        target.width = width;
+        target.height = Math.round((canvas.height / Math.max(1, canvas.width)) * width);
+        const context = target.getContext('2d');
+        if (!context) return null;
+        context.drawImage(canvas, 0, 0, target.width, target.height);
+        return target.toDataURL('image/png');
+      },
       playEntityTransform: (entityId: string) => {
         const world = sessionRef2.current?.current;
         if (!world) return null;

@@ -41,7 +41,7 @@ export class WorkspaceClientError extends Error {
 }
 
 export class WorkspaceClient {
-  private readonly baseUrl: string;
+  readonly baseUrl: string;
   private token: string | null = null;
   private tokenPromise: Promise<string> | null = null;
 
@@ -131,6 +131,62 @@ export class WorkspaceClient {
       `/projects/${encodeURIComponent(projectId)}/assets/${encodeURIComponent(assetId)}`,
       { method: 'DELETE' },
     );
+  }
+
+  renameProject(projectId: string, name: string): Promise<{ project: ProjectDetail }> {
+    return this.request(`/projects/${encodeURIComponent(projectId)}`, { method: 'PATCH', body: { name } });
+  }
+
+  async uploadThumbnail(projectId: string, bytes: Uint8Array): Promise<{ bytes: number }> {
+    return this.request(`/projects/${encodeURIComponent(projectId)}/thumbnail`, {
+      method: 'POST',
+      rawBody: bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer,
+      contentType: 'image/png',
+    });
+  }
+
+  duplicateProject(
+    projectId: string,
+    options: { newId: string; newName?: string },
+  ): Promise<{ projectId: string; directory: string; detail: string }> {
+    return this.request(`/projects/${encodeURIComponent(projectId)}/duplicate`, {
+      method: 'POST',
+      body: { newId: options.newId, newName: options.newName },
+    });
+  }
+
+  archiveProject(projectId: string, reason?: string): Promise<{ projectId: string; directory: string; detail: string }> {
+    return this.request(`/projects/${encodeURIComponent(projectId)}/archive`, { method: 'POST', body: { reason } });
+  }
+
+  listArchives(): Promise<{ archives: Array<{ directory: string; projectId: string; archivedAt: string; reason: string }> }> {
+    return this.request('/archives', { method: 'GET' });
+  }
+
+  restoreArchive(directory: string): Promise<{ projectId: string; directory: string; detail: string }> {
+    return this.request(`/archives/${encodeURIComponent(directory)}/restore`, { method: 'POST', body: {} });
+  }
+
+  /** Source archive bytes; the caller decides whether to download or store them. */
+  async exportSource(projectId: string): Promise<Uint8Array> {
+    const response = await fetch(`${this.baseUrl}/projects/${encodeURIComponent(projectId)}/export-source`, {
+      headers: { accept: 'application/gzip' },
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      const payload = text.length > 0 ? (JSON.parse(text) as { error?: string; message?: string }) : {};
+      throw new WorkspaceClientError(response.status, payload.error ?? 'export-failed', payload.message ?? response.statusText);
+    }
+    return new Uint8Array(await response.arrayBuffer());
+  }
+
+  importSource(bytes: Uint8Array, projectId?: string): Promise<{ projectId: string; detail: string; warnings: string[] }> {
+    const query = projectId ? `?projectId=${encodeURIComponent(projectId)}` : '';
+    return this.request(`/projects/import${query}`, {
+      method: 'POST',
+      rawBody: bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer,
+      contentType: 'application/gzip',
+    });
   }
 
   validateProject(projectId: string): Promise<{ ok: boolean; issues: ValidationIssue[] }> {

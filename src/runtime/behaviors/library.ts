@@ -240,8 +240,10 @@ export const cameraFollow: BehaviorDefinition = {
   description: 'Keeps a camera behind and above a target, or at a fixed offset from it.',
   properties: [
     entity('target', 'Target', 'The entity to follow. Defaults to the entity named "Player".'),
-    number('distance', 'Distance', 8, { min: 0, max: 40, step: 0.5 }),
+    number('distance', 'Distance', 8, { min: 0, max: 40, step: 0.5, description: 'Used when following behind the target.' }),
     number('height', 'Height', 5, { min: 0, max: 30, step: 0.5 }),
+    number('offsetX', 'Fixed offset X', 6, { min: -60, max: 60, step: 0.5, description: 'Used when "Fixed world offset" is on, in metres.' }),
+    number('offsetZ', 'Fixed offset Z', 6, { min: -60, max: 60, step: 0.5, description: 'Used when "Fixed world offset" is on, in metres.' }),
     number('damping', 'Smoothing', 0.12, { min: 0, max: 2, step: 0.02 }),
     number('lookHeight', 'Look at height', 1, { min: 0, max: 5, step: 0.1, description: 'Height above the target the camera aims at.' }),
     boolean('fixed', 'Fixed world offset', false, 'Keep a world-space offset instead of following behind the target.'),
@@ -286,10 +288,12 @@ export const cameraFollow: BehaviorDefinition = {
         const fixed = context.properties.fixed === true;
 
         if (fixed) {
-          // A fixed offset in world space: the camera does not swing when the target turns.
-          desired[0] = target[0] + distance * 0.7;
+          // A fixed offset in world space: the camera does not swing when the target turns. The
+          // offset is authored in metres rather than derived from `distance`, so what you set is
+          // what you get.
+          desired[0] = target[0] + readNumber('offsetX', 6);
           desired[1] = target[1] + height;
-          desired[2] = target[2] + distance * 0.7;
+          desired[2] = target[2] + readNumber('offsetZ', 6);
         } else {
           // Behind the target along its own -Z (the engine's forward axis), lifted by height.
           forward[0] = -2 * (target[3] * target[5] + target[6] * target[4]);
@@ -413,39 +417,53 @@ export const gameRules: BehaviorDefinition = {
   name: 'Game Rules',
   description: 'Watches score and time, shows the win or lose overlay, and handles restart.',
   properties: [
-    number('scoreTarget', 'Score target', 3, { min: 0, max: 100, step: 1 }),
+    number('scoreTarget', 'Score target', 3, {
+      min: 0,
+      max: 100,
+      step: 1,
+      description: 'Wins the level as soon as the score reaches this value. 0 disables the score-only win and leaves the exit to decide.',
+    }),
     number('timeLimit', 'Time limit (s)', 0, { min: 0, max: 3600, step: 5, description: '0 disables the time limit.' }),
+    text('initialObjective', 'Initial objective', '', 'Shown in the HUD label bound to "objective" until something replaces it.'),
     text('nextScene', 'Next scene', '', 'Scene to load after winning. Empty restarts the current scene.'),
     boolean('showStartOverlay', 'Show start overlay', true),
+    boolean('waitForStart', 'Clock waits for start', true, 'Only count the time limit after the start overlay is dismissed.'),
     boolean('allowRestartKey', 'Restart with R', true),
   ],
   create(context): BehaviorInstance {
-    let lastTick = nowSeconds();
+    // The clock counts fixed simulation steps, not wall time: pausing stops it, Step advances it
+    // by exactly one tick, and a backgrounded tab cannot burn the player's time.
+    let elapsed = 0;
     const limit = (): number => (typeof context.properties.timeLimit === 'number' ? context.properties.timeLimit : 0);
 
     return {
       start() {
         context.setState('scoreTarget', typeof context.properties.scoreTarget === 'number' ? context.properties.scoreTarget : 0);
+        elapsed = 0;
         context.setState('timeRemaining', limit());
-        context.setState('objective', '');
-        lastTick = nowSeconds();
+        context.setState('objective', typeof context.properties.initialObjective === 'string' ? context.properties.initialObjective : '');
+        // The clock only runs once the round has actually started: counting it down behind the
+        // start overlay would silently eat the player's time.
+        const waits = context.properties.waitForStart !== false && context.properties.showStartOverlay !== false;
+        if (waits) context.setState('started', false);
+        else context.setState('started', true);
         if (context.properties.showStartOverlay !== false) context.showOverlay('start');
         else context.showOverlay(null);
       },
-      update() {
-        if (limit() > 0) {
-          const current = context.getState<number>('timeRemaining') ?? limit();
-          const now = nowSeconds();
-          const delta = Math.max(0, now - lastTick);
-          lastTick = now;
-          const next = Math.max(0, current - delta);
+      fixedUpdate(delta) {
+        if (limit() > 0 && context.getState('started') !== false) {
+          elapsed += delta;
+          const next = Math.max(0, limit() - elapsed);
           context.setState('timeRemaining', Number(next.toFixed(2)));
-          if (next <= 0 && context.getState('lost') !== true) {
+          // A win is final: running the clock out afterwards must not flip a finished round to a
+          // loss.
+          if (next <= 0 && context.getState('lost') !== true && context.getState('won') !== true) {
             context.setState('lost', true);
             context.showOverlay('lose');
           }
         }
-
+      },
+      update() {
         const target = typeof context.properties.scoreTarget === 'number' ? context.properties.scoreTarget : 0;
         const score = context.getState<number>('score') ?? 0;
         if (target > 0 && score >= target && context.getState('won') !== true) {
@@ -461,9 +479,6 @@ export const gameRules: BehaviorDefinition = {
   },
 };
 
-function nowSeconds(): number {
-  return (globalThis.performance?.now?.() ?? Date.now()) / 1000;
-}
 
 /** Launch a physics body when the player clicks; used by the target game. */
 export const projectileLauncher: BehaviorDefinition = {

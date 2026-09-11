@@ -1,6 +1,7 @@
 import { cp, mkdir, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
+import type { BehaviorPropertyType } from '@runtime/behaviors/types.js';
 import {
   formatIssues,
   parseAssetManifest,
@@ -171,7 +172,11 @@ export class Workspace {
       throw new WorkspaceError('scene-not-found', `scene file "${entry.path}" is missing`, 404);
     });
     const manifest = await this.readAssetManifest(projectRoot, detail.game);
-    const parsed = parseScene(raw, { assetIds: new Set(manifest.assets.map((asset) => asset.id)) });
+    const registry = await this.readBehaviorRegistry(projectId);
+    const parsed = parseScene(raw, {
+      assetIds: new Set(manifest.assets.map((asset) => asset.id)),
+      ...behaviorValidationContext(registry),
+    });
     if (!parsed.value) {
       throw new WorkspaceError('invalid-scene', `scene "${sceneId}" is not valid`, 422, parsed.issues);
     }
@@ -238,7 +243,11 @@ export class Workspace {
     }
 
     const manifest = await this.readAssetManifest(projectRoot, detail.game);
-    const parsed = parseScene(scene, { assetIds: new Set(manifest.assets.map((asset) => asset.id)) });
+    const registry = await this.readBehaviorRegistry(projectId);
+    const parsed = parseScene(scene, {
+      assetIds: new Set(manifest.assets.map((asset) => asset.id)),
+      ...behaviorValidationContext(registry),
+    });
     if (!parsed.value || !parsed.ok) {
       throw new WorkspaceError('invalid-scene', 'refusing to write an invalid scene document', 422, parsed.issues);
     }
@@ -291,10 +300,15 @@ export class Workspace {
     }
     const projectRoot = await this.projectRoot(projectId);
     const manifest = await this.readAssetManifest(projectRoot, detail.game);
+    const registry = await this.readBehaviorRegistry(projectId);
+    const context = {
+      assetIds: new Set(manifest.assets.map((asset) => asset.id)),
+      ...behaviorValidationContext(registry),
+    };
     for (const sceneEntry of detail.game.scenes) {
       try {
         const scene = await this.readScene(projectId, sceneEntry.id);
-        const parsed = parseScene(scene, { assetIds: new Set(manifest.assets.map((asset) => asset.id)) });
+        const parsed = parseScene(scene, context);
         issues.push(...parsed.issues);
       } catch (error) {
         if (error instanceof WorkspaceError) {
@@ -347,12 +361,89 @@ export class Workspace {
     return { ...summary, game, scenes: game.scenes };
   }
 
+  /** Rename a project's display name. The folder and id are identity and do not move. */
+  async renameProject(projectId: string, name: string): Promise<ProjectDetail> {
+    const trimmed = name.trim();
+    if (trimmed.length === 0 || trimmed.length > 200) {
+      throw new WorkspaceError('invalid-name', 'a project name must be 1-200 characters', 422);
+    }
+    const projectRoot = await this.projectRoot(projectId);
+    const gamePath = join(projectRoot, PROJECT_FILES.game);
+    const parsed = parseGame(JSON.parse(await readFile(gamePath, 'utf8')));
+    if (!parsed.value) {
+      throw new WorkspaceError('invalid-project', 'game.json is not valid', 422, parsed.issues);
+    }
+    await writeFileAtomic(gamePath, `${JSON.stringify({ ...parsed.value, name: trimmed }, null, 2)}\n`);
+    return this.readProject(projectId);
+  }
+
+  /** Store a project thumbnail (PNG bytes captured from the editor viewport). */
+  async writeThumbnail(projectId: string, bytes: Uint8Array): Promise<number> {
+    if (bytes.byteLength === 0) throw new WorkspaceError('empty-file', 'the thumbnail is empty', 422);
+    if (bytes.byteLength > 4 * 1024 * 1024) {
+      throw new WorkspaceError('file-too-large', 'thumbnails are limited to 4 MiB', 413);
+    }
+    // A PNG signature check keeps the field honest: this file is served back to the browser.
+    const signature = [0x89, 0x50, 0x4e, 0x47];
+    if (!signature.every((byte, index) => bytes[index] === byte)) {
+      throw new WorkspaceError('unsupported-format', 'thumbnails must be PNG images', 415);
+    }
+    const projectRoot = await this.projectRoot(projectId);
+    // writeFileAtomic takes text elsewhere; a thumbnail is binary, so write it directly through
+    // the same temp-then-rename dance.
+    const target = join(projectRoot, PROJECT_FILES.thumbnail);
+    const temporary = `${target}.tmp-${process.pid}-${Date.now().toString(36)}`;
+    await writeFile(temporary, bytes);
+    await rename(temporary, target);
+    return bytes.byteLength;
+  }
+
+  async readThumbnail(projectId: string): Promise<string> {
+    const projectRoot = await this.projectRoot(projectId);
+    const path = join(projectRoot, PROJECT_FILES.thumbnail);
+    if (!existsSync(path)) throw new WorkspaceError('thumbnail-not-found', 'this project has no thumbnail', 404);
+    return path;
+  }
+
   /** Directory names present in the workspace, used to keep generated ids unique. */
   async existingDirectories(): Promise<string[]> {
     await this.ensureRoot();
     const entries = await readdir(this.root, { withFileTypes: true });
     return entries.filter((entry) => isDirectoryLike(entry)).map((entry) => entry.name);
   }
+}
+
+/**
+ * Turn a project's declared behaviors into the context the scene validator needs, so
+ * `studio validate` catches an unregistered behavior or a mistyped property instead of leaving it
+ * for the runtime to discover.
+ */
+function behaviorValidationContext(registry: { behaviors: unknown[] }): {
+  behaviorIds: Set<string>;
+  behaviorProperties: Map<string, Map<string, BehaviorPropertyType>>;
+} {
+  const behaviorIds = new Set<string>();
+  const behaviorProperties = new Map<string, Map<string, BehaviorPropertyType>>();
+  for (const entry of registry.behaviors as Array<{ id?: unknown; properties?: unknown }>) {
+    if (typeof entry?.id !== 'string') continue;
+    behaviorIds.add(entry.id);
+    const descriptors = new Map<string, BehaviorPropertyType>();
+    if (Array.isArray(entry.properties)) {
+      for (const property of entry.properties as Array<{ key?: unknown; type?: unknown }>) {
+        if (typeof property?.key === 'string' && isBehaviorPropertyType(property.type)) {
+          descriptors.set(property.key, property.type);
+        }
+      }
+    }
+    behaviorProperties.set(entry.id, descriptors);
+  }
+  return { behaviorIds, behaviorProperties };
+}
+
+function isBehaviorPropertyType(value: unknown): value is BehaviorPropertyType {
+  return (
+    value === 'number' || value === 'boolean' || value === 'text' || value === 'enum' || value === 'entity' || value === 'asset'
+  );
 }
 
 function isDirectoryLike(entry: { isDirectory(): boolean; isSymbolicLink(): boolean }): boolean {

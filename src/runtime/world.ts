@@ -493,6 +493,9 @@ export class RuntimeWorld {
       }
       case 'resume':
         this.gameState.set('paused', false);
+        // Dismissing the start overlay is what starts the round: timers that wait for it must not
+        // run down while the player is still reading.
+        this.gameState.set('started', true);
         this.hud?.showOnlyOverlay(null);
         this.resume();
         break;

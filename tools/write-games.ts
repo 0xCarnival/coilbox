@@ -268,7 +268,7 @@ function collectRoom(): { scene: SceneDocument; game: Record<string, unknown>; r
       order: 30,
       components: [
         { type: 'camera', mode: 'follow', fov: 55, near: 0.1, far: 400, targetId: 'player', distance: 9, height: 6, offset: [0, 0, 0], damping: 0.15 },
-        behavior('camera.follow', { target: 'player', distance: 9, height: 7, damping: 0.15, lookHeight: 1, fixed: true }),
+        behavior('camera.follow', { target: 'player', distance: 9, height: 7, offsetX: 6.3, offsetZ: 6.3, damping: 0.15, lookHeight: 1, fixed: true }),
       ],
     }),
     entity({ id: 'sun', name: 'Sun', position: [8, 12, 6], rotation: lookAt([8, 12, 6], [0, 0, 0]), order: 31, components: [DIRECTIONAL_SUN([8, 12, 6])] }),
@@ -278,7 +278,17 @@ function collectRoom(): { scene: SceneDocument; game: Record<string, unknown>; r
       name: 'Game Rules',
       order: 40,
       components: [
-        behavior('game.rules', { scoreTarget: 3, timeLimit: 0, nextScene: '', showStartOverlay: true, allowRestartKey: true }),
+        behavior('game.rules', {
+          // The exit decides the win (requiredScore 3); 0 disables the score-only win so the
+          // player still has to reach it.
+          scoreTarget: 0,
+          timeLimit: 0,
+          initialObjective: 'Collect 3 gems, then reach the exit',
+          nextScene: '',
+          showStartOverlay: true,
+          waitForStart: true,
+          allowRestartKey: true,
+        }),
       ],
     }),
   ];
@@ -443,7 +453,16 @@ function physicsTargets(): { scene: SceneDocument; game: Record<string, unknown>
       name: 'Game Rules',
       order: 40,
       components: [
-        behavior('game.rules', { scoreTarget: 5, timeLimit: 60, nextScene: '', showStartOverlay: true, allowRestartKey: true }),
+        behavior('game.rules', {
+          // Knocking every target down wins outright; the clock only ends the round.
+          scoreTarget: 5,
+          timeLimit: 60,
+          initialObjective: 'Knock every target down',
+          nextScene: '',
+          showStartOverlay: true,
+          waitForStart: true,
+          allowRestartKey: true,
+        }),
       ],
     }),
   ];
@@ -548,25 +567,42 @@ function physicsTargets(): { scene: SceneDocument; game: Record<string, unknown>
   return { scene, game, readme };
 }
 
-async function writeGame(
-  id: string,
-  built: { scene: SceneDocument; game: Record<string, unknown>; readme: string },
-): Promise<void> {
-  const target = join(gamesRoot, id);
-  await rm(target, { recursive: true, force: true });
-  const files: Record<string, string> = {
+interface BuiltGame {
+  scene: SceneDocument;
+  game: Record<string, unknown>;
+  readme: string;
+}
+
+async function writeFiles(target: string, files: Record<string, string>, label: string): Promise<void> {
+  for (const [relative, contents] of Object.entries(files)) {
+    const path = join(target, relative);
+    await mkdir(dirname(path), { recursive: true });
+    await writeFile(path, contents, 'utf8');
+    process.stdout.write(`wrote ${label}/${relative}\n`);
+  }
+}
+
+function filesFor(built: BuiltGame): Record<string, string> {
+  return {
     'game.json': `${JSON.stringify(built.game, null, 2)}\n`,
     'scenes/main.scene.json': `${JSON.stringify(built.scene, null, 2)}\n`,
     'assets/manifest.json': `${JSON.stringify({ schemaVersion: 1, assets: [] }, null, 2)}\n`,
     'scripts/registry.json': `${JSON.stringify(registry.toJSON(), null, 2)}\n`,
     'README.md': built.readme,
   };
-  for (const [relative, contents] of Object.entries(files)) {
-    const path = join(target, relative);
-    await mkdir(dirname(path), { recursive: true });
-    await writeFile(path, contents, 'utf8');
-    process.stdout.write(`wrote games/${id}/${relative}\n`);
-  }
+}
+
+async function writeGame(id: string, built: BuiltGame): Promise<void> {
+  const target = join(gamesRoot, id);
+  await rm(target, { recursive: true, force: true });
+  await writeFiles(target, filesFor(built), `games/${id}`);
+
+  // The same content also ships as a whole-project template, so `studio create --template`
+  // starts from a working game instead of an empty scene.
+  const templateTarget = join(root, 'templates', id);
+  await rm(templateTarget, { recursive: true, force: true });
+  const templateGame = { ...built.game, id, name: `${String(built.game.name)}` };
+  await writeFiles(templateTarget, filesFor({ ...built, game: templateGame }), `templates/${id}`);
 }
 
 await writeGame('collect-room', collectRoom());

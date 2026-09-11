@@ -3,6 +3,9 @@ import { join } from 'node:path';
 import { startApiServer, type ApiServerHandle } from './api.js';
 import { Workspace } from './workspace.js';
 import { buildGame } from './build.js';
+import { ProjectManager } from './management.js';
+import { testGame } from './test-runner.js';
+import { writeFile } from 'node:fs/promises';
 
 /**
  * One command starts the studio (plan §13: "Run the editor and workspace service from one
@@ -110,6 +113,12 @@ async function startDev(): Promise<void> {
 
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
+  /** Every project command accepts --workspace, so an agent can work in another folder. */
+  const workspaceFor = (): Workspace =>
+    createWorkspace({
+      root: typeof args.flags.get('workspace') === 'string' ? (args.flags.get('workspace') as string) : undefined,
+      templatesRoot: typeof args.flags.get('templates') === 'string' ? (args.flags.get('templates') as string) : undefined,
+    });
   switch (args.command) {
     case 'dev':
       await startDev();
@@ -127,7 +136,7 @@ async function main(): Promise<void> {
       return;
     }
     case 'list': {
-      const workspace = createWorkspace();
+      const workspace = workspaceFor();
       const projects = await workspace.listProjects();
       if (projects.length === 0) {
         process.stdout.write('no projects yet\n');
@@ -141,7 +150,7 @@ async function main(): Promise<void> {
     case 'create': {
       const id = args.positionals[0];
       if (!id) throw new Error('usage: studio create <game-id> [--template blank] [--name "Display Name"]');
-      const workspace = createWorkspace();
+      const workspace = workspaceFor();
       const project = await workspace.createProject({
         id,
         name: typeof args.flags.get('name') === 'string' ? (args.flags.get('name') as string) : id,
@@ -153,7 +162,7 @@ async function main(): Promise<void> {
     case 'build': {
       const id = args.positionals[0];
       if (!id) throw new Error('usage: studio build <game-id> [--out <relative-dir>]');
-      const workspace = createWorkspace();
+      const workspace = workspaceFor();
       const result = await buildGame({
         workspace,
         projectId: id,
@@ -163,10 +172,90 @@ async function main(): Promise<void> {
       process.stdout.write(`\nexported to ${result.outDir}\n`);
       return;
     }
+    case 'test': {
+      const id = args.positionals[0];
+      if (!id) throw new Error('usage: studio test <game-id> [--seconds 3] [--keep-build]');
+      const workspace = workspaceFor();
+      process.stdout.write(`testing "${id}"\n`);
+      const result = await testGame({
+        workspace,
+        projectId: id,
+        seconds: typeof args.flags.get('seconds') === 'string' ? Number(args.flags.get('seconds')) : undefined,
+        keepBuild: args.flags.has('keep-build'),
+        log: (message) => process.stdout.write(`${message}\n`),
+      });
+      const failed = result.checks.filter((check) => !check.passed);
+      process.stdout.write(
+        `\n${result.checks.length - failed.length}/${result.checks.length} checks passed in ${(result.durationMs / 1000).toFixed(1)}s\n`,
+      );
+      if (!result.ok) process.exitCode = 1;
+      return;
+    }
+    case 'duplicate': {
+      const id = args.positionals[0];
+      if (!id) throw new Error('usage: studio duplicate <game-id> --as <new-id> [--name "New Name"]');
+      const newId = typeof args.flags.get('as') === 'string' ? (args.flags.get('as') as string) : `${id}-copy`;
+      const result = await new ProjectManager(workspaceFor()).duplicate(id, {
+        newId,
+        newName: typeof args.flags.get('name') === 'string' ? (args.flags.get('name') as string) : undefined,
+      });
+      process.stdout.write(`${result.detail}\n`);
+      return;
+    }
+    case 'archive': {
+      const id = args.positionals[0];
+      if (!id) throw new Error('usage: studio archive <game-id> [--reason "why"]');
+      const result = await new ProjectManager(workspaceFor()).archive(id, {
+        reason: typeof args.flags.get('reason') === 'string' ? (args.flags.get('reason') as string) : undefined,
+      });
+      process.stdout.write(`${result.detail}\n`);
+      return;
+    }
+    case 'archives': {
+      const archives = await new ProjectManager(workspaceFor()).listArchived();
+      if (archives.length === 0) {
+        process.stdout.write('no archived projects\n');
+        return;
+      }
+      for (const entry of archives) {
+        process.stdout.write(`${entry.directory}\t${entry.projectId}\t${entry.archivedAt}\t${entry.reason}\n`);
+      }
+      return;
+    }
+    case 'restore': {
+      const directory = args.positionals[0];
+      if (!directory) throw new Error('usage: studio restore <archive-name>');
+      const result = await new ProjectManager(workspaceFor()).restore(directory);
+      process.stdout.write(`${result.detail}\n`);
+      return;
+    }
+    case 'export-source': {
+      const id = args.positionals[0];
+      if (!id) throw new Error('usage: studio export-source <game-id> [--out file.tar.gz]');
+      const manager = new ProjectManager(workspaceFor());
+      const exported = await manager.exportSource(id);
+      const out = typeof args.flags.get('out') === 'string' ? (args.flags.get('out') as string) : `${id}-source.tar.gz`;
+      await writeFile(out, exported.bytes);
+      process.stdout.write(`${exported.detail} -> ${out}\n`);
+      return;
+    }
+    case 'import': {
+      const file = args.positionals[0];
+      if (!file) throw new Error('usage: studio import <archive.tar.gz> [--as <game-id>] [--name "Name"]');
+      const { readFile } = await import('node:fs/promises');
+      const bytes = new Uint8Array(await readFile(file));
+      const result = await new ProjectManager(workspaceFor()).importSource(bytes, {
+        projectId: typeof args.flags.get('as') === 'string' ? (args.flags.get('as') as string) : undefined,
+        name: typeof args.flags.get('name') === 'string' ? (args.flags.get('name') as string) : undefined,
+      });
+      process.stdout.write(`${result.detail}\n`);
+      for (const warning of result.warnings) process.stdout.write(`warning: ${warning}\n`);
+      return;
+    }
     case 'validate': {
       const id = args.positionals[0];
       if (!id) throw new Error('usage: studio validate <game-id>');
-      const workspace = createWorkspace();
+      const workspace = workspaceFor();
       const result = await workspace.validateProject(id);
       if (result.ok) {
         process.stdout.write(`${id}: valid\n`);
@@ -193,8 +282,16 @@ async function main(): Promise<void> {
           '  create <id>         create a project from a template (--template, --name)',
           '  validate <id>       validate a project on disk',
           '  build <id>          export a standalone playable web build',
+          '  test <id>           validate, export, and play the game headlessly',
+          '  duplicate <id>      copy a project (--as <new-id>, --name "New Name")',
+          '  archive <id>        move a project into the recoverable archive',
+          '  archives            list archived projects',
+          '  restore <name>      restore an archived project',
+          '  export-source <id>  write a source archive (--out file.tar.gz)',
+          '  import <file>       import a source archive (--as <id>, --name "Name")',
           '',
-          `Workspace: ${defaultWorkspaceRoot()} (override with --workspace or COILBOX_WORKSPACE)`,
+          'Every project command accepts --workspace <dir> (or COILBOX_WORKSPACE).',
+          `Workspace: ${defaultWorkspaceRoot()}`,
           `Templates: ${defaultTemplatesRoot()} (override with COILBOX_TEMPLATES)`,
           '',
         ].join('\n'),
