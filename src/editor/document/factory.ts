@@ -169,9 +169,12 @@ export function componentsFor(kind: CreatableKind): Component[] {
 /** Small starter scene used when a project is created without a template. */
 export function createStarterScene(sceneId: string, name: string): SceneDocument {
   const used = new Set<string>();
-  const ground = createEntity('plane', { id: 'ground', name: 'Ground', usedIds: used });
+  // Ground visual and collider are the same 10 x 0.4 x 10 box sitting just below y = 0, so
+  // what the author sees is what the physics world uses.
+  const ground = createEntity('box', { id: 'ground', name: 'Ground', usedIds: used });
   used.add(ground.id);
-  ground.transform.position = [0, 0, 0];
+  ground.transform.position = [0, -0.2, 0];
+  (ground.components[0] as Extract<Component, { type: 'primitive' }>).size = [10, 0.4, 10];
   ground.components.push({
     type: 'material',
     color: '#4b5563',
@@ -190,7 +193,7 @@ export function createStarterScene(sceneId: string, name: string): SceneDocument
     type: 'collider',
     shape: 'box',
     size: [10, 0.4, 10],
-    offset: [0, -0.2, 0],
+    offset: [0, 0, 0],
     localRotation: [0, 0, 0, 1],
     isSensor: false,
     friction: 0.7,
@@ -202,8 +205,9 @@ export function createStarterScene(sceneId: string, name: string): SceneDocument
   const player = createEntity('capsule', { id: 'player', name: 'Player', usedIds: used, position: [0, 1, 0] });
   used.add(player.id);
 
-  const camera = createEntity('camera', { id: 'game-camera', name: 'Game Camera', usedIds: used, position: [0, 6, 10] });
+  const camera = createEntity('camera', { id: 'game-camera', name: 'Game Camera', usedIds: used, position: [0, 5, 9] });
   used.add(camera.id);
+  camera.transform.rotation = lookAt([0, 5, 9], [0, 1, 0]);
 
   const sun = createEntity('directionalLight', { id: 'sun', name: 'Sun', usedIds: used, position: [6, 9, 5] });
   used.add(sun.id);

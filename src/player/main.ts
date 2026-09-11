@@ -84,6 +84,15 @@ export async function startPlayer(options: PlayerOptions): Promise<PlayerHandle>
   };
 }
 
+declare const __COILBOX_PROJECT__: string | undefined;
+
+/**
+ * Exported games bake the project location in at build time. The query parameter stays for
+ * development, where the same build serves any project.
+ */
+const bakedProjectBase =
+  typeof __COILBOX_PROJECT__ === 'string' ? __COILBOX_PROJECT__ : undefined;
+
 const params = new URLSearchParams(globalThis.location.search);
 const canvasElement = document.getElementById('game-canvas');
 const canvas = canvasElement instanceof HTMLCanvasElement ? canvasElement : null;
@@ -96,7 +105,7 @@ declare global {
 }
 
 if (canvas) {
-  const projectBaseUrl = params.get('project') ?? './probe-project/';
+  const projectBaseUrl = params.get('project') ?? bakedProjectBase ?? './probe-project/';
   const handle = await startPlayer({ projectBaseUrl, canvas });
   await handle.ready;
   const state = handle.state();

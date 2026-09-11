@@ -9,12 +9,15 @@ stage gates is tracked in `docs/status.md`.
 
 ## Status
 
-**Stage 0 (compatibility probe) is complete and verified**: pinned Three.js/Box3D/Vite
-setup, a blank runtime with a falling box, physics that runs, teardown that releases what it
-owns, and a production build that loads its WASM from a static server under a nested path.
-See `docs/evidence/stage0/`.
+**Stages 0 and 1 are complete and verified.** The studio can create and open projects, edit
+a scene in a viewport with a transform inspector, undo/redo, save through the workspace
+service, play the scene with the same runtime an export uses, stop without disturbing the
+authored document, and export a standalone playable web build.
 
-The editor shell arrives with stage 1. `index.html` is currently a landing page.
+- `pnpm verify:stage0` — 14/14 checks (runtime, physics, teardown, WASM delivery)
+- `pnpm verify:stage1` — 11/11 checks (authoring loop end to end)
+
+See `docs/status.md` for the per-stage detail and `docs/evidence/` for the raw results.
 
 ## Requirements
 
@@ -26,16 +29,22 @@ The editor shell arrives with stage 1. `index.html` is currently a landing page.
 ```bash
 pnpm install
 
-pnpm dev              # development server (editor shell, probe, player)
-pnpm verify:stage0    # full stage 0 gate: typecheck, tests, build, browser + static-server checks
+pnpm dev              # workspace service + editor dev server (http://127.0.0.1:5178/)
+pnpm verify:stage0    # stage 0 gate: runtime, physics, teardown, WASM delivery
+pnpm verify:stage1    # stage 1 gate: the whole authoring loop in a headless browser
 pnpm typecheck        # tsc --noEmit
-pnpm test             # unit tests (run the real Box3D WASM in Node)
+pnpm test             # unit tests (including the real Box3D WASM in Node)
 pnpm build            # production build into dist/
+
+pnpm studio list                  # projects in the workspace
+pnpm studio create my-game        # create from a template
+pnpm studio validate my-game      # validate a project on disk
+pnpm studio build my-game         # export a standalone playable build
 ```
 
-Development pages:
+Pages:
 
-- `/index.html` — landing page (editor shell in stage 1)
+- `/index.html` — the editor
 - `/probe.html` — stage 0 runtime probe: falling box with Play/Pause/Step/Stop
 - `/player.html?project=./probe-project/` — standalone game entry point loading a project
   from plain files, exactly as an exported game does

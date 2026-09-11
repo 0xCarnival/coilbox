@@ -1,8 +1,17 @@
 # Implementation status
 
 Tracks progress against the stage gates in `docs/threejs-game-studio-plan.md` §15.
-Each stage records the commit, how to run it, the demonstrated result, the tests that back
-it, and the gaps that are knowingly left open.
+Each stage records how to run it, the demonstrated result, the tests that back it, and the
+gaps that are knowingly left open.
+
+| Stage | State | Gate |
+|---|---|---|
+| 0. Compatibility probe | complete | `pnpm verify:stage0` — 14/14 checks |
+| 1. End-to-end authoring loop | complete | `pnpm verify:stage1` — 11/11 checks |
+| 2. Comfortable scene editing | not started | — |
+| 3. Actual games | not started | — |
+| 4. Agent and management workflow | not started | — |
+| 5. Reliability and release | not started | — |
 
 ## Stage 0 — compatibility probe — **complete**
 
@@ -82,7 +91,86 @@ These were measured, not assumed; each is recorded in the adapter or the code it
 - `dist/assets/schema-*.js` is ~700 kB (unminified three.js chunk). Performance work is
   stage 5; the number is recorded here so it is not a surprise later.
 
-## Stage 1 — end-to-end authoring loop — not started
+## Stage 1 — end-to-end authoring loop — **complete**
 
-Deliverable: minimal project list/create, scene schema, one viewport, transform inspector,
-save/load, undo, Play/Stop, crude export.
+**Deliverable:** minimal project list/create, scene schema, one viewport, transform
+inspector, save/load, undo, Play/Stop, crude export.
+
+**Evidence required:** move a box, save/reopen it, simulate a fresh copy, stop without
+changing authoring state, and run the export independently.
+
+**Status:** all five demonstrated, 11/11 automated checks passing.
+
+### How to run
+
+```bash
+pnpm install
+pnpm dev               # workspace service + editor dev server, then open http://127.0.0.1:5178/
+pnpm verify:stage1     # typecheck, unit tests, build, and the full authoring-loop gate
+pnpm studio create my-game && pnpm studio validate my-game   # agent-facing CLI
+pnpm studio build my-game                                    # Export Game from a terminal
+```
+
+### Demonstrated result
+
+`tools/verify-stage1.ts` drives the real editor in a headless browser against a temporary
+workspace, using the same commands the UI uses:
+
+| Requirement | Observed |
+|---|---|
+| Project create + open | The editor creates `stage1-room` from the blank template and lists Ground, Player, Game Camera, Sun |
+| Move a box | Setting the Player's X to 3 in the inspector changes the authored document, and the projected object follows (`[3, 1, 0]`) |
+| Undo/redo | `Ctrl+Z` returns the position to 0, `Ctrl+Shift+Z` restores 3 |
+| Save | `PUT` reaches the workspace service, the file on disk is at revision 1 with the moved object, and the indicator only reads "Saved" after the write is acknowledged |
+| Reopen | Reloading the page and reopening the project loads the saved scene (x = 3) |
+| Simulate a fresh copy | Play builds a runtime world on its own canvas: 799 distinct colours rendered, 60+ fixed steps, physics bodies present |
+| Stop without changing authoring state | Authored x is 3 before Play and 3 after Stop |
+| Export independently | Export Game writes `index.html`, the compiled player, the WASM binary, and `project/`; served on a separate static server with the workspace service shut down, it runs (37.9% of the frame rendered, 0 failed requests) |
+
+Screenshots: `docs/evidence/stage1/editor.png`, `play-mode.png`, `export.png`; raw evidence
+in `docs/evidence/stage1/evidence.json`.
+
+### What was built
+
+- **Editing core** (`src/editor/document/`) — one command interface for add, delete,
+  duplicate, rename, reparent, transform, component property, enable, and editor state; each
+  command is planned with its inverse and validated with the same relationship checks the
+  loader uses; transactions roll back entirely; consecutive edits coalesce into one undo
+  entry; reparenting preserves the world transform and refuses shear.
+- **Workspace service** (`server/`) — project discovery and creation from whole-project
+  templates, validated reads, atomic writes with a revision check and bounded recovery
+  copies, loopback binding, Host/Origin validation, a per-session write token, and
+  workspace-confined paths.
+- **Editor shell** (`src/editor/`) — project home, toolbar, hierarchy, inspector, viewport,
+  and a bottom panel with assets/scenes/console. React renders panels only; the viewport is
+  imperative and never puts per-frame transforms into React state.
+- **Export pipeline** (`server/build.ts`) — a fixed build (no shell, no browser-supplied
+  arguments) that compiles the player, copies project documents, and writes third-party
+  notices.
+- **Templates** (`templates/blank/`) generated from code so the starter scene and the
+  creation menu cannot drift.
+
+### Tests
+
+77 unit tests across schema, document/commands/history, scene-graph projection, the
+physics adapter, and the workspace service — including the plan's data-integrity list
+(stale revisions, invalid documents, parent cycles, interrupted saves leaving no temp files,
+path traversal, symlink escape, DNS rebinding).
+
+### Known gaps at this stage
+
+- The Assets tab is a placeholder: image/audio/glTF import is stage 2.
+- Groups exist as entities and the reparent path is tested, but there is no drag-and-drop in
+  the hierarchy yet.
+- Camera `follow`/`fixed` modes are authored but not driven; camera behaviours arrive with
+  the gameplay layer in stage 3.
+- Model, animation, audio, and behavior components show a placeholder in the viewport and
+  raise a clear error at Play rather than pretending to work.
+- Export is single-project and does not yet generate a per-game behaviour registry (stage 4,
+  when behaviours exist).
+
+## Stage 2 — comfortable scene editing — not started
+
+Deliverable: hierarchy/groups, assets, camera/light/material controls, snapping, clip
+playback, pause/step, errors.
+

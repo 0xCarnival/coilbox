@@ -4,10 +4,12 @@ dist-*/
 .DS_Store
 *.log
 .probe/
+.scratch/
 .cache/
 .generated/
 games/*/dist/
 games/*/.cache/
+games/*/.coilbox/
 tests/.tmp/
 playwright-report/
 test-results/

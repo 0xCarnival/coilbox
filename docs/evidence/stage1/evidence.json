@@ -1,0 +1,165 @@
+{
+  "stage": 1,
+  "generatedAt": "2026-09-11T12:13:16.919Z",
+  "node": "v24.18.0",
+  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage1-MV22Kt",
+  "steps": [
+    {
+      "name": "typecheck",
+      "ok": true,
+      "detail": "exit 0"
+    },
+    {
+      "name": "unit tests",
+      "ok": true,
+      "detail": "exit 0"
+    },
+    {
+      "name": "production build",
+      "ok": true,
+      "detail": "skipped (--skip-build)"
+    }
+  ],
+  "checks": [
+    {
+      "id": "project-create-open",
+      "title": "Create a project and open it in the editor",
+      "passed": true,
+      "detail": "hierarchy lists 4 objects: Game Camera, Ground, Player, Sun",
+      "observed": [
+        "Game Camera",
+        "Ground",
+        "Player",
+        "Sun"
+      ]
+    },
+    {
+      "id": "inspector-move",
+      "title": "Move an object in the inspector: the authored document changes",
+      "passed": true,
+      "detail": "document position is [3,1,0] (the file is written on Save, checked below)",
+      "observed": [
+        3,
+        1,
+        0
+      ]
+    },
+    {
+      "id": "viewport-projection",
+      "title": "The viewport projection follows the document",
+      "passed": true,
+      "detail": "the projected object sits at [3,1,0]",
+      "observed": [
+        3,
+        1,
+        0
+      ]
+    },
+    {
+      "id": "undo-redo",
+      "title": "Undo reverts an inspector edit and redo restores it",
+      "passed": true,
+      "detail": "position after undo 0, after redo 3",
+      "observed": {
+        "afterUndo": 0,
+        "afterRedo": 3
+      }
+    },
+    {
+      "id": "save-acknowledged",
+      "title": "Save writes through the workspace service and only then reports \"Saved\"",
+      "passed": true,
+      "detail": "revision 1, player x=3",
+      "observed": {
+        "revision": 1
+      }
+    },
+    {
+      "id": "reopen-persists",
+      "title": "Reopening the project loads the saved scene",
+      "passed": true,
+      "detail": "player x after reopening is 3",
+      "observed": 3
+    },
+    {
+      "id": "play-runs",
+      "title": "Play builds a fresh runtime world and simulates it",
+      "passed": true,
+      "detail": "726 distinct colours, 45.8% rendered, 90 fixed steps, 1 physics bodies",
+      "observed": {
+        "pixels": {
+          "width": 858,
+          "height": 681,
+          "distinctColors": 726,
+          "nonBackgroundPixels": 267639
+        },
+        "stats": {
+          "state": "running",
+          "frames": 89,
+          "steps": 90,
+          "fps": 59.99444003533385,
+          "frameTimeMs": 16.668211244426114,
+          "physicsTimeMs": 0.030633840954014252,
+          "droppedTime": 0.1499686666666668,
+          "clampedTime": 0,
+          "drawCalls": 4,
+          "triangles": 1112,
+          "geometries": 2,
+          "textures": 3,
+          "programs": 2,
+          "entities": 4,
+          "physicsBodies": 1,
+          "physics": {
+            "bodyCount": 1,
+            "shapeCount": 1,
+            "contactCount": 0,
+            "jointCount": 0,
+            "islandCount": 0,
+            "awakeBodyCount": 0,
+            "byteCount": 164960
+          },
+          "contactEvents": 0,
+          "sensorEvents": 0,
+          "hitEvents": 0,
+          "listeners": 2
+        }
+      }
+    },
+    {
+      "id": "play-does-not-mutate",
+      "title": "Stop leaves the authored scene exactly as it was",
+      "passed": true,
+      "detail": "authored x before play 3, after stop 3",
+      "observed": {
+        "authoredBefore": 3,
+        "authoredAfter": 3
+      }
+    },
+    {
+      "id": "export-produces-build",
+      "title": "Export Game produces a standalone player plus the project documents",
+      "passed": true,
+      "detail": "index.html and project documents present in /var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage1-MV22Kt/stage1-room/.coilbox/export",
+      "observed": {
+        "exportDir": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage1-MV22Kt/stage1-room/.coilbox/export"
+      }
+    },
+    {
+      "id": "export-runs-standalone",
+      "title": "The export runs with the editor and workspace service switched off",
+      "passed": true,
+      "detail": "running at http://127.0.0.1:49377/games/stage1/ — 37.9% rendered, 799 colours, 0 failed requests",
+      "observed": {
+        "requests": 7,
+        "failures": 0
+      }
+    },
+    {
+      "id": "no-console-errors",
+      "title": "No page errors in the editor or the export",
+      "passed": true,
+      "detail": "clean console",
+      "observed": []
+    }
+  ]
+}

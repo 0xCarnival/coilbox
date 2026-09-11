@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { Workspace, WorkspaceError } from './workspace.js';
+import { buildGame } from './build.js';
 import { UnsafePathError } from './paths.js';
 
 /**
@@ -148,6 +149,18 @@ export async function startApiServer(options: ApiServerOptions): Promise<ApiServ
         }
         if (route[2] === 'validate' && route.length === 3 && request.method === 'POST') {
           sendJson(response, 200, await workspace.validateProject(projectId));
+          return;
+        }
+        // Export Game. The pipeline is fixed; the browser cannot pass arguments to it.
+        if (route[2] === 'build' && route.length === 3 && request.method === 'POST') {
+          const result = await buildGame({ workspace, projectId, log: (message) => logger(message) });
+          sendJson(response, 200, {
+            ok: result.ok,
+            outDir: result.outDir,
+            relativeOutDir: result.relativeOutDir,
+            files: result.files.length,
+            totalBytes: result.totalBytes,
+          });
           return;
         }
         if (route[2] === 'scenes' && route.length === 4) {

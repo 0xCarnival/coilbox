@@ -220,7 +220,8 @@ export function createPrimitiveMaterial(component: PrimitiveComponent): THREE.Me
   });
 }
 
-function createPrimitiveMesh(component: PrimitiveComponent): THREE.Mesh {
+/** Shared by the runtime and the editor viewport so a primitive looks the same in both. */
+export function createPrimitiveMesh(component: PrimitiveComponent): THREE.Mesh {
   const geometry = createPrimitiveGeometry(component);
   const material = createPrimitiveMaterial(component);
   const mesh = new THREE.Mesh(geometry, material);

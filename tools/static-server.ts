@@ -58,8 +58,13 @@ export interface StaticServerOptions {
   /** Bind address; loopback by default (plan §13). */
   host?: string;
   port?: number;
-  /** Fail requests for paths outside this list of extensions (paranoia knob for tests). */
+  /** Suppress per-request logging. */
   quiet?: boolean;
+  /**
+   * Forward matching path prefixes to another origin, e.g. `{ '/api': 'http://127.0.0.1:5179' }`.
+   * Used to serve a production editor build next to the workspace service in checks.
+   */
+  proxy?: Record<string, string>;
 }
 
 export async function startStaticServer(options: StaticServerOptions): Promise<StaticServerHandle> {
@@ -81,6 +86,12 @@ export async function startStaticServer(options: StaticServerOptions): Promise<S
         process.stderr.write(`[static] ${status} ${url}\n`);
       }
     };
+
+    const proxyTarget = matchProxy(pathname, options.proxy);
+    if (proxyTarget) {
+      await forward(request, response, proxyTarget, url, log);
+      return;
+    }
 
     if (!pathname.startsWith(prefix)) {
       response.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' });
@@ -143,6 +154,45 @@ export async function startStaticServer(options: StaticServerOptions): Promise<S
       });
     },
   };
+}
+
+function matchProxy(pathname: string, proxy: Record<string, string> | undefined): string | null {
+  if (!proxy) return null;
+  for (const [prefix, target] of Object.entries(proxy)) {
+    if (pathname === prefix || pathname.startsWith(`${prefix}/`)) return target;
+  }
+  return null;
+}
+
+async function forward(
+  request: IncomingMessage,
+  response: ServerResponse,
+  target: string,
+  url: string,
+  log: (status: number, bytes: number, contentType: string | null) => void,
+): Promise<void> {
+  const body: Buffer[] = [];
+  for await (const chunk of request) body.push(chunk as Buffer);
+  const payload = Buffer.concat(body);
+  const headers: Record<string, string> = {};
+  for (const [key, value] of Object.entries(request.headers)) {
+    if (typeof value === 'string' && key !== 'host' && key !== 'content-length') headers[key] = value;
+  }
+  if (payload.length > 0) headers['content-length'] = String(payload.length);
+  const upstream = await fetch(new URL(url, target), {
+    method: request.method,
+    headers,
+    body: payload.length > 0 ? payload : undefined,
+  });
+  const responseBody = Buffer.from(await upstream.arrayBuffer());
+  const contentType = upstream.headers.get('content-type');
+  response.writeHead(upstream.status, {
+    'content-type': contentType ?? 'application/octet-stream',
+    'content-length': responseBody.length,
+    'cache-control': 'no-store',
+  });
+  response.end(responseBody);
+  log(upstream.status, responseBody.length, contentType);
 }
 
 function normalizePrefix(prefix: string): string {

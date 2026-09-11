@@ -28,7 +28,7 @@
       "transform": {
         "position": [
           0,
-          0,
+          -0.2,
           0
         ],
         "rotation": [
@@ -46,11 +46,11 @@
       "components": [
         {
           "type": "primitive",
-          "shape": "plane",
+          "shape": "box",
           "size": [
-            4,
-            0.1,
-            4
+            10,
+            0.4,
+            10
           ],
           "castShadow": true,
           "receiveShadow": true
@@ -89,7 +89,7 @@
           ],
           "offset": [
             0,
-            -0.2,
+            0,
             0
           ],
           "localRotation": [
@@ -165,14 +165,14 @@
       "transform": {
         "position": [
           0,
-          6,
-          10
+          5,
+          9
         ],
         "rotation": [
+          -0.2075914875178446,
           0,
           0,
-          0,
-          1
+          0.978215607271796
         ],
         "scale": [
           1,

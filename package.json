@@ -16,7 +16,8 @@
     "test": "vitest run",
     "templates": "tsx tools/write-templates.ts",
     "probe-project": "tsx tools/write-probe-project.ts",
-    "verify:stage0": "tsx tools/verify-stage0.ts"
+    "verify:stage0": "tsx tools/verify-stage0.ts",
+    "verify:stage1": "tsx tools/verify-stage1.ts"
   },
   "dependencies": {
     "box3d.js": "0.1.1",

@@ -2,6 +2,7 @@ import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import { startApiServer, type ApiServerHandle } from './api.js';
 import { Workspace } from './workspace.js';
+import { buildGame } from './build.js';
 
 /**
  * One command starts the studio (plan §13: "Run the editor and workspace service from one
@@ -149,6 +150,19 @@ async function main(): Promise<void> {
       process.stdout.write(`created "${project.name}" (${project.id}) in ${project.directory}\n`);
       return;
     }
+    case 'build': {
+      const id = args.positionals[0];
+      if (!id) throw new Error('usage: studio build <game-id> [--out <relative-dir>]');
+      const workspace = createWorkspace();
+      const result = await buildGame({
+        workspace,
+        projectId: id,
+        outSubdirectory: typeof args.flags.get('out') === 'string' ? (args.flags.get('out') as string) : undefined,
+        log: (message) => process.stdout.write(`${message}\n`),
+      });
+      process.stdout.write(`\nexported to ${result.outDir}\n`);
+      return;
+    }
     case 'validate': {
       const id = args.positionals[0];
       if (!id) throw new Error('usage: studio validate <game-id>');
@@ -178,6 +192,7 @@ async function main(): Promise<void> {
           '  list                list projects in the workspace',
           '  create <id>         create a project from a template (--template, --name)',
           '  validate <id>       validate a project on disk',
+          '  build <id>          export a standalone playable web build',
           '',
           `Workspace: ${defaultWorkspaceRoot()} (override with --workspace or COILBOX_WORKSPACE)`,
           `Templates: ${defaultTemplatesRoot()} (override with COILBOX_TEMPLATES)`,
