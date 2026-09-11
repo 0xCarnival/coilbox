@@ -4,6 +4,9 @@ import { SceneDocumentStore, type SaveState } from '../document/store.js';
 import { SelectionStore } from '../document/selection.js';
 import { WorkspaceClient, WorkspaceClientError, type ProjectDetail, type ProjectSummary } from '../api/client.js';
 import { ApiAssetResolver } from '../api/asset-resolver.js';
+import { BehaviorRegistry } from '@runtime/behaviors/registry.js';
+import { BEHAVIOR_LIBRARY } from '@runtime/behaviors/library.js';
+import type { BehaviorEntry, BehaviorPropertyDescriptor } from '@runtime/behaviors/types.js';
 
 export type { ProjectDetail, ProjectSummary } from '../api/client.js';
 
@@ -51,6 +54,8 @@ export interface SessionSnapshot {
   importing: boolean;
   /** Clip names per entity, reported as models finish loading. */
   modelClips: Record<string, string[]>;
+  /** Behavior metadata declared by the project's scripts/registry.json. */
+  behaviors: Array<{ id: string; name: string; description: string; properties: BehaviorPropertyDescriptor[] }>;
 }
 
 export class EditorSession {
@@ -58,6 +63,12 @@ export class EditorSession {
   readonly selection = new SelectionStore();
   /** Resolves asset ids to URLs for the viewport and for Play. */
   readonly assetResolver = new ApiAssetResolver('');
+  /** Metadata-only registry: it drives the inspector and validation, never execution. */
+  private registry = new BehaviorRegistry();
+
+  get behaviorRegistry(): BehaviorRegistry {
+    return this.registry;
+  }
 
   private projects: ProjectSummary[] = [];
   private project: ProjectDetail | null = null;
@@ -118,6 +129,12 @@ export class EditorSession {
       assetUsage: this.assetUsage,
       importing: this.importing,
       modelClips: this.modelClips,
+      behaviors: this.behaviorRegistry.list().map((entry) => ({
+        id: entry.id,
+        name: entry.name,
+        description: entry.description,
+        properties: entry.properties,
+      })),
     };
     this.cachedSnapshot = snapshot;
     return snapshot;
@@ -184,6 +201,7 @@ export class EditorSession {
       this.project = project;
       this.projectError = null;
       await this.refreshAssets();
+      await this.refreshRegistry();
       await this.openScene(sceneId ?? project.game.startScene, project);
       this.log('info', `Opened "${project.name}"`);
       return true;
@@ -207,6 +225,56 @@ export class EditorSession {
 
   clipsFor(entityId: string): string[] {
     return this.modelClips[entityId] ?? [];
+  }
+
+  /** Re-read the project's behavior registry so the inspector shows current property metadata. */
+  async refreshRegistry(): Promise<void> {
+    if (!this.project) return;
+    try {
+      const document_ = await this.client.readRegistry(this.project.id);
+      const entries: Array<Omit<BehaviorEntry, 'definition'>> = [];
+      for (const entry of document_.behaviors as Array<{
+        id?: unknown;
+        name?: unknown;
+        description?: unknown;
+        properties?: unknown;
+      }>) {
+        if (typeof entry?.id !== 'string') continue;
+        entries.push({
+          id: entry.id,
+          name: typeof entry.name === 'string' ? entry.name : entry.id,
+          description: typeof entry.description === 'string' ? entry.description : '',
+          properties: Array.isArray(entry.properties) ? (entry.properties as BehaviorPropertyDescriptor[]) : [],
+        });
+      }
+      this.registry = new BehaviorRegistry();
+      this.registry.replaceMetadata(entries);
+
+      // The inspector renders the project's declarations; Play runs the compiled library. Say
+      // so plainly when the two disagree instead of letting a behavior silently do nothing.
+      const declared = new Set(entries.map((entry) => entry.id));
+      const implemented = new Set(BEHAVIOR_LIBRARY.map((definition) => definition.id));
+      for (const id of declared) {
+        if (!implemented.has(id)) this.log('error', `scripts/registry.json declares "${id}", which this build does not implement`);
+      }
+      for (const id of implemented) {
+        if (!declared.has(id)) this.log('warning', `"${id}" is implemented but missing from scripts/registry.json`);
+      }
+    } catch (error) {
+      this.log('error', 'Could not read scripts/registry.json', describeError(error));
+    }
+    this.emit();
+  }
+
+  behaviorsFor(entityId: string): Array<{ behaviorId: string; properties: Record<string, unknown> }> {
+    const entity = this.scene?.entities.find((candidate) => candidate.id === entityId);
+    if (!entity) return [];
+    return entity.components
+      .filter((component) => component.type === 'behavior')
+      .map((component) => ({
+        behaviorId: (component as Extract<typeof component, { type: 'behavior' }>).behaviorId,
+        properties: (component as Extract<typeof component, { type: 'behavior' }>).properties as Record<string, unknown>,
+      }));
   }
 
   async refreshAssets(): Promise<void> {

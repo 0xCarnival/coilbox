@@ -161,6 +161,8 @@ function describeCommand(command: EditorCommand | undefined): string {
       return 'Transform';
     case 'setComponentProperty':
       return 'Change property';
+    case 'setBehaviorProperty':
+      return 'Change setting';
     case 'addComponent':
       return 'Add component';
     case 'removeComponent':

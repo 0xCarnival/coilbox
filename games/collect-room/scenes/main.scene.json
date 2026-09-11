@@ -1,0 +1,1201 @@
+{
+  "schemaVersion": 1,
+  "revision": 0,
+  "id": "main",
+  "name": "Collect Room",
+  "activeCameraId": "game-camera",
+  "environment": {
+    "background": {
+      "type": "color",
+      "color": "#181d29"
+    },
+    "fog": {
+      "type": "linear",
+      "color": "#181d29",
+      "near": 26,
+      "far": 60
+    },
+    "gravity": [
+      0,
+      -20,
+      0
+    ]
+  },
+  "entities": [
+    {
+      "id": "ground",
+      "name": "Floor",
+      "parentId": null,
+      "order": 0,
+      "enabled": true,
+      "transform": {
+        "position": [
+          0,
+          -0.25,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            16,
+            0.5,
+            16
+          ],
+          "castShadow": false,
+          "receiveShadow": true
+        },
+        {
+          "type": "material",
+          "color": "#3f4654",
+          "roughness": 0.9,
+          "metalness": 0,
+          "emissive": "#000000",
+          "emissiveIntensity": 1,
+          "opacity": 1,
+          "transparent": false,
+          "doubleSided": false,
+          "flatShading": false,
+          "visible": true
+        },
+        {
+          "type": "rigidBody",
+          "bodyType": "static",
+          "mass": null,
+          "gravityScale": 1,
+          "linearDamping": 0,
+          "angularDamping": 0.05,
+          "lockRotation": false,
+          "continuous": false,
+          "moveWithPhysics": true
+        },
+        {
+          "type": "collider",
+          "shape": "box",
+          "size": [
+            16,
+            0.5,
+            16
+          ],
+          "offset": [
+            0,
+            0,
+            0
+          ],
+          "localRotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "isSensor": false,
+          "friction": 0.8,
+          "restitution": 0,
+          "density": 1,
+          "reportContacts": false
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "wall-north",
+      "name": "Wall North",
+      "parentId": null,
+      "order": 1,
+      "enabled": true,
+      "transform": {
+        "position": [
+          0,
+          1,
+          -8
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            16,
+            2,
+            0.5
+          ],
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        {
+          "type": "material",
+          "color": "#59607a",
+          "roughness": 0.85,
+          "metalness": 0,
+          "emissive": "#000000",
+          "emissiveIntensity": 1,
+          "opacity": 1,
+          "transparent": false,
+          "doubleSided": false,
+          "flatShading": false,
+          "visible": true
+        },
+        {
+          "type": "rigidBody",
+          "bodyType": "static",
+          "mass": null,
+          "gravityScale": 1,
+          "linearDamping": 0,
+          "angularDamping": 0.05,
+          "lockRotation": false,
+          "continuous": false,
+          "moveWithPhysics": true
+        },
+        {
+          "type": "collider",
+          "shape": "box",
+          "size": [
+            16,
+            2,
+            0.5
+          ],
+          "offset": [
+            0,
+            0,
+            0
+          ],
+          "localRotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "isSensor": false,
+          "friction": 0.6,
+          "restitution": 0,
+          "density": 1,
+          "reportContacts": false
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "wall-south",
+      "name": "Wall South",
+      "parentId": null,
+      "order": 2,
+      "enabled": true,
+      "transform": {
+        "position": [
+          0,
+          1,
+          8
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            16,
+            2,
+            0.5
+          ],
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        {
+          "type": "material",
+          "color": "#59607a",
+          "roughness": 0.85,
+          "metalness": 0,
+          "emissive": "#000000",
+          "emissiveIntensity": 1,
+          "opacity": 1,
+          "transparent": false,
+          "doubleSided": false,
+          "flatShading": false,
+          "visible": true
+        },
+        {
+          "type": "rigidBody",
+          "bodyType": "static",
+          "mass": null,
+          "gravityScale": 1,
+          "linearDamping": 0,
+          "angularDamping": 0.05,
+          "lockRotation": false,
+          "continuous": false,
+          "moveWithPhysics": true
+        },
+        {
+          "type": "collider",
+          "shape": "box",
+          "size": [
+            16,
+            2,
+            0.5
+          ],
+          "offset": [
+            0,
+            0,
+            0
+          ],
+          "localRotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "isSensor": false,
+          "friction": 0.6,
+          "restitution": 0,
+          "density": 1,
+          "reportContacts": false
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "wall-west",
+      "name": "Wall West",
+      "parentId": null,
+      "order": 3,
+      "enabled": true,
+      "transform": {
+        "position": [
+          -8,
+          1,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            0.5,
+            2,
+            16
+          ],
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        {
+          "type": "material",
+          "color": "#4d5470",
+          "roughness": 0.85,
+          "metalness": 0,
+          "emissive": "#000000",
+          "emissiveIntensity": 1,
+          "opacity": 1,
+          "transparent": false,
+          "doubleSided": false,
+          "flatShading": false,
+          "visible": true
+        },
+        {
+          "type": "rigidBody",
+          "bodyType": "static",
+          "mass": null,
+          "gravityScale": 1,
+          "linearDamping": 0,
+          "angularDamping": 0.05,
+          "lockRotation": false,
+          "continuous": false,
+          "moveWithPhysics": true
+        },
+        {
+          "type": "collider",
+          "shape": "box",
+          "size": [
+            0.5,
+            2,
+            16
+          ],
+          "offset": [
+            0,
+            0,
+            0
+          ],
+          "localRotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "isSensor": false,
+          "friction": 0.6,
+          "restitution": 0,
+          "density": 1,
+          "reportContacts": false
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "wall-east",
+      "name": "Wall East",
+      "parentId": null,
+      "order": 4,
+      "enabled": true,
+      "transform": {
+        "position": [
+          8,
+          1,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            0.5,
+            2,
+            16
+          ],
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        {
+          "type": "material",
+          "color": "#4d5470",
+          "roughness": 0.85,
+          "metalness": 0,
+          "emissive": "#000000",
+          "emissiveIntensity": 1,
+          "opacity": 1,
+          "transparent": false,
+          "doubleSided": false,
+          "flatShading": false,
+          "visible": true
+        },
+        {
+          "type": "rigidBody",
+          "bodyType": "static",
+          "mass": null,
+          "gravityScale": 1,
+          "linearDamping": 0,
+          "angularDamping": 0.05,
+          "lockRotation": false,
+          "continuous": false,
+          "moveWithPhysics": true
+        },
+        {
+          "type": "collider",
+          "shape": "box",
+          "size": [
+            0.5,
+            2,
+            16
+          ],
+          "offset": [
+            0,
+            0,
+            0
+          ],
+          "localRotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "isSensor": false,
+          "friction": 0.6,
+          "restitution": 0,
+          "density": 1,
+          "reportContacts": false
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "player",
+      "name": "Player",
+      "parentId": null,
+      "order": 5,
+      "enabled": true,
+      "transform": {
+        "position": [
+          0,
+          1,
+          -6
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "capsule",
+          "size": [
+            0.7,
+            1.8,
+            0.7
+          ],
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        {
+          "type": "material",
+          "color": "#e8c97a",
+          "roughness": 0.5,
+          "metalness": 0.05,
+          "emissive": "#000000",
+          "emissiveIntensity": 1,
+          "opacity": 1,
+          "transparent": false,
+          "doubleSided": false,
+          "flatShading": false,
+          "visible": true
+        },
+        {
+          "type": "rigidBody",
+          "bodyType": "kinematic",
+          "mass": null,
+          "gravityScale": 1,
+          "linearDamping": 0,
+          "angularDamping": 0.1,
+          "lockRotation": true,
+          "continuous": false,
+          "moveWithPhysics": true
+        },
+        {
+          "type": "collider",
+          "shape": "capsule",
+          "size": [
+            0.7,
+            1.8,
+            0.7
+          ],
+          "offset": [
+            0,
+            0.9,
+            0
+          ],
+          "localRotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "isSensor": false,
+          "friction": 0.6,
+          "restitution": 0,
+          "density": 1,
+          "reportContacts": false
+        },
+        {
+          "type": "behavior",
+          "behaviorId": "player.mover",
+          "properties": {
+            "moveSpeed": 5,
+            "jumpStrength": 6.5,
+            "gravity": 20,
+            "turnSpeed": 12
+          }
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "collectible-1",
+      "name": "Gem 1",
+      "parentId": null,
+      "order": 10,
+      "enabled": true,
+      "transform": {
+        "position": [
+          -4.5,
+          0.6,
+          -4.5
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "sphere",
+          "size": [
+            0.6,
+            0.6,
+            0.6
+          ],
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        {
+          "type": "material",
+          "color": "#6fe3c4",
+          "roughness": 0.35,
+          "metalness": 0.2,
+          "emissive": "#000000",
+          "emissiveIntensity": 1,
+          "opacity": 1,
+          "transparent": false,
+          "doubleSided": false,
+          "flatShading": false,
+          "visible": true
+        },
+        {
+          "type": "rigidBody",
+          "bodyType": "static",
+          "mass": null,
+          "gravityScale": 1,
+          "linearDamping": 0,
+          "angularDamping": 0.05,
+          "lockRotation": false,
+          "continuous": false,
+          "moveWithPhysics": true
+        },
+        {
+          "type": "collider",
+          "shape": "sphere",
+          "size": [
+            0.6,
+            0.6,
+            0.6
+          ],
+          "offset": [
+            0,
+            0,
+            0
+          ],
+          "localRotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "isSensor": true,
+          "friction": 0.6,
+          "restitution": 0,
+          "density": 1,
+          "reportContacts": true
+        },
+        {
+          "type": "behavior",
+          "behaviorId": "game.collectible",
+          "properties": {
+            "value": 1,
+            "playerName": "Player",
+            "hideOnCollect": true
+          }
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "collectible-2",
+      "name": "Gem 2",
+      "parentId": null,
+      "order": 11,
+      "enabled": true,
+      "transform": {
+        "position": [
+          4.5,
+          0.6,
+          -3.5
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "sphere",
+          "size": [
+            0.6,
+            0.6,
+            0.6
+          ],
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        {
+          "type": "material",
+          "color": "#6fe3c4",
+          "roughness": 0.35,
+          "metalness": 0.2,
+          "emissive": "#000000",
+          "emissiveIntensity": 1,
+          "opacity": 1,
+          "transparent": false,
+          "doubleSided": false,
+          "flatShading": false,
+          "visible": true
+        },
+        {
+          "type": "rigidBody",
+          "bodyType": "static",
+          "mass": null,
+          "gravityScale": 1,
+          "linearDamping": 0,
+          "angularDamping": 0.05,
+          "lockRotation": false,
+          "continuous": false,
+          "moveWithPhysics": true
+        },
+        {
+          "type": "collider",
+          "shape": "sphere",
+          "size": [
+            0.6,
+            0.6,
+            0.6
+          ],
+          "offset": [
+            0,
+            0,
+            0
+          ],
+          "localRotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "isSensor": true,
+          "friction": 0.6,
+          "restitution": 0,
+          "density": 1,
+          "reportContacts": true
+        },
+        {
+          "type": "behavior",
+          "behaviorId": "game.collectible",
+          "properties": {
+            "value": 1,
+            "playerName": "Player",
+            "hideOnCollect": true
+          }
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "collectible-3",
+      "name": "Gem 3",
+      "parentId": null,
+      "order": 12,
+      "enabled": true,
+      "transform": {
+        "position": [
+          0,
+          0.6,
+          5
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "sphere",
+          "size": [
+            0.6,
+            0.6,
+            0.6
+          ],
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        {
+          "type": "material",
+          "color": "#6fe3c4",
+          "roughness": 0.35,
+          "metalness": 0.2,
+          "emissive": "#000000",
+          "emissiveIntensity": 1,
+          "opacity": 1,
+          "transparent": false,
+          "doubleSided": false,
+          "flatShading": false,
+          "visible": true
+        },
+        {
+          "type": "rigidBody",
+          "bodyType": "static",
+          "mass": null,
+          "gravityScale": 1,
+          "linearDamping": 0,
+          "angularDamping": 0.05,
+          "lockRotation": false,
+          "continuous": false,
+          "moveWithPhysics": true
+        },
+        {
+          "type": "collider",
+          "shape": "sphere",
+          "size": [
+            0.6,
+            0.6,
+            0.6
+          ],
+          "offset": [
+            0,
+            0,
+            0
+          ],
+          "localRotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "isSensor": true,
+          "friction": 0.6,
+          "restitution": 0,
+          "density": 1,
+          "reportContacts": true
+        },
+        {
+          "type": "behavior",
+          "behaviorId": "game.collectible",
+          "properties": {
+            "value": 1,
+            "playerName": "Player",
+            "hideOnCollect": true
+          }
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "exit-zone",
+      "name": "Exit",
+      "parentId": null,
+      "order": 20,
+      "enabled": true,
+      "transform": {
+        "position": [
+          6.5,
+          1.2,
+          6.5
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            2,
+            2.4,
+            2
+          ],
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        {
+          "type": "material",
+          "color": "#5b9dff",
+          "roughness": 0.4,
+          "metalness": 0.1,
+          "emissive": "#000000",
+          "emissiveIntensity": 1,
+          "opacity": 1,
+          "transparent": false,
+          "doubleSided": false,
+          "flatShading": false,
+          "visible": true
+        },
+        {
+          "type": "rigidBody",
+          "bodyType": "static",
+          "mass": null,
+          "gravityScale": 1,
+          "linearDamping": 0,
+          "angularDamping": 0.05,
+          "lockRotation": false,
+          "continuous": false,
+          "moveWithPhysics": true
+        },
+        {
+          "type": "collider",
+          "shape": "box",
+          "size": [
+            2,
+            2.4,
+            2
+          ],
+          "offset": [
+            0,
+            0,
+            0
+          ],
+          "localRotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "isSensor": true,
+          "friction": 0.6,
+          "restitution": 0,
+          "density": 1,
+          "reportContacts": true
+        },
+        {
+          "type": "behavior",
+          "behaviorId": "game.exit-zone",
+          "properties": {
+            "playerName": "Player",
+            "requiredScore": 3,
+            "winMessage": "All gems collected — you escaped!"
+          }
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "game-camera",
+      "name": "Game Camera",
+      "parentId": null,
+      "order": 30,
+      "enabled": true,
+      "transform": {
+        "position": [
+          0,
+          6,
+          -12
+        ],
+        "rotation": [
+          0,
+          0.9805806756909202,
+          0.19611613513818402,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "camera",
+          "mode": "follow",
+          "fov": 55,
+          "near": 0.1,
+          "far": 400,
+          "targetId": "player",
+          "distance": 9,
+          "height": 6,
+          "offset": [
+            0,
+            0,
+            0
+          ],
+          "damping": 0.15
+        },
+        {
+          "type": "behavior",
+          "behaviorId": "camera.follow",
+          "properties": {
+            "target": "player",
+            "distance": 9,
+            "height": 7,
+            "damping": 0.15,
+            "lookHeight": 1,
+            "fixed": true
+          }
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "sun",
+      "name": "Sun",
+      "parentId": null,
+      "order": 31,
+      "enabled": true,
+      "transform": {
+        "position": [
+          8,
+          12,
+          6
+        ],
+        "rotation": [
+          -0.37937611961509654,
+          0.4049919011121679,
+          0.18968805980754824,
+          0.8099838022243359
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "light",
+          "kind": "directional",
+          "color": "#fff4e0",
+          "intensity": 2.2,
+          "groundColor": "#3b4354",
+          "castShadow": true,
+          "shadowMapSize": 1024,
+          "shadowBias": -0.0005,
+          "shadowExtent": 18,
+          "range": 20,
+          "decay": 2,
+          "coneAngleDegrees": 30
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "fill",
+      "name": "Fill Light",
+      "parentId": null,
+      "order": 32,
+      "enabled": true,
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "light",
+          "kind": "hemisphere",
+          "color": "#93a7c9",
+          "groundColor": "#2b303c",
+          "intensity": 0.7,
+          "castShadow": false,
+          "shadowMapSize": 512,
+          "shadowBias": -0.0005,
+          "shadowExtent": 10,
+          "range": 20,
+          "decay": 2,
+          "coneAngleDegrees": 30
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "rules",
+      "name": "Game Rules",
+      "parentId": null,
+      "order": 40,
+      "enabled": true,
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "behavior",
+          "behaviorId": "game.rules",
+          "properties": {
+            "scoreTarget": 3,
+            "timeLimit": 0,
+            "nextScene": "",
+            "showStartOverlay": true,
+            "allowRestartKey": true
+          }
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    }
+  ]
+}

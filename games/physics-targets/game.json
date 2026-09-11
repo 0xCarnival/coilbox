@@ -1,0 +1,122 @@
+{
+  "schemaVersion": 1,
+  "engineVersion": "0.1.0",
+  "engineCompat": "0.1.0",
+  "id": "physics-targets",
+  "name": "Physics Targets",
+  "description": "Launch the ball, knock every target down, and beat the clock.",
+  "scenes": [
+    {
+      "id": "main",
+      "name": "Physics Targets",
+      "path": "scenes/main.scene.json"
+    }
+  ],
+  "startScene": "main",
+  "assetManifest": "assets/manifest.json",
+  "behaviorRegistry": "scripts/registry.json",
+  "settings": {
+    "physics": {
+      "fixedTimeStep": 0.016666666666666666,
+      "subStepCount": 4,
+      "maxSubSteps": 5,
+      "enableSleep": true,
+      "hitEventThreshold": 0.8
+    },
+    "render": {
+      "antialias": true,
+      "shadows": true,
+      "pixelRatioCap": 2,
+      "toneMapping": "aces",
+      "exposure": 1
+    },
+    "initialGameState": {
+      "score": 0,
+      "targetsDown": 0,
+      "launches": 0,
+      "timeRemaining": 60,
+      "won": false,
+      "lost": false
+    },
+    "hud": [
+      {
+        "type": "counter",
+        "id": "score-counter",
+        "label": "Targets down",
+        "bind": "score",
+        "target": 5,
+        "position": "top-right",
+        "color": "#ffffff",
+        "size": 20
+      },
+      {
+        "type": "label",
+        "id": "time-label",
+        "text": "Time: {value}s",
+        "bind": "timeRemaining",
+        "position": "top-left",
+        "color": "#c8d3e8",
+        "size": 15
+      },
+      {
+        "type": "overlay",
+        "id": "start-overlay",
+        "kind": "start",
+        "title": "Physics Targets",
+        "message": "Click to launch the ball at the targets. Knock all five down before the clock runs out.",
+        "actionLabel": "Start",
+        "action": "resume",
+        "background": "#101319",
+        "color": "#ffffff"
+      },
+      {
+        "type": "overlay",
+        "id": "win-overlay",
+        "kind": "win",
+        "title": "All targets down",
+        "message": "Nice shooting.",
+        "actionLabel": "Play again",
+        "action": "restart",
+        "background": "#101319",
+        "color": "#ffffff"
+      },
+      {
+        "type": "overlay",
+        "id": "lose-overlay",
+        "kind": "lose",
+        "title": "Out of time",
+        "message": "The clock beat you this time.",
+        "actionLabel": "Try again",
+        "action": "restart",
+        "background": "#101319",
+        "color": "#ffffff"
+      }
+    ],
+    "inputBindings": {
+      "primary": [
+        "Mouse0"
+      ],
+      "restart": [
+        "KeyR"
+      ],
+      "moveForward": [
+        "KeyW"
+      ],
+      "moveBackward": [
+        "KeyS"
+      ],
+      "moveLeft": [
+        "KeyA"
+      ],
+      "moveRight": [
+        "KeyD"
+      ],
+      "jump": [
+        "Space"
+      ],
+      "interact": [
+        "KeyE"
+      ]
+    }
+  }
+}

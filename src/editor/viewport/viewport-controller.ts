@@ -354,21 +354,10 @@ export class EditorViewport {
           // Playback is attached once the model instance exists (see syncProjectionAnimation).
           break;
         case 'audio':
-        case 'behavior': {
-          // Not runnable yet: mark the entity so the viewport still shows a placeholder
-          // instead of silently pretending the component works.
-          const marker = new THREE.Mesh(
-            new THREE.BoxGeometry(0.5, 0.5, 0.5),
-            new THREE.MeshBasicMaterial({ color: 0xd98b5b, wireframe: true }),
-          );
-          marker.userData[EDITOR_ONLY] = true;
-          marker.name = `unsupported:${component.type}`;
-          object.add(marker);
-          this.callbacks.onWarning?.(
-            `${entity.name}: ${component.type} components are not runnable in this build yet`,
-          );
+        case 'behavior':
+          // Neither draws anything: behaviors are instantiated by the behavior runtime in Play,
+          // and audio plays when a behavior or the audio system asks for it.
           break;
-        }
         default:
           break;
       }

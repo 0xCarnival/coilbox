@@ -3,7 +3,15 @@ import type { JSX } from 'react';
 import type { AssetEntry, Component, ComponentType, Entity, JsonValue, Vec3 } from '@schema/index.js';
 import { COMPONENT_TYPES, COMPONENT_LABELS } from '@schema/index.js';
 import { useSession, useSessionSnapshot } from '../hooks.js';
-import { COMPONENT_DESCRIPTORS, componentLabel, eulerDegreesToQuaternion, quaternionToEulerDegrees, type FieldDescriptor } from './field-schema.js';
+import {
+  COMPONENT_DESCRIPTORS,
+  componentLabel,
+  eulerDegreesToQuaternion,
+  quaternionToEulerDegrees,
+  type FieldDescriptor,
+  type FieldKind,
+} from './field-schema.js';
+import type { BehaviorPropertyDescriptor } from '@runtime/behaviors/types.js';
 import { componentsFor, type CreatableKind } from '../document/factory.js';
 
 /**
@@ -81,15 +89,19 @@ export function Inspector({ locked }: { locked: boolean }): JSX.Element {
         />
       </Section>
 
-      {entity.components.map((component) => (
-        <ComponentSection
-          key={component.type}
-          entity={entity}
-          component={component}
-          locked={locked}
-          onSetProperty={setProperty}
-        />
-      ))}
+      {entity.components.map((component) =>
+        component.type === 'behavior' ? (
+          <BehaviorSection key={`behavior:${component.behaviorId}`} entity={entity} component={component} locked={locked} />
+        ) : (
+          <ComponentSection
+            key={component.type}
+            entity={entity}
+            component={component}
+            locked={locked}
+            onSetProperty={setProperty}
+          />
+        ),
+      )}
 
       <div className="add-component">
         <button type="button" disabled={locked} onClick={() => setAddMenuOpen((open) => !open)}>
@@ -192,6 +204,106 @@ function defaultLiteralFor(type: ComponentType): Component {
       return { type: 'behavior', behaviorId: 'behavior.id', properties: {} };
     default:
       return { type: 'primitive', shape: 'box', size: [1, 1, 1], castShadow: true, receiveShadow: true };
+  }
+}
+
+/** Behavior component: fields come from the project's registry metadata, not this file. */
+function BehaviorSection({ entity, component, locked }: { entity: Entity; component: Extract<Component, { type: 'behavior' }>; locked: boolean }): JSX.Element {
+  const session = useSession();
+  const descriptor = session.behaviorRegistry.get(component.behaviorId);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const properties = component.properties as Record<string, JsonValue>;
+  const fields = descriptor?.properties ?? [];
+  const basic = fields.filter((field) => !field.advanced);
+  const advanced = fields.filter((field) => field.advanced);
+
+  // Behavior properties live inside the component's `properties` record, so they have their
+  // own command rather than the flat component-property one.
+  const set = (key: string, value: JsonValue) =>
+    session.execute(
+      { kind: 'setBehaviorProperty', entityId: entity.id, behaviorId: component.behaviorId, property: key, value },
+      { coalesceKey: `behavior:${entity.id}:${component.behaviorId}:${key}` },
+    );
+
+  return (
+    <Section title={descriptor?.name ?? component.behaviorId} subtitle={component.behaviorId} defaultOpen>
+      {!descriptor && (
+        <p className="warn">
+          “{component.behaviorId}” is not declared in scripts/registry.json, so its properties cannot be edited here.
+        </p>
+      )}
+      {descriptor?.description && <p className="muted">{descriptor.description}</p>}
+      {basic.map((field) => (
+        <Field
+          key={field.key}
+          field={{
+            key: field.key,
+            label: field.label,
+            kind: behaviorFieldKind(field),
+            help: field.description,
+            min: field.min,
+            max: field.max,
+            step: field.step,
+            options: field.options?.map((option) => ({ value: option, label: option })),
+          }}
+          value={properties[field.key] ?? field.default}
+          disabled={locked}
+          entity={entity}
+          onChange={(value) => set(field.key, value)}
+        />
+      ))}
+      {advanced.length > 0 && (
+        <div className="advanced">
+          <button type="button" onClick={() => setAdvancedOpen((open) => !open)}>
+            {advancedOpen ? '− Hide advanced' : `+ ${advanced.length} advanced`}
+          </button>
+          {advancedOpen &&
+            advanced.map((field) => (
+              <Field
+                key={field.key}
+                field={{
+                  key: field.key,
+                  label: field.label,
+                  kind: behaviorFieldKind(field),
+                  help: field.description,
+                  min: field.min,
+                  max: field.max,
+                  step: field.step,
+                  options: field.options?.map((option) => ({ value: option, label: option })),
+                }}
+                value={properties[field.key] ?? field.default}
+                disabled={locked}
+                entity={entity}
+                onChange={(value) => set(field.key, value)}
+              />
+            ))}
+        </div>
+      )}
+      <div className="component-actions">
+        <button type="button" disabled={locked} onClick={() => session.execute({ kind: 'removeComponent', entityId: entity.id, componentType: 'behavior' })}>
+          Remove
+        </button>
+      </div>
+    </Section>
+  );
+}
+
+/** Map a registry property type onto the inspector's field kinds. */
+function behaviorFieldKind(field: BehaviorPropertyDescriptor): FieldKind {
+  switch (field.type) {
+    case 'boolean':
+      return 'boolean';
+    case 'number':
+      return 'number';
+    case 'enum':
+      return 'enum';
+    case 'entity':
+      return 'entity-reference';
+    case 'asset':
+      return 'asset-reference';
+    case 'text':
+    default:
+      return 'text';
   }
 }
 

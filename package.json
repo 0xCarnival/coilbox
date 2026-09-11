@@ -19,7 +19,9 @@
     "verify:stage0": "tsx tools/verify-stage0.ts",
     "verify:stage1": "tsx tools/verify-stage1.ts",
     "verify:stage2": "tsx tools/verify-stage2.ts",
-    "fixtures": "tsx tools/write-fixtures.ts"
+    "fixtures": "tsx tools/write-fixtures.ts",
+    "verify:stage3": "tsx tools/verify-stage3.ts",
+    "games": "tsx tools/write-games.ts"
   },
   "dependencies": {
     "box3d.js": "0.1.1",

@@ -150,6 +150,10 @@ export async function startApiServer(options: ApiServerOptions): Promise<ApiServ
           sendJson(response, 405, { error: 'method-not-allowed', message: 'archiving arrives with project management' });
           return;
         }
+        if (route[2] === 'registry' && route.length === 3 && request.method === 'GET') {
+          sendJson(response, 200, await workspace.readBehaviorRegistry(projectId));
+          return;
+        }
         if (route[2] === 'validate' && route.length === 3 && request.method === 'POST') {
           sendJson(response, 200, await workspace.validateProject(projectId));
           return;

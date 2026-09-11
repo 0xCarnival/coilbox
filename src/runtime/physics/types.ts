@@ -104,6 +104,8 @@ export interface PhysicsWorldHandle {
   setLinearVelocity(key: string, velocity: Vec3): void;
   setAngularVelocity(key: string, velocity: Vec3): void;
   setBodyType(key: string, type: PhysicsBodyType): void;
+  /** Disable or re-enable a body without destroying it (collected pickups, opened doors). */
+  setBodyEnabled(key: string, enabled: boolean): void;
   applyImpulse(key: string, impulse: Vec3, point?: Vec3): void;
   applyForce(key: string, force: Vec3, point?: Vec3): void;
   /** Drain physics events accumulated since the previous drain. */

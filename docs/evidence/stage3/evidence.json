@@ -1,0 +1,245 @@
+{
+  "stage": 3,
+  "generatedAt": "2026-09-11T12:52:45.960Z",
+  "node": "v24.18.0",
+  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage3-LaABPU",
+  "steps": [
+    {
+      "name": "typecheck",
+      "ok": true,
+      "detail": "exit 0"
+    },
+    {
+      "name": "unit tests",
+      "ok": true,
+      "detail": "exit 0"
+    }
+  ],
+  "checks": [
+    {
+      "id": "validate-collect-room",
+      "title": "The collect-room project validates on disk",
+      "passed": true,
+      "detail": "no validation errors"
+    },
+    {
+      "id": "validate-physics-targets",
+      "title": "The physics-targets project validates on disk",
+      "passed": true,
+      "detail": "no validation errors"
+    },
+    {
+      "id": "collect-room-behaviors",
+      "title": "Collect Room runs registered behaviors from the shared runtime",
+      "passed": true,
+      "detail": "7 behavior instances: player.mover, game.collectible, game.exit-zone, camera.follow, game.rules",
+      "observed": [
+        {
+          "entityId": "player",
+          "behaviorId": "player.mover"
+        },
+        {
+          "entityId": "collectible-1",
+          "behaviorId": "game.collectible"
+        },
+        {
+          "entityId": "collectible-2",
+          "behaviorId": "game.collectible"
+        },
+        {
+          "entityId": "collectible-3",
+          "behaviorId": "game.collectible"
+        },
+        {
+          "entityId": "exit-zone",
+          "behaviorId": "game.exit-zone"
+        },
+        {
+          "entityId": "game-camera",
+          "behaviorId": "camera.follow"
+        },
+        {
+          "entityId": "rules",
+          "behaviorId": "game.rules"
+        }
+      ]
+    },
+    {
+      "id": "collect-room-input",
+      "title": "Keyboard input drives the character mover, and it stays on the floor",
+      "passed": true,
+      "detail": "player moved 5.38 m from (0.0, -6.0) to (0.0, -0.6); y went 0.00 → -0.00",
+      "observed": {
+        "beforeWalk": {
+          "x": 0,
+          "y": 1.986822706356861e-9,
+          "z": -6
+        },
+        "afterWalk": {
+          "x": 0,
+          "y": -9.934105094089318e-9,
+          "z": -0.6249790191650391
+        },
+        "walked": 5.375020980834961,
+        "grounded": true
+      }
+    },
+    {
+      "id": "collect-room-triggers",
+      "title": "Sensor triggers collect the gems and update the score",
+      "passed": true,
+      "detail": "score 3 after visiting 3 gems; remaining 0",
+      "observed": {
+        "score": 3,
+        "collectiblesRemaining": 0,
+        "objective": "",
+        "won": true,
+        "lost": false,
+        "scoreTarget": 3,
+        "timeRemaining": 0,
+        "playerGrounded": true,
+        "paused": false
+      }
+    },
+    {
+      "id": "collect-room-win",
+      "title": "Reaching the exit with the gems collected wins the level and shows the HUD overlay",
+      "passed": true,
+      "detail": "won=true, objective=\"All gems collected — you escaped!\", overlay visible=true",
+      "observed": {
+        "won": true,
+        "objective": "All gems collected — you escaped!",
+        "hudVisible": true
+      }
+    },
+    {
+      "id": "collect-room-restart-position",
+      "title": "After a restart the player is standing in the rebuilt level, not falling",
+      "passed": true,
+      "detail": "player at (0.0, -0.00, -6.0) after restart",
+      "observed": {
+        "x": 0,
+        "y": -1.5894570992713852e-8,
+        "z": -6
+      }
+    },
+    {
+      "id": "collect-room-restart",
+      "title": "Restart from the win overlay rebuilds the scene from the start",
+      "passed": true,
+      "detail": "after restart score=0, won=false",
+      "observed": {
+        "score": 0,
+        "collectiblesRemaining": 3,
+        "objective": "",
+        "won": false,
+        "lost": false,
+        "scoreTarget": 3,
+        "timeRemaining": 0,
+        "playerGrounded": true
+      }
+    },
+    {
+      "id": "targets-behaviors",
+      "title": "Physics Targets uses the same runtime with its own behaviors",
+      "passed": true,
+      "detail": "5 knock-down targets and a launcher registered",
+      "observed": [
+        {
+          "entityId": "target-1",
+          "behaviorId": "game.target"
+        },
+        {
+          "entityId": "target-2",
+          "behaviorId": "game.target"
+        },
+        {
+          "entityId": "target-3",
+          "behaviorId": "game.target"
+        },
+        {
+          "entityId": "target-4",
+          "behaviorId": "game.target"
+        },
+        {
+          "entityId": "target-5",
+          "behaviorId": "game.target"
+        },
+        {
+          "entityId": "ball",
+          "behaviorId": "game.launcher"
+        },
+        {
+          "entityId": "rules",
+          "behaviorId": "game.rules"
+        }
+      ]
+    },
+    {
+      "id": "targets-physics",
+      "title": "Clicking launches the ball and knocking targets down updates the score",
+      "passed": true,
+      "detail": "5 targets knocked down, score 5, launches 5",
+      "observed": {
+        "knocked": 5,
+        "boardState": {
+          "score": 5,
+          "targetsDown": 5,
+          "launches": 5,
+          "timeRemaining": 52.87,
+          "won": true,
+          "lost": false,
+          "scoreTarget": 5,
+          "objective": "",
+          "paused": false
+        }
+      }
+    },
+    {
+      "id": "editor-tuning",
+      "title": "Key tuning values are editable in the inspector without touching code",
+      "passed": true,
+      "detail": "Character Mover exposes Move speed, Jump strength, Gravity, Turn speed; move speed is now 12",
+      "observed": {
+        "fields": [
+          "Move speed",
+          "Jump strength",
+          "Gravity",
+          "Turn speed"
+        ],
+        "tuned": {
+          "moveSpeed": 12,
+          "jumpStrength": 6.5,
+          "gravity": 20,
+          "turnSpeed": 12
+        }
+      }
+    },
+    {
+      "id": "editor-tuning-affects-play",
+      "title": "The edited tuning value changes how the game plays",
+      "passed": true,
+      "detail": "with move speed 12 the player covered 10.86 m in 1.2 s (about 5 m at the default speed)",
+      "observed": {
+        "studioWalked": 10.858749389648438,
+        "before": {
+          "x": 0,
+          "y": 7.947287272713766e-9,
+          "z": -6
+        },
+        "after": {
+          "x": 0,
+          "y": -3.973640971821624e-9,
+          "z": 4.8587493896484375
+        }
+      }
+    },
+    {
+      "id": "no-console-errors",
+      "title": "No page errors while playing or editing either game",
+      "passed": true,
+      "detail": "clean console",
+      "observed": []
+    }
+  ]
+}

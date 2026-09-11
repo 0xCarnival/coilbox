@@ -139,11 +139,7 @@ export function buildSceneGraph(scene: SceneDocument, options: BuildSceneOptions
           camera.name = `${entity.name} (camera)`;
           object.add(camera);
           built.camera = camera;
-          if (component.mode !== 'free') {
-            warnings.push(
-              `camera "${entity.name}" uses mode "${component.mode}"; follow/fixed camera control arrives with the gameplay layer`,
-            );
-          }
+          // `mode` describes the camera's intent; the camera.follow behavior is what moves it.
           break;
         }
         case 'model': {
@@ -174,17 +170,12 @@ export function buildSceneGraph(scene: SceneDocument, options: BuildSceneOptions
           break;
         }
         case 'audio':
-          throw new RuntimeWorldError(
-            'unsupported-component',
-            `entity "${entity.name}" uses an audio component. Audio assets import in this version, but playback arrives with the gameplay layer.`,
-            entity.id,
-          );
+          // The audio component is a reference, not a renderable: the runtime plays it when a
+          // behavior asks (see AudioSystem) and nothing is drawn for it here.
+          break;
         case 'behavior':
-          throw new RuntimeWorldError(
-            'unsupported-component',
-            `entity "${entity.name}" uses a behavior component, which this build does not run yet`,
-            entity.id,
-          );
+          // Behaviors are instantiated by the behavior runtime, never by the scene builder.
+          break;
         case 'rigidBody':
         case 'collider':
           built.hasPhysics = true;

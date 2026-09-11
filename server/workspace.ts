@@ -178,6 +178,24 @@ export class Workspace {
     return parsed.value;
   }
 
+  /**
+   * Read `scripts/registry.json`: the declarative behavior metadata the inspector renders from
+   * and the validator checks against. Executable behavior code lives in the runtime bundle, not
+   * here — editing a scene must never execute a behavior constructor (plan §10).
+   */
+  async readBehaviorRegistry(projectId: string): Promise<{ schemaVersion: number; behaviors: unknown[] }> {
+    const detail = await this.readProject(projectId);
+    const projectRoot = await this.projectRoot(projectId);
+    const relativePath = assertProjectRelative(detail.game.behaviorRegistry);
+    const path = join(projectRoot, relativePath);
+    if (!existsSync(path)) return { schemaVersion: 1, behaviors: [] };
+    const raw = (await readJson(path).catch(() => null)) as { schemaVersion?: number; behaviors?: unknown[] } | null;
+    if (!raw || !Array.isArray(raw.behaviors)) {
+      throw new WorkspaceError('invalid-registry', `${relativePath} does not contain a behaviors array`, 422);
+    }
+    return { schemaVersion: raw.schemaVersion ?? 1, behaviors: raw.behaviors };
+  }
+
   async readAssetManifest(projectRoot: string, game: GameDocument): Promise<AssetManifest> {
     const relativePath = assertProjectRelative(game.assetManifest);
     const path = join(projectRoot, relativePath);

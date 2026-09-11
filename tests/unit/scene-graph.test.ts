@@ -145,14 +145,18 @@ describe('scene graph projection', () => {
     expect(warnings.join(' ')).toMatch(/could not load its model/);
   });
 
-  it('rejects components the runtime still cannot run instead of silently ignoring them', () => {
+  it('leaves behavior components to the behavior runtime instead of drawing them', () => {
     const scene = parseScene({
       schemaVersion: 1,
       id: 's',
       name: 'S',
       entities: [{ id: 'b', name: 'B', components: [{ type: 'behavior', behaviorId: 'game.rules', properties: {} }] }],
     }).value as SceneDocument;
-    expect(() => buildSceneGraph(scene)).toThrow(/behavior component/);
+    const graph = buildSceneGraph(scene);
+    const built = graph.entities.get('b');
+    expect(built).toBeDefined();
+    expect(built?.object.children).toHaveLength(0);
+    expect(built?.animation).toBeNull();
   });
 
   it('builds an offset collider size from the collider component, not the visual size', () => {

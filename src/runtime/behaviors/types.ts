@@ -24,39 +24,98 @@ export interface BehaviorPropertyDescriptor {
   step?: number;
   /** Allowed values for `enum` properties. */
   options?: string[];
-  /** Group heading in the inspector; advanced groups start collapsed. */
+  /** Group heading in the inspector. */
   group?: string;
+  /** Advanced properties start collapsed in the inspector. */
+  advanced?: boolean;
 }
 
-export interface BehaviorContext {
-  /** This behavior instance's entity. */
-  readonly entityId: EntityId;
-  /** Read the entity's current world transform into `out` (x, y, z, qx, qy, qz, qw). */
-  readTransform(entityId: EntityId, out: Float32Array): boolean;
-  readVelocity(entityId: EntityId, out: Float32Array): boolean;
-  /** Move a kinematic body (characters move through the physics adapter, never around it). */
-  moveKinematic(entityId: EntityId, position: [number, number, number], rotation: [number, number, number, number]): void;
-  applyImpulse(entityId: EntityId, impulse: [number, number, number], point?: [number, number, number]): void;
-  setLinearVelocity(entityId: EntityId, velocity: [number, number, number]): void;
-  raycast(
-    origin: [number, number, number],
-    direction: [number, number, number],
-    maxDistance: number,
-  ): { hit: boolean; entityId: EntityId | null; distance: number; point: [number, number, number]; normal: [number, number, number] };
-  /** Input actions, defined independently from key bindings. */
+export type HudOverlayKind = 'start' | 'win' | 'lose' | 'pause';
+
+export interface PointerSnapshot {
+  x: number;
+  y: number;
+  clientX: number;
+  clientY: number;
+  down: boolean;
+  justPressed: boolean;
+  justReleased: boolean;
+}
+
+/** The subset of the input system behaviors may use; the runtime's InputSystem satisfies it. */
+export interface BehaviorInput {
   isActionDown(action: string): boolean;
   wasActionPressed(action: string): boolean;
   wasActionReleased(action: string): boolean;
-  /** Game state shared by behaviors and HUD bindings. */
+  moveAxis(): { x: number; y: number };
+  pointer(): PointerSnapshot;
+}
+
+export interface RaycastSummary {
+  hit: boolean;
+  entityId: EntityId | null;
+  distance: number;
+  point: [number, number, number];
+  normal: [number, number, number];
+}
+
+/**
+ * The narrow game-facing context (plan §10): entity lookup, input actions, physics
+ * operations, audio, scene loading, and game state. Behaviors get nothing else — no
+ * document store, no filesystem, no editor.
+ */
+export interface BehaviorContext {
+  readonly entityId: EntityId;
+  readonly behaviorId: string;
+  /** Declared defaults merged with the values stored on the entity. */
+  readonly properties: Record<string, JsonValue>;
+
+  readTransform(entityId: EntityId, out: Float32Array): boolean;
+  readVelocity(entityId: EntityId, out: Float32Array): boolean;
+  /** Move a kinematic body through the physics adapter, never around it. */
+  moveKinematic(entityId: EntityId, position: [number, number, number], rotation: [number, number, number, number]): void;
+  applyImpulse(entityId: EntityId, impulse: [number, number, number], point?: [number, number, number]): void;
+  setLinearVelocity(entityId: EntityId, velocity: [number, number, number]): void;
+  raycast(origin: [number, number, number], direction: [number, number, number], maxDistance: number): RaycastSummary;
+  setBodyType(entityId: EntityId, type: 'static' | 'dynamic' | 'kinematic'): void;
+  setBodyEnabled(entityId: EntityId, enabled: boolean): void;
+  isPhysicsBody(entityId: EntityId): boolean;
+
+  isActionDown(action: string): boolean;
+  wasActionPressed(action: string): boolean;
+  wasActionReleased(action: string): boolean;
+  /** Movement axis in the XZ plane, normalised for diagonal input. */
+  moveAxis(): { x: number; y: number };
+  pointer(): PointerSnapshot;
+
   getState<T = JsonValue>(key: string): T | undefined;
   setState(key: string, value: JsonValue): void;
-  /** Request a scene transition or a restart; applied after the current step. */
+  /** Request a scene transition or a restart; applied by the host after the current step. */
   requestScene(sceneId: string): void;
   requestRestart(): void;
-  /** Runtime logging that lands in the editor console with the entity attached. */
+  /** Route a HUD action ('restart', 'nextScene', 'resume'). */
+  requestAction(action: 'restart' | 'nextScene' | 'resume' | 'none'): void;
+
+  /** Play one of this entity's model clips. Returns false when the entity has no model/clips. */
+  playClip(clip: string | null, options?: { loop?: boolean; speed?: number; autoplay?: boolean }): boolean;
+  /** Play this entity's audio asset. Returns false when there is nothing to play yet. */
+  playSound(options?: { volume?: number; loop?: boolean }): boolean;
+  /** Decode this entity's audio ahead of time; call from a user gesture. */
+  prepareAudio(): void;
+
+  showOverlay(kind: HudOverlayKind | null): void;
+  setOverlayVisible(kind: HudOverlayKind, visible: boolean): void;
+  setHudText(elementId: string, text: string): void;
+
+  findEntityByName(name: string): EntityId | null;
+  findEntityById(entityId: EntityId): EntityId | null;
+
   log(message: string, data?: JsonValue): void;
-  /** Emit a named event other behaviors can subscribe to. */
   emit(event: string, payload?: JsonValue): void;
+  on(event: string, handler: (payload?: JsonValue) => void): () => void;
+
+  /** Reusable per-instance buffers, so behaviors do not allocate on the hot path. */
+  readonly scratch: { transform: Float32Array; velocity: Float32Array };
 }
 
 export interface BehaviorInstance {

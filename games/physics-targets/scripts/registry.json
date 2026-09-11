@@ -1,0 +1,427 @@
+{
+  "schemaVersion": 1,
+  "behaviors": [
+    {
+      "id": "animation.play",
+      "name": "Animation Playback",
+      "description": "Plays a clip on this entity, optionally switching when a game-state key changes.",
+      "properties": [
+        {
+          "key": "clip",
+          "label": "Clip",
+          "type": "text",
+          "default": "",
+          "description": "Empty plays the first clip."
+        },
+        {
+          "key": "loop",
+          "label": "Loop",
+          "type": "boolean",
+          "default": true
+        },
+        {
+          "key": "speed",
+          "label": "Speed",
+          "type": "number",
+          "default": 1,
+          "min": 0,
+          "max": 5,
+          "step": 0.1
+        },
+        {
+          "key": "switchStateKey",
+          "label": "Switch on state key",
+          "type": "text",
+          "default": "",
+          "description": "When this game-state key becomes true, play the alternative clip."
+        },
+        {
+          "key": "alternateClip",
+          "label": "Alternative clip",
+          "type": "text",
+          "default": ""
+        }
+      ]
+    },
+    {
+      "id": "audio.cue",
+      "name": "Audio Cue",
+      "description": "Plays a sound when a game-state key changes.",
+      "properties": [
+        {
+          "key": "stateKey",
+          "label": "State key",
+          "type": "text",
+          "default": "score",
+          "description": "The sound plays whenever this key changes."
+        },
+        {
+          "key": "volume",
+          "label": "Volume",
+          "type": "number",
+          "default": 0.8,
+          "min": 0,
+          "max": 1,
+          "step": 0.05
+        },
+        {
+          "key": "spatial",
+          "label": "3D sound",
+          "type": "boolean",
+          "default": false
+        }
+      ]
+    },
+    {
+      "id": "camera.follow",
+      "name": "Camera Follow",
+      "description": "Keeps a camera behind and above a target, or at a fixed offset from it.",
+      "properties": [
+        {
+          "key": "target",
+          "label": "Target",
+          "type": "entity",
+          "default": null,
+          "description": "The entity to follow. Defaults to the entity named \"Player\"."
+        },
+        {
+          "key": "distance",
+          "label": "Distance",
+          "type": "number",
+          "default": 8,
+          "min": 0,
+          "max": 40,
+          "step": 0.5
+        },
+        {
+          "key": "height",
+          "label": "Height",
+          "type": "number",
+          "default": 5,
+          "min": 0,
+          "max": 30,
+          "step": 0.5
+        },
+        {
+          "key": "damping",
+          "label": "Smoothing",
+          "type": "number",
+          "default": 0.12,
+          "min": 0,
+          "max": 2,
+          "step": 0.02
+        },
+        {
+          "key": "lookHeight",
+          "label": "Look at height",
+          "type": "number",
+          "default": 1,
+          "min": 0,
+          "max": 5,
+          "step": 0.1,
+          "description": "Height above the target the camera aims at."
+        },
+        {
+          "key": "fixed",
+          "label": "Fixed world offset",
+          "type": "boolean",
+          "default": false,
+          "description": "Keep a world-space offset instead of following behind the target."
+        }
+      ]
+    },
+    {
+      "id": "game.collectible",
+      "name": "Collectible",
+      "description": "Adds to the score when the player touches it, then disappears. Needs a sensor collider.",
+      "properties": [
+        {
+          "key": "value",
+          "label": "Score value",
+          "type": "number",
+          "default": 1,
+          "min": 0,
+          "max": 100,
+          "step": 1
+        },
+        {
+          "key": "playerName",
+          "label": "Player entity name",
+          "type": "text",
+          "default": "Player"
+        },
+        {
+          "key": "hideOnCollect",
+          "label": "Hide when collected",
+          "type": "boolean",
+          "default": true
+        },
+        {
+          "key": "pickupRadius",
+          "label": "Pickup radius",
+          "type": "number",
+          "default": 1.2,
+          "min": 0.1,
+          "max": 10,
+          "step": 0.1,
+          "advanced": true,
+          "description": "Distance at which the pickup is collected even if no sensor event arrives."
+        }
+      ]
+    },
+    {
+      "id": "game.exit-zone",
+      "name": "Exit Zone",
+      "description": "Wins the level when the player enters it with enough collectibles gathered.",
+      "properties": [
+        {
+          "key": "playerName",
+          "label": "Player entity name",
+          "type": "text",
+          "default": "Player"
+        },
+        {
+          "key": "requiredScore",
+          "label": "Required score",
+          "type": "number",
+          "default": 3,
+          "min": 0,
+          "max": 100,
+          "step": 1,
+          "description": "0 means the exit is always open."
+        },
+        {
+          "key": "winMessage",
+          "label": "Win message",
+          "type": "text",
+          "default": "You escaped!"
+        },
+        {
+          "key": "triggerRadius",
+          "label": "Trigger radius",
+          "type": "number",
+          "default": 1.8,
+          "min": 0.2,
+          "max": 20,
+          "step": 0.1,
+          "advanced": true,
+          "description": "Distance at which the exit counts as reached without a sensor event."
+        },
+        {
+          "key": "repeatable",
+          "label": "Can trigger again",
+          "type": "boolean",
+          "default": false
+        }
+      ]
+    },
+    {
+      "id": "game.launcher",
+      "name": "Projectile Launcher",
+      "description": "Applies an impulse to a body when the player clicks, aiming from the camera.",
+      "properties": [
+        {
+          "key": "impulse",
+          "label": "Impulse",
+          "type": "number",
+          "default": 9,
+          "min": 0,
+          "max": 100,
+          "step": 0.5
+        },
+        {
+          "key": "upward",
+          "label": "Upward bias",
+          "type": "number",
+          "default": 0.25,
+          "min": 0,
+          "max": 2,
+          "step": 0.05
+        },
+        {
+          "key": "projectileName",
+          "label": "Projectile entity name",
+          "type": "text",
+          "default": "Ball"
+        },
+        {
+          "key": "resetAfterLaunch",
+          "label": "Reset if it falls",
+          "type": "boolean",
+          "default": true
+        },
+        {
+          "key": "resetBelowY",
+          "label": "Reset below Y",
+          "type": "number",
+          "default": -5,
+          "min": -50,
+          "max": 0,
+          "step": 0.5
+        }
+      ]
+    },
+    {
+      "id": "game.rules",
+      "name": "Game Rules",
+      "description": "Watches score and time, shows the win or lose overlay, and handles restart.",
+      "properties": [
+        {
+          "key": "scoreTarget",
+          "label": "Score target",
+          "type": "number",
+          "default": 3,
+          "min": 0,
+          "max": 100,
+          "step": 1
+        },
+        {
+          "key": "timeLimit",
+          "label": "Time limit (s)",
+          "type": "number",
+          "default": 0,
+          "min": 0,
+          "max": 3600,
+          "step": 5,
+          "description": "0 disables the time limit."
+        },
+        {
+          "key": "nextScene",
+          "label": "Next scene",
+          "type": "text",
+          "default": "",
+          "description": "Scene to load after winning. Empty restarts the current scene."
+        },
+        {
+          "key": "showStartOverlay",
+          "label": "Show start overlay",
+          "type": "boolean",
+          "default": true
+        },
+        {
+          "key": "allowRestartKey",
+          "label": "Restart with R",
+          "type": "boolean",
+          "default": true
+        }
+      ]
+    },
+    {
+      "id": "game.target",
+      "name": "Knock-down Target",
+      "description": "Counts a hit when this body tips past an angle or takes a hard impact.",
+      "properties": [
+        {
+          "key": "tipAngle",
+          "label": "Tip angle",
+          "type": "number",
+          "default": 45,
+          "min": 5,
+          "max": 90,
+          "step": 1
+        },
+        {
+          "key": "minImpactSpeed",
+          "label": "Minimum impact speed",
+          "type": "number",
+          "default": 1.5,
+          "min": 0,
+          "max": 40,
+          "step": 0.1
+        },
+        {
+          "key": "value",
+          "label": "Score value",
+          "type": "number",
+          "default": 1,
+          "min": 0,
+          "max": 10,
+          "step": 1
+        }
+      ]
+    },
+    {
+      "id": "player.mover",
+      "name": "Character Mover",
+      "description": "Moves a kinematic body with WASD/arrow input, gravity, and optional jumping.",
+      "properties": [
+        {
+          "key": "moveSpeed",
+          "label": "Move speed",
+          "type": "number",
+          "default": 5,
+          "min": 0,
+          "max": 40,
+          "step": 0.5,
+          "group": "Movement"
+        },
+        {
+          "key": "jumpStrength",
+          "label": "Jump strength",
+          "type": "number",
+          "default": 7,
+          "min": 0,
+          "max": 30,
+          "step": 0.5,
+          "group": "Movement",
+          "description": "Set to 0 to disable jumping."
+        },
+        {
+          "key": "gravity",
+          "label": "Gravity",
+          "type": "number",
+          "default": 20,
+          "min": 0,
+          "max": 80,
+          "step": 1,
+          "group": "Movement"
+        },
+        {
+          "key": "turnSpeed",
+          "label": "Turn speed",
+          "type": "number",
+          "default": 12,
+          "min": 0,
+          "max": 60,
+          "step": 1,
+          "group": "Movement",
+          "description": "How quickly the character faces its movement direction, in radians per second."
+        },
+        {
+          "key": "acceleration",
+          "label": "Acceleration",
+          "type": "number",
+          "default": 40,
+          "min": 1,
+          "max": 200,
+          "step": 1,
+          "group": "Movement",
+          "advanced": true
+        },
+        {
+          "key": "groundCheckDistance",
+          "label": "Ground check",
+          "type": "number",
+          "default": 0.35,
+          "min": 0.05,
+          "max": 2,
+          "step": 0.05,
+          "group": "Movement",
+          "advanced": true
+        },
+        {
+          "key": "spawnHeight",
+          "label": "Spawn height",
+          "type": "number",
+          "default": 1,
+          "min": 0,
+          "max": 10,
+          "step": 0.1,
+          "group": "Movement",
+          "advanced": true,
+          "description": "Height above the authored position where the character starts."
+        }
+      ]
+    }
+  ]
+}

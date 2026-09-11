@@ -30,4 +30,14 @@ export type {
   BehaviorPropertyType,
 } from './behaviors/types.js';
 export { EmptyAssetResolver, UrlAssetResolver, type AssetResolver } from './assets/resolver.js';
+export { AssetCache, UnsupportedAssetError, MissingAssetError, disposeInstance } from './assets/loader.js';
+export { AnimationController, type AnimationState } from './animation.js';
+export { BEHAVIOR_LIBRARY } from './behaviors/library.js';
+export { BehaviorRuntime, type BehaviorHost } from './behaviors/runtime.js';
+export type { BehaviorInput } from './behaviors/types.js';
+export { InputSystem, DEFAULT_BINDINGS } from './input/input.js';
+export { GameState } from './game-state.js';
+export { Hud, type HudAction } from './hud/hud.js';
+export { AudioSystem } from './audio/audio.js';
+export { RuntimeSession, type RuntimeSessionOptions } from './session.js';
 export { loadProjectFromUrl, ProjectLoadError, describeIssues, type LoadedProject } from './project/loader.js';

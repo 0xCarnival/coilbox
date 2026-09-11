@@ -16,6 +16,7 @@ export type EditorCommand =
   | { kind: 'renameEntity'; entityId: EntityId; name: string }
   | { kind: 'setTransform'; entityId: EntityId; transform: Partial<Transform> }
   | { kind: 'setComponentProperty'; entityId: EntityId; componentType: ComponentType; property: string; value: JsonValue }
+  | { kind: 'setBehaviorProperty'; entityId: EntityId; behaviorId: string; property: string; value: JsonValue }
   | { kind: 'addComponent'; entityId: EntityId; component: Component }
   | { kind: 'removeComponent'; entityId: EntityId; componentType: ComponentType }
   | { kind: 'setEntityEnabled'; entityId: EntityId; enabled: boolean }
@@ -222,6 +223,38 @@ function planUnchecked(scene: SceneDocument, command: EditorCommand): PlanResult
           componentType: command.componentType,
           property: command.property,
           value: (component as unknown as Record<string, JsonValue>)[command.property] ?? null,
+        },
+        label: `${entity.name}: ${command.property}`,
+        affected: [entity.id],
+      };
+    }
+
+    case 'setBehaviorProperty': {
+      const entity = findEntity(scene, command.entityId);
+      if (!entity) return fail('missing-entity', `entity "${command.entityId}" does not exist`);
+      const component = entity.components.find(
+        (candidate): candidate is Extract<Component, { type: 'behavior' }> =>
+          candidate.type === 'behavior' && candidate.behaviorId === command.behaviorId,
+      );
+      if (!component) {
+        return fail('missing-behavior', `entity "${entity.name}" has no "${command.behaviorId}" behavior`);
+      }
+      const previous = (component.properties[command.property] ?? null) as JsonValue;
+      if (JSON.stringify(previous) === JSON.stringify(command.value)) return fail('no-op', 'the property is unchanged');
+      const components = entity.components.map((candidate) =>
+        candidate === component
+          ? { ...component, properties: { ...component.properties, [command.property]: command.value } }
+          : candidate,
+      );
+      return {
+        ok: true,
+        next: replaceEntity(scene, { ...entity, components }),
+        inverse: {
+          kind: 'setBehaviorProperty',
+          entityId: entity.id,
+          behaviorId: command.behaviorId,
+          property: command.property,
+          value: previous,
         },
         label: `${entity.name}: ${command.property}`,
         affected: [entity.id],

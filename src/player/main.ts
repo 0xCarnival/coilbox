@@ -1,59 +1,86 @@
 import wasmUrl from 'virtual:box3d-wasm-url';
-import { RuntimeWorld } from '@runtime/world.js';
-import { describeIssues, loadProjectFromUrl, ProjectLoadError } from '@runtime/project/loader.js';
+import { RuntimeSession } from '@runtime/session.js';
+import { loadProjectFromUrl, ProjectLoadError } from '@runtime/project/loader.js';
+import type { GameDocument, SceneDocument } from '@schema/index.js';
 
 /**
  * Standalone game entry point (`player.html`).
  *
- * This is the same runtime the editor previews with; it must not import editor code
- * (plan §6). The project is served as plain files next to the build, which is also how
- * an exported game runs:
+ * This is the same runtime the editor previews with; it must not import editor code (plan §6).
+ * The project is served as plain files next to the build, which is also how an exported game
+ * runs:
  *
  *   player.html?project=./my-game/
  *
- * Exported games call `startPlayer()` with a fixed base URL so the query parameter is
- * an authoring convenience rather than part of the export contract.
+ * Exported games bake the project location in at build time, so the query parameter is an
+ * authoring convenience rather than part of the export contract.
  */
 
 export interface PlayerOptions {
   /** Base URL the project documents are served from. Must be same-origin in exports. */
   projectBaseUrl: string;
   canvas: HTMLCanvasElement;
+  /** Where the HUD mounts; defaults to the document body. */
   hudRoot?: HTMLElement | null;
-  /** Start the simulation immediately (exports do). */
+  /** Start the simulation immediately (exports do); the start overlay still gates input. */
   autoStart?: boolean;
 }
 
 export interface PlayerHandle {
   ready: Promise<void>;
-  world: RuntimeWorld | null;
+  session: RuntimeSession | null;
+  game: GameDocument | null;
+  scene: SceneDocument | null;
   start(): void;
-  stop(): void;
+  stop(): Promise<void>;
+  restart(): Promise<void>;
   state(): { state: string; projectName: string; sceneName: string; errors: string[] };
 }
 
 export async function startPlayer(options: PlayerOptions): Promise<PlayerHandle> {
   const errors: string[] = [];
-  let world: RuntimeWorld | null = null;
+  let session: RuntimeSession | null = null;
+  let game: GameDocument | null = null;
+  let scene: SceneDocument | null = null;
   let projectName = '';
   let sceneName = '';
+  const sceneCache = new Map<string, SceneDocument>();
 
   const ready = (async () => {
     try {
       const project = await loadProjectFromUrl(options.projectBaseUrl);
       projectName = project.game.name;
-      sceneName = project.scene.name;
-      if (project.issues.length > 0) {
-        errors.push(...project.issues.map((issue) => `${issue.path}: ${issue.message}`));
-      }
-      world = await RuntimeWorld.create({
+      game = project.game;
+      scene = project.scene;
+      sceneCache.set(project.scene.id, project.scene);
+      if (project.issues.length > 0) errors.push(...project.issues.map((issue) => `${issue.path}: ${issue.message}`));
+
+      const base = project.baseUrl;
+      session = await RuntimeSession.create({
         canvas: options.canvas,
         game: project.game,
         scene: project.scene,
+        resolveScene: async (sceneId) => {
+          const cached = sceneCache.get(sceneId);
+          if (cached) return cached;
+          const entry = project.game.scenes.find((candidate) => candidate.id === sceneId);
+          if (!entry) throw new Error(`game.json does not list a scene "${sceneId}"`);
+          const response = await fetch(new URL(entry.path, base).href);
+          if (!response.ok) throw new Error(`scene "${sceneId}" returned HTTP ${response.status}`);
+          const document_ = (await response.json()) as SceneDocument;
+          sceneCache.set(sceneId, document_);
+          return document_;
+        },
+        assets: project.resolver,
         wasmLocateFile: () => wasmUrl,
+        hudRoot: options.hudRoot ?? null,
+        autoStart: options.autoStart !== false,
         label: 'player',
+        onLog: (level, message) => {
+          if (level === 'error' || level === 'warning') errors.push(message);
+        },
       });
-      if (options.autoStart !== false) world.start();
+      sceneName = scene.name;
     } catch (cause) {
       if (cause instanceof ProjectLoadError) {
         errors.push(cause.message, ...cause.issues.map((issue) => `${issue.path}: ${issue.message}`));
@@ -65,18 +92,27 @@ export async function startPlayer(options: PlayerOptions): Promise<PlayerHandle>
 
   return {
     ready,
-    get world() {
-      return world;
+    get session() {
+      return session;
+    },
+    get game() {
+      return game;
+    },
+    get scene() {
+      return scene;
     },
     start() {
-      world?.start();
+      session?.start();
     },
-    stop() {
-      world?.dispose();
-      world = null;
+    async stop() {
+      await session?.dispose();
+      session = null;
+    },
+    async restart() {
+      await session?.restart(true);
     },
     state: () => ({
-      state: world ? world.getState() : 'stopped',
+      state: session?.state ?? 'stopped',
       projectName,
       sceneName,
       errors,
@@ -86,12 +122,8 @@ export async function startPlayer(options: PlayerOptions): Promise<PlayerHandle>
 
 declare const __COILBOX_PROJECT__: string | undefined;
 
-/**
- * Exported games bake the project location in at build time. The query parameter stays for
- * development, where the same build serves any project.
- */
-const bakedProjectBase =
-  typeof __COILBOX_PROJECT__ === 'string' ? __COILBOX_PROJECT__ : undefined;
+/** Exported games bake the project location in at build time. */
+const bakedProjectBase = typeof __COILBOX_PROJECT__ === 'string' ? __COILBOX_PROJECT__ : undefined;
 
 const params = new URLSearchParams(globalThis.location.search);
 const canvasElement = document.getElementById('game-canvas');
@@ -100,7 +132,13 @@ const statusLine = document.getElementById('player-status');
 
 declare global {
   interface Window {
-    __PLAYER__?: PlayerHandle & { samplePixels: () => unknown; projectBaseUrl: string };
+    __PLAYER__?: PlayerHandle & {
+      samplePixels: () => unknown;
+      gameState: () => Record<string, unknown> | null;
+      behaviorList: () => Array<{ entityId: string; behaviorId: string }>;
+      stats: () => unknown;
+      projectBaseUrl: string;
+    };
   }
 }
 
@@ -111,13 +149,16 @@ if (canvas) {
   const state = handle.state();
   if (statusLine) {
     statusLine.textContent =
-      state.errors.length > 0 ? `load errors: ${describeIssues([]) || state.errors.join(' | ')}` : `${state.projectName} — ${state.sceneName}`;
+      state.errors.length > 0 ? `load errors: ${state.errors.join(' | ')}` : `${state.projectName} — ${state.sceneName}`;
   }
   window.__PLAYER__ = {
     ...handle,
     projectBaseUrl,
+    gameState: () => handle.session?.current?.getGameState().snapshot() ?? null,
+    behaviorList: () => handle.session?.current?.getBehaviorRuntime()?.list() ?? [],
+    stats: () => handle.session?.stats() ?? null,
     samplePixels: () => {
-      const world = handle.world;
+      const world = handle.session?.current;
       if (!world) throw new Error('no world');
       world.renderNow(1);
       const gl = canvas.getContext('webgl2');

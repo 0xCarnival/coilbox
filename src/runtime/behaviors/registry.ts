@@ -92,6 +92,12 @@ export class BehaviorRegistry {
     this.entries.set(entry.id, { ...entry });
   }
 
+  /** Replace every metadata entry (used when a project's registry.json is reloaded). */
+  replaceMetadata(entries: Array<Omit<BehaviorEntry, 'definition'>>): void {
+    this.entries.clear();
+    for (const entry of entries) this.registerMetadata(entry);
+  }
+
   get(id: string): BehaviorEntry | undefined {
     return this.entries.get(id);
   }

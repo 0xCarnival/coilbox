@@ -1,11 +1,17 @@
 import * as THREE from 'three';
-import type { Component, Entity, GameDocument, Quat, SceneDocument, Vec3 } from '@schema/index.js';
+import type { Component, Entity, GameDocument, JsonValue, Quat, SceneDocument, Vec3 } from '@schema/index.js';
 import { buildSceneGraph, RuntimeWorldError, type BuiltEntity, type BuiltScene } from './scene-graph.js';
 import { FixedStepLoop, type LoopStats } from './loop.js';
 import { RuntimeViewport, disposeSceneResources } from './render/viewport.js';
 import { createBox3DBackend } from './physics/box3d-adapter.js';
 import { AssetCache, disposeInstance, type ModelInstance } from './assets/loader.js';
 import type { AnimationController } from './animation.js';
+import { BehaviorRegistry } from './behaviors/registry.js';
+import { BehaviorRuntime, type BehaviorHost } from './behaviors/runtime.js';
+import { InputSystem } from './input/input.js';
+import { GameState } from './game-state.js';
+import { Hud } from './hud/hud.js';
+import { AudioSystem } from './audio/audio.js';
 import { EmptyAssetResolver, type AssetResolver } from './assets/resolver.js';
 import type { ColliderSpec, ContactEvent, PhysicsBackend, PhysicsCounters, PhysicsWorldHandle } from './physics/types.js';
 
@@ -34,6 +40,16 @@ export interface RuntimeWorldOptions {
   assets?: AssetResolver;
   /** Reuse a warm asset cache across Play/Stop cycles. */
   assetCache?: AssetCache;
+  /** Registered behaviors available to this world. Without one, behavior components error. */
+  registry?: BehaviorRegistry;
+  /** Where the HUD mounts. Omit to use a fresh overlay in `document.body`. */
+  hudRoot?: HTMLElement | null;
+  /** Keyboard/pointer target for input. Defaults to the canvas. */
+  inputTarget?: EventTarget;
+  /** Called when gameplay asks for another scene; the host rebuilds the world. */
+  onRequestScene?: (sceneId: string) => void;
+  /** Called when gameplay asks to restart; the host rebuilds the world. */
+  onRequestRestart?: () => void;
   /** Called for recoverable runtime problems instead of throwing mid-frame. */
   onError?: (error: RuntimeWorldError) => void;
   /** Resize the drawing buffer from the canvas CSS size each frame. */
@@ -67,6 +83,14 @@ export interface RuntimeStats {
   animatedEntities: number;
   /** Model assets loaded by this world (or reused from a warm cache). */
   loadedModels: number;
+  /** Behavior instances created for this world. */
+  behaviors: number;
+  /** HUD elements mounted. */
+  hudElements: number;
+  /** Input listeners owned by the world (released on dispose). */
+  inputListeners: number;
+  /** Whether audio has been activated by a user gesture. */
+  audioActivated: boolean;
 }
 
 interface PhysicsBinding {
@@ -97,9 +121,21 @@ export class RuntimeWorld {
   private readonly autoResize: boolean;
   private readonly assetCache: AssetCache;
   private readonly ownsAssetCache: boolean;
+  private readonly input: InputSystem;
+  private readonly gameState: GameState;
+  private readonly hud: Hud | null;
+  private readonly audio: AudioSystem;
+  /** Created after physics bodies exist, so behaviors can see them in start(). */
+  private behaviors: BehaviorRuntime | null = null;
+  private readonly behaviorSpecs: Map<string, Array<{ behaviorId: string; properties: Record<string, JsonValue> }>>;
+  private readonly behaviorRegistry: BehaviorRegistry;
+  private readonly entityNames = new Map<string, string>();
+  private frameDeltaSeconds = 0;
   private modelInstances: Map<string, ModelInstance>;
   private readonly assets: AssetResolver;
   private readonly onErrorCallback: ((error: RuntimeWorldError) => void) | undefined;
+  private readonly onRequestScene: ((sceneId: string) => void) | undefined;
+  private readonly onRequestRestart: (() => void) | undefined;
 
   private readonly listeners: Array<{ target: EventTarget; type: string; handler: EventListener }> = [];
   private readonly eventCounts = { contact: 0, sensor: 0, hit: 0 };
@@ -135,8 +171,41 @@ export class RuntimeWorld {
     this.modelInstances = modelInstances;
     this.assets = assets;
     this.onErrorCallback = options.onError;
+    this.onRequestScene = options.onRequestScene;
+    this.onRequestRestart = options.onRequestRestart;
     this.autoResize = options.autoResize ?? true;
     this.warnings = [...graph.warnings];
+    this.gameState = new GameState(options.game.settings.initialGameState as Record<string, never>);
+    // Keyboard events go to whatever has focus, so they are captured at the window; pointer
+    // events belong to the canvas. Listening for keys on the canvas alone would silently
+    // ignore input whenever the canvas was not focused.
+    this.input = new InputSystem({
+      target: options.inputTarget ?? globalThis.window ?? options.canvas,
+      canvas: options.canvas,
+      bindings: options.game.settings.inputBindings,
+    });
+    this.audio = new AudioSystem({
+      resolver: assets,
+      onWarning: (message) => this.warnings.push(message),
+    });
+    this.hud =
+      options.game.settings.hud.length > 0 && typeof document !== 'undefined'
+        ? new Hud({
+            elements: options.game.settings.hud,
+            state: this.gameState,
+            root: options.hudRoot ?? undefined,
+            callbacks: { onAction: (action) => this.handleHudAction(action) },
+          })
+        : null;
+
+    for (const built of graph.entities.values()) {
+      this.entityNames.set(built.entity.name, built.entity.id);
+    }
+
+    // Behaviors are constructed in `startBehaviors()`, after the physics world knows its bodies:
+    // a behavior's start() may legitimately need the body it belongs to.
+    this.behaviorRegistry = options.registry ?? new BehaviorRegistry();
+    this.behaviorSpecs = collectBehaviorComponents(options.scene);
 
     this.loop = new FixedStepLoop({
       fixedTimeStep: options.game.settings.physics.fixedTimeStep,
@@ -205,6 +274,7 @@ export class RuntimeWorld {
     world.warnings.push(...assetWarnings);
     try {
       world.createPhysicsBodies();
+      world.startBehaviors();
       world.attachResizeHandling();
       world.syncActiveCamera();
     } catch (cause) {
@@ -375,6 +445,140 @@ export class RuntimeWorld {
     return this.modelInstances.get(entityId)?.clips.map((clip, index) => clip.name || `clip-${index}`) ?? [];
   }
 
+  /** Instantiate registered behaviors. Called once the physics bodies exist. */
+  private startBehaviors(): void {
+    if (this.behaviors) return;
+    this.behaviors = new BehaviorRuntime({
+      registry: this.behaviorRegistry,
+      host: this.createBehaviorHost({} as RuntimeWorldOptions),
+      behaviorsByEntity: this.behaviorSpecs,
+    });
+  }
+
+  getBehaviorRuntime(): BehaviorRuntime | null {
+    return this.behaviors;
+  }
+
+  getGameState(): GameState {
+    return this.gameState;
+  }
+
+  getInput(): InputSystem {
+    return this.input;
+  }
+
+  getAudio(): AudioSystem {
+    return this.audio;
+  }
+
+  /**
+   * Activate audio from a user gesture. Browsers refuse to start an AudioContext without
+   * one, so the host calls this on the first click or key press.
+   */
+  async activateAudio(): Promise<boolean> {
+    return this.audio.activate();
+  }
+
+  private handleHudAction(action: 'restart' | 'nextScene' | 'resume' | 'none'): void {
+    switch (action) {
+      case 'restart':
+        this.hud?.showOnlyOverlay(null);
+        this.onRequestRestart?.();
+        break;
+      case 'nextScene': {
+        const next = this.gameState.get<string>('nextScene');
+        if (typeof next === 'string' && next.length > 0) this.onRequestScene?.(next);
+        else this.onRequestRestart?.();
+        break;
+      }
+      case 'resume':
+        this.gameState.set('paused', false);
+        this.hud?.showOnlyOverlay(null);
+        this.resume();
+        break;
+      default:
+        break;
+    }
+  }
+
+  private createBehaviorHost(options: RuntimeWorldOptions): BehaviorHost {
+    const world = this;
+    return {
+      input: {
+        isActionDown: (action) => this.input.isActionDown(action),
+        wasActionPressed: (action) => this.input.wasActionPressed(action),
+        wasActionReleased: (action) => this.input.wasActionReleased(action),
+        moveAxis: () => this.input.moveAxis(),
+        pointer: () => this.input.pointer,
+      },
+      state: this.gameState,
+      physics: this.physics,
+      hud: this.hud,
+      entityIds: () => [...world.graph.entities.keys()],
+      entityName: (entityId) => world.graph.entities.get(entityId)?.entity.name ?? null,
+      findByName: (name) => world.entityNames.get(name) ?? null,
+      findById: (entityId) => (world.graph.entities.has(entityId) ? entityId : null),
+      readTransform: (entityId, out) => world.readEntityTransform(entityId, out),
+      readVelocity: (entityId, out) => world.readEntityVelocity(entityId, out),
+      setKinematicTransform: (entityId, position, rotation) => {
+        world.physics.setTransform(entityId, position, rotation);
+        // Kinematic bodies are driven by gameplay, so the projected object follows the
+        // adapter rather than the render interpolation.
+        const built = world.graph.entities.get(entityId);
+        if (built) {
+          built.object.position.set(position[0], position[1], position[2]);
+          built.object.quaternion.set(rotation[0], rotation[1], rotation[2], rotation[3]);
+        }
+        const binding = world.bindings.get(entityId);
+        if (binding) {
+          binding.previous.set([position[0], position[1], position[2], rotation[0], rotation[1], rotation[2], rotation[3]]);
+          binding.current.set(binding.previous);
+        }
+      },
+      setBodyEnabled: (entityId, enabled) => {
+        world.physics.setBodyEnabled(entityId, enabled);
+        const built = world.graph.entities.get(entityId);
+        if (built) built.object.visible = enabled && built.entity.editor.visible;
+      },
+      setBodyType: (entityId, type) => world.physics.setBodyType(entityId, type),
+      isPhysicsBody: (entityId) => world.physics.hasBody(entityId),
+      requestScene: (sceneId) => options.onRequestScene?.(sceneId),
+      requestRestart: () => options.onRequestRestart?.(),
+      log: (level, message, entityId) => {
+        const prefix = entityId ? `${world.graph.entities.get(entityId)?.entity.name ?? entityId}: ` : '';
+        world.warnings.push(`${level}: ${prefix}${message}`);
+      },
+      requestAction: (action) => world.handleHudAction(action),
+      playClip: (entityId, clip, clipOptions) => {
+        const controller = world.graph.entities.get(entityId)?.animation ?? null;
+        if (!controller) return false;
+        controller.play(clip, clipOptions);
+        return true;
+      },
+      playSound: (entityId, soundOptions) => {
+        const assetId = world.audioAssetFor(entityId);
+        if (!assetId) return false;
+        return world.audio.play(assetId, { volume: soundOptions?.volume ?? 1, loop: soundOptions?.loop ?? false });
+      },
+      prepareAudio: (entityId) => {
+        const assetId = world.audioAssetFor(entityId);
+        if (assetId) world.audio.prepare(assetId);
+      },
+    };
+  }
+
+  /** Asset id referenced by an entity's audio component, if any. */
+  private audioAssetFor(entityId: string): string | null {
+    const entity = this.graph.entities.get(entityId)?.entity;
+    const component = entity?.components.find((candidate) => candidate.type === 'audio');
+    return component && component.type === 'audio' ? component.assetId : null;
+  }
+
+  /** Frame delta of the most recent rendered frame, for diagnostics. */
+  getFrameDelta(): number {
+    return this.frameDeltaSeconds;
+  }
+
   /** Render one frame immediately at the given interpolation factor. */
   renderNow(alpha = 1): void {
     if (this.disposed) return;
@@ -407,6 +611,10 @@ export class RuntimeWorld {
       listeners: this.listeners.length,
       animatedEntities: [...this.graph.entities.values()].filter((built) => built.animation !== null).length,
       loadedModels: this.modelInstances.size,
+      behaviors: this.behaviors?.size ?? 0,
+      hudElements: this.hud ? this.game.settings.hud.length : 0,
+      inputListeners: this.input.listenerCount,
+      audioActivated: this.audio.isActivated,
     };
   }
 
@@ -416,6 +624,10 @@ export class RuntimeWorld {
     this.state = 'stopped';
     this.loop.stop();
     this.removeAllListeners();
+    this.behaviors?.dispose();
+    this.input.dispose();
+    this.hud?.dispose();
+    this.audio.dispose();
     this.physics.dispose();
     this.bindings.clear();
     for (const built of this.graph.entities.values()) built.animation?.dispose();
@@ -572,6 +784,7 @@ export class RuntimeWorld {
       built.animation?.update(fixedDelta);
     }
 
+    this.behaviors?.fixedUpdate(fixedDelta);
     this.handlePhysicsEvents(this.physics.drainEvents());
     this.physicsTimeMs = this.physicsTimeMs * 0.9 + (nowMs() - started) * 0.1;
   }
@@ -592,8 +805,7 @@ export class RuntimeWorld {
           break;
       }
     }
-    // Behavior dispatch arrives with the gameplay layer (stage 3); counts are already
-    // tracked so physics tests can assert that events genuinely fire.
+    for (const event of events) this.behaviors?.dispatchPhysicsEvent(event);
   }
 
   private renderFrame(alpha: number, frameDelta: number): void {
@@ -612,7 +824,11 @@ export class RuntimeWorld {
       currentQuat.set(current[3], current[4], current[5], current[6]);
       built.object.quaternion.slerpQuaternions(previousQuat, currentQuat, alpha);
     }
+    this.frameDeltaSeconds = frameDelta;
+    this.behaviors?.update(frameDelta);
     this.viewport.render(this.getCamera());
+    // Edge state is per frame: consume it after behaviors have seen it.
+    this.input.endFrame();
     if (frameDelta > 0) {
       this.frameTimeMs = this.frameTimeMs === 0 ? frameDelta * 1000 : this.frameTimeMs * 0.9 + frameDelta * 1000 * 0.1;
     }
@@ -695,6 +911,24 @@ function findComponent<T extends Component['type']>(
   type: T,
 ): Extract<Component, { type: T }> | undefined {
   return entity.components.find((component): component is Extract<Component, { type: T }> => component.type === type);
+}
+
+/** Behavior components per entity, in document order. */
+function collectBehaviorComponents(
+  scene: SceneDocument,
+): Map<string, Array<{ behaviorId: string; properties: Record<string, JsonValue> }>> {
+  const result = new Map<string, Array<{ behaviorId: string; properties: Record<string, JsonValue> }>>();
+  for (const entity of scene.entities) {
+    if (!entity.enabled) continue;
+    const behaviors = entity.components
+      .filter((component) => component.type === 'behavior')
+      .map((component) => ({
+        behaviorId: (component as Extract<typeof component, { type: 'behavior' }>).behaviorId,
+        properties: (component as Extract<typeof component, { type: 'behavior' }>).properties as Record<string, JsonValue>,
+      }));
+    if (behaviors.length > 0) result.set(entity.id, behaviors);
+  }
+  return result;
 }
 
 function nowMs(): number {

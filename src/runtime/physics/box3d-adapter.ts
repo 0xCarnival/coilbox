@@ -325,6 +325,13 @@ class Box3DWorld implements PhysicsWorldHandle {
     );
   }
 
+  setBodyEnabled(key: string, enabled: boolean): void {
+    const body = this.bodies.get(key);
+    if (!body || this.isDisposed) return;
+    if (enabled) this.module.b3Body_Enable(body);
+    else this.module.b3Body_Disable(body);
+  }
+
   applyImpulse(key: string, impulse: Vec3, point?: Vec3): void {
     const body = this.bodies.get(key);
     if (!body || this.isDisposed) return;

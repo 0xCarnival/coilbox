@@ -1,9 +1,9 @@
 {
   "stage": 0,
-  "generatedAt": "2026-09-11T12:26:59.770Z",
+  "generatedAt": "2026-09-11T12:50:17.676Z",
   "node": "v24.18.0",
   "nestedPrefix": "/nested/coilbox/",
-  "baseUrl": "http://127.0.0.1:50406/nested/coilbox/",
+  "baseUrl": "http://127.0.0.1:52112/nested/coilbox/",
   "steps": [
     {
       "name": "typecheck",
@@ -30,7 +30,7 @@
       "observed": {
         "binding": "box3d.js@0.1.1",
         "version": "0.1.0",
-        "wasmUrl": "http://127.0.0.1:50406/nested/coilbox/assets/box3d-BRo-Inah.wasm"
+        "wasmUrl": "http://127.0.0.1:52112/nested/coilbox/assets/box3d-BRo-Inah.wasm"
       }
     },
     {
@@ -72,8 +72,8 @@
       "detail": "state after pause=\"paused\", steps advanced=1",
       "observed": {
         "advanced": 1,
-        "before": 65,
-        "after": 66
+        "before": 66,
+        "after": 67
       }
     },
     {
@@ -88,7 +88,7 @@
         "expectedRestingY": 0.5,
         "physicsWorldCount": 0,
         "wasmBytes": 0,
-        "wasmUrl": "http://127.0.0.1:50406/nested/coilbox/assets/box3d-BRo-Inah.wasm",
+        "wasmUrl": "http://127.0.0.1:52112/nested/coilbox/assets/box3d-BRo-Inah.wasm",
         "binding": "box3d.js@0.1.1",
         "bindingVersion": "0.1.0",
         "doublePrecision": false,
@@ -115,13 +115,13 @@
           "cycle": 2,
           "worlds": 0,
           "wasmBytes": 0,
-          "boxY": 3.5016658306121826
+          "boxY": 3.448187828063965
         },
         {
           "cycle": 3,
           "worlds": 0,
           "wasmBytes": 0,
-          "boxY": 3.448187828063965
+          "boxY": 3.5016658306121826
         },
         {
           "cycle": 4,
@@ -133,7 +133,7 @@
           "cycle": 5,
           "worlds": 0,
           "wasmBytes": 0,
-          "boxY": 3.5016658306121826
+          "boxY": 3.448187828063965
         }
       ]
     },
@@ -149,7 +149,7 @@
         "expectedRestingY": 0.5,
         "physicsWorldCount": 0,
         "wasmBytes": 0,
-        "wasmUrl": "http://127.0.0.1:50406/nested/coilbox/assets/box3d-BRo-Inah.wasm",
+        "wasmUrl": "http://127.0.0.1:52112/nested/coilbox/assets/box3d-BRo-Inah.wasm",
         "binding": "box3d.js@0.1.1",
         "bindingVersion": "0.1.0",
         "doublePrecision": false,
@@ -184,9 +184,9 @@
       "id": "no-404",
       "title": "Every request from the built game is served successfully",
       "passed": true,
-      "detail": "8 requests, none failed",
+      "detail": "9 requests, none failed",
       "observed": {
-        "total": 8
+        "total": 9
       }
     },
     {
@@ -208,14 +208,14 @@
       "id": "no-dev-urls",
       "title": "The build does not reference the development server or source folders",
       "passed": true,
-      "detail": "no dev-server URLs requested from http://127.0.0.1:50406",
+      "detail": "no dev-server URLs requested from http://127.0.0.1:52112",
       "observed": []
     },
     {
       "id": "no-missing-assets-anywhere",
       "title": "No request for either page returned an error",
       "passed": true,
-      "detail": "13 requests across probe and player, none failed",
+      "detail": "14 requests across probe and player, none failed",
       "observed": []
     },
     {

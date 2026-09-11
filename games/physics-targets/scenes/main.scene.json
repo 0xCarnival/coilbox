@@ -1,0 +1,917 @@
+{
+  "schemaVersion": 1,
+  "revision": 0,
+  "id": "main",
+  "name": "Physics Targets",
+  "activeCameraId": "game-camera",
+  "environment": {
+    "background": {
+      "type": "color",
+      "color": "#141a25"
+    },
+    "fog": {
+      "type": "none"
+    },
+    "gravity": [
+      0,
+      -18,
+      0
+    ]
+  },
+  "entities": [
+    {
+      "id": "platform",
+      "name": "Platform",
+      "parentId": null,
+      "order": 0,
+      "enabled": true,
+      "transform": {
+        "position": [
+          0,
+          -0.25,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            16,
+            0.5,
+            12
+          ],
+          "castShadow": false,
+          "receiveShadow": true
+        },
+        {
+          "type": "material",
+          "color": "#434b5c",
+          "roughness": 0.9,
+          "metalness": 0,
+          "emissive": "#000000",
+          "emissiveIntensity": 1,
+          "opacity": 1,
+          "transparent": false,
+          "doubleSided": false,
+          "flatShading": false,
+          "visible": true
+        },
+        {
+          "type": "rigidBody",
+          "bodyType": "static",
+          "mass": null,
+          "gravityScale": 1,
+          "linearDamping": 0,
+          "angularDamping": 0.05,
+          "lockRotation": false,
+          "continuous": false,
+          "moveWithPhysics": true
+        },
+        {
+          "type": "collider",
+          "shape": "box",
+          "size": [
+            16,
+            0.5,
+            12
+          ],
+          "offset": [
+            0,
+            0,
+            0
+          ],
+          "localRotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "isSensor": false,
+          "friction": 0.7,
+          "restitution": 0,
+          "density": 1,
+          "reportContacts": false
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "target-1",
+      "name": "Target 1",
+      "parentId": null,
+      "order": 10,
+      "enabled": true,
+      "transform": {
+        "position": [
+          -3,
+          1.2,
+          -2
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            1,
+            2.4,
+            1
+          ],
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        {
+          "type": "material",
+          "color": "#e2705f",
+          "roughness": 0.45,
+          "metalness": 0,
+          "emissive": "#000000",
+          "emissiveIntensity": 1,
+          "opacity": 1,
+          "transparent": false,
+          "doubleSided": false,
+          "flatShading": false,
+          "visible": true
+        },
+        {
+          "type": "rigidBody",
+          "bodyType": "dynamic",
+          "mass": null,
+          "gravityScale": 1,
+          "linearDamping": 0.05,
+          "angularDamping": 0.15,
+          "lockRotation": false,
+          "continuous": false,
+          "moveWithPhysics": true
+        },
+        {
+          "type": "collider",
+          "shape": "box",
+          "size": [
+            1,
+            2.4,
+            1
+          ],
+          "offset": [
+            0,
+            0,
+            0
+          ],
+          "localRotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "isSensor": false,
+          "friction": 0.7,
+          "restitution": 0.05,
+          "density": 0.6,
+          "reportContacts": true
+        },
+        {
+          "type": "behavior",
+          "behaviorId": "game.target",
+          "properties": {
+            "tipAngle": 45,
+            "minImpactSpeed": 1.2,
+            "value": 1
+          }
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "target-2",
+      "name": "Target 2",
+      "parentId": null,
+      "order": 11,
+      "enabled": true,
+      "transform": {
+        "position": [
+          -1,
+          1.2,
+          -2
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            1,
+            2.4,
+            1
+          ],
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        {
+          "type": "material",
+          "color": "#e2a05f",
+          "roughness": 0.45,
+          "metalness": 0,
+          "emissive": "#000000",
+          "emissiveIntensity": 1,
+          "opacity": 1,
+          "transparent": false,
+          "doubleSided": false,
+          "flatShading": false,
+          "visible": true
+        },
+        {
+          "type": "rigidBody",
+          "bodyType": "dynamic",
+          "mass": null,
+          "gravityScale": 1,
+          "linearDamping": 0.05,
+          "angularDamping": 0.15,
+          "lockRotation": false,
+          "continuous": false,
+          "moveWithPhysics": true
+        },
+        {
+          "type": "collider",
+          "shape": "box",
+          "size": [
+            1,
+            2.4,
+            1
+          ],
+          "offset": [
+            0,
+            0,
+            0
+          ],
+          "localRotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "isSensor": false,
+          "friction": 0.7,
+          "restitution": 0.05,
+          "density": 0.6,
+          "reportContacts": true
+        },
+        {
+          "type": "behavior",
+          "behaviorId": "game.target",
+          "properties": {
+            "tipAngle": 45,
+            "minImpactSpeed": 1.2,
+            "value": 1
+          }
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "target-3",
+      "name": "Target 3",
+      "parentId": null,
+      "order": 12,
+      "enabled": true,
+      "transform": {
+        "position": [
+          1,
+          1.2,
+          -2
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            1,
+            2.4,
+            1
+          ],
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        {
+          "type": "material",
+          "color": "#e2d05f",
+          "roughness": 0.45,
+          "metalness": 0,
+          "emissive": "#000000",
+          "emissiveIntensity": 1,
+          "opacity": 1,
+          "transparent": false,
+          "doubleSided": false,
+          "flatShading": false,
+          "visible": true
+        },
+        {
+          "type": "rigidBody",
+          "bodyType": "dynamic",
+          "mass": null,
+          "gravityScale": 1,
+          "linearDamping": 0.05,
+          "angularDamping": 0.15,
+          "lockRotation": false,
+          "continuous": false,
+          "moveWithPhysics": true
+        },
+        {
+          "type": "collider",
+          "shape": "box",
+          "size": [
+            1,
+            2.4,
+            1
+          ],
+          "offset": [
+            0,
+            0,
+            0
+          ],
+          "localRotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "isSensor": false,
+          "friction": 0.7,
+          "restitution": 0.05,
+          "density": 0.6,
+          "reportContacts": true
+        },
+        {
+          "type": "behavior",
+          "behaviorId": "game.target",
+          "properties": {
+            "tipAngle": 45,
+            "minImpactSpeed": 1.2,
+            "value": 1
+          }
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "target-4",
+      "name": "Target 4",
+      "parentId": null,
+      "order": 13,
+      "enabled": true,
+      "transform": {
+        "position": [
+          3,
+          1.2,
+          -2
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            1,
+            2.4,
+            1
+          ],
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        {
+          "type": "material",
+          "color": "#9fe25f",
+          "roughness": 0.45,
+          "metalness": 0,
+          "emissive": "#000000",
+          "emissiveIntensity": 1,
+          "opacity": 1,
+          "transparent": false,
+          "doubleSided": false,
+          "flatShading": false,
+          "visible": true
+        },
+        {
+          "type": "rigidBody",
+          "bodyType": "dynamic",
+          "mass": null,
+          "gravityScale": 1,
+          "linearDamping": 0.05,
+          "angularDamping": 0.15,
+          "lockRotation": false,
+          "continuous": false,
+          "moveWithPhysics": true
+        },
+        {
+          "type": "collider",
+          "shape": "box",
+          "size": [
+            1,
+            2.4,
+            1
+          ],
+          "offset": [
+            0,
+            0,
+            0
+          ],
+          "localRotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "isSensor": false,
+          "friction": 0.7,
+          "restitution": 0.05,
+          "density": 0.6,
+          "reportContacts": true
+        },
+        {
+          "type": "behavior",
+          "behaviorId": "game.target",
+          "properties": {
+            "tipAngle": 45,
+            "minImpactSpeed": 1.2,
+            "value": 1
+          }
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "target-5",
+      "name": "Target 5",
+      "parentId": null,
+      "order": 14,
+      "enabled": true,
+      "transform": {
+        "position": [
+          0,
+          3.4,
+          -2
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            1,
+            2.4,
+            1
+          ],
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        {
+          "type": "material",
+          "color": "#5fd0e2",
+          "roughness": 0.45,
+          "metalness": 0,
+          "emissive": "#000000",
+          "emissiveIntensity": 1,
+          "opacity": 1,
+          "transparent": false,
+          "doubleSided": false,
+          "flatShading": false,
+          "visible": true
+        },
+        {
+          "type": "rigidBody",
+          "bodyType": "dynamic",
+          "mass": null,
+          "gravityScale": 1,
+          "linearDamping": 0.05,
+          "angularDamping": 0.15,
+          "lockRotation": false,
+          "continuous": false,
+          "moveWithPhysics": true
+        },
+        {
+          "type": "collider",
+          "shape": "box",
+          "size": [
+            1,
+            2.4,
+            1
+          ],
+          "offset": [
+            0,
+            0,
+            0
+          ],
+          "localRotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "isSensor": false,
+          "friction": 0.7,
+          "restitution": 0.05,
+          "density": 0.6,
+          "reportContacts": true
+        },
+        {
+          "type": "behavior",
+          "behaviorId": "game.target",
+          "properties": {
+            "tipAngle": 45,
+            "minImpactSpeed": 1.2,
+            "value": 1
+          }
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "ball",
+      "name": "Ball",
+      "parentId": null,
+      "order": 20,
+      "enabled": true,
+      "transform": {
+        "position": [
+          0,
+          1.2,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "sphere",
+          "size": [
+            0.8,
+            0.8,
+            0.8
+          ],
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        {
+          "type": "material",
+          "color": "#8fb8ff",
+          "roughness": 0.3,
+          "metalness": 0.1,
+          "emissive": "#000000",
+          "emissiveIntensity": 1,
+          "opacity": 1,
+          "transparent": false,
+          "doubleSided": false,
+          "flatShading": false,
+          "visible": true
+        },
+        {
+          "type": "rigidBody",
+          "bodyType": "dynamic",
+          "mass": null,
+          "gravityScale": 1,
+          "linearDamping": 0,
+          "angularDamping": 0.2,
+          "lockRotation": false,
+          "continuous": true,
+          "moveWithPhysics": true
+        },
+        {
+          "type": "collider",
+          "shape": "sphere",
+          "size": [
+            0.8,
+            0.8,
+            0.8
+          ],
+          "offset": [
+            0,
+            0,
+            0
+          ],
+          "localRotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "isSensor": false,
+          "friction": 0.4,
+          "restitution": 0.25,
+          "density": 1.4,
+          "reportContacts": true
+        },
+        {
+          "type": "behavior",
+          "behaviorId": "game.launcher",
+          "properties": {
+            "impulse": 11,
+            "upward": 0.3,
+            "projectileName": "Ball",
+            "resetAfterLaunch": true,
+            "resetBelowY": -4
+          }
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "game-camera",
+      "name": "Game Camera",
+      "parentId": null,
+      "order": 30,
+      "enabled": true,
+      "transform": {
+        "position": [
+          0,
+          3.4,
+          7.5
+        ],
+        "rotation": [
+          -0.09349023070177111,
+          0,
+          0,
+          0.9956201970447012
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "camera",
+          "mode": "fixed",
+          "fov": 55,
+          "near": 0.1,
+          "far": 300,
+          "targetId": null,
+          "distance": 8,
+          "height": 4,
+          "offset": [
+            0,
+            0,
+            0
+          ],
+          "damping": 0
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "sun",
+      "name": "Sun",
+      "parentId": null,
+      "order": 31,
+      "enabled": true,
+      "transform": {
+        "position": [
+          6,
+          10,
+          8
+        ],
+        "rotation": [
+          -0.33444846151423085,
+          0.25034366207017184,
+          0.09263686094111523,
+          0.9038200536871465
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "light",
+          "kind": "directional",
+          "color": "#fff4e0",
+          "intensity": 2.4,
+          "groundColor": "#3b4354",
+          "castShadow": true,
+          "shadowMapSize": 1024,
+          "shadowBias": -0.0005,
+          "shadowExtent": 18,
+          "range": 20,
+          "decay": 2,
+          "coneAngleDegrees": 30
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "fill",
+      "name": "Fill Light",
+      "parentId": null,
+      "order": 32,
+      "enabled": true,
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "light",
+          "kind": "hemisphere",
+          "color": "#93a7c9",
+          "groundColor": "#2b303c",
+          "intensity": 0.7,
+          "castShadow": false,
+          "shadowMapSize": 512,
+          "shadowBias": -0.0005,
+          "shadowExtent": 10,
+          "range": 20,
+          "decay": 2,
+          "coneAngleDegrees": 30
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "rules",
+      "name": "Game Rules",
+      "parentId": null,
+      "order": 40,
+      "enabled": true,
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "behavior",
+          "behaviorId": "game.rules",
+          "properties": {
+            "scoreTarget": 5,
+            "timeLimit": 60,
+            "nextScene": "",
+            "showStartOverlay": true,
+            "allowRestartKey": true
+          }
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    }
+  ]
+}

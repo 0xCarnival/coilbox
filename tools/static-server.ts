@@ -61,6 +61,12 @@ export interface StaticServerOptions {
   /** Suppress per-request logging. */
   quiet?: boolean;
   /**
+   * Additional directories served from the same origin, e.g. `{ '/games/': '/path/to/games' }`.
+   * Exported games and their project folders normally sit next to the player, so serving them
+   * together keeps checks on a single origin.
+   */
+  mounts?: Record<string, string>;
+  /**
    * Forward matching path prefixes to another origin, e.g. `{ '/api': 'http://127.0.0.1:5179' }`.
    * Used to serve a production editor build next to the workspace service in checks.
    */
@@ -93,18 +99,28 @@ export async function startStaticServer(options: StaticServerOptions): Promise<S
       return;
     }
 
-    if (!pathname.startsWith(prefix)) {
-      response.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' });
-      response.end('not found');
-      log(404, 0, 'text/plain');
-      return;
+    let effectiveRoot = root;
+    let relative: string | null = null;
+    for (const [mountPrefix, mountRoot] of Object.entries(options.mounts ?? {})) {
+      const normalized = normalizePrefix(mountPrefix);
+      if (!pathname.startsWith(normalized)) continue;
+      effectiveRoot = resolve(mountRoot);
+      relative = pathname.slice(normalized.length);
+      break;
     }
-
-    let relative = pathname.slice(prefix.length);
+    if (relative === null) {
+      if (!pathname.startsWith(prefix)) {
+        response.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' });
+        response.end('not found');
+        log(404, 0, 'text/plain');
+        return;
+      }
+      relative = pathname.slice(prefix.length);
+    }
     if (relative === '' || relative.endsWith('/')) relative += 'index.html';
 
-    const target = resolve(join(root, relative));
-    if (target !== root && !target.startsWith(root + sep)) {
+    const target = resolve(join(effectiveRoot, relative));
+    if (target !== effectiveRoot && !target.startsWith(effectiveRoot + sep)) {
       // Path traversal attempt: refuse rather than serve something outside the root.
       response.writeHead(403, { 'content-type': 'text/plain; charset=utf-8' });
       response.end('forbidden');

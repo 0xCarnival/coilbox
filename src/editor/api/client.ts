@@ -96,6 +96,10 @@ export class WorkspaceClient {
     });
   }
 
+  readRegistry(projectId: string): Promise<{ schemaVersion: number; behaviors: unknown[] }> {
+    return this.request(`/projects/${encodeURIComponent(projectId)}/registry`, { method: 'GET' });
+  }
+
   listAssets(projectId: string): Promise<{
     manifest: AssetManifest;
     usage: Record<string, Array<{ sceneId: string; entityId: string; entityName: string }>>;

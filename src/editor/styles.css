@@ -475,6 +475,17 @@ button:focus-visible {
   visibility: hidden;
 }
 
+.hud-host {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.hud-host .coilbox-hud {
+  position: absolute;
+}
+
 .viewport-badge {
   position: absolute;
   top: 8px;

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
 import type { JSX } from 'react';
 import type { SceneDocument, Transform } from '@schema/index.js';
-import { RuntimeWorld, RuntimeWorldError } from '@runtime/world.js';
+import { RuntimeWorldError } from '@runtime/world.js';
+import { RuntimeSession } from '@runtime/session.js';
 import { AssetCache } from '@runtime/assets/loader.js';
 import wasmUrl from 'virtual:box3d-wasm-url';
 import { EditorViewport, type SnapSettings, type TransformTool } from '../viewport/viewport-controller.js';
@@ -39,6 +40,12 @@ export interface ViewportHandle {
   animationState(entityId: string): { clip: string | null; time: number; playing: boolean } | null;
   /** Animation state inside the running play world (independent of the editor preview). */
   playAnimationState(entityId: string): { clip: string | null; time: number; playing: boolean } | null;
+  /** Game-state values of the running play world. */
+  playGameState(): Record<string, unknown> | null;
+  /** World position of an entity in the running play world. */
+  playEntityTransform(entityId: string): [number, number, number] | null;
+  /** Behavior instances of the running play world, for checks and debugging. */
+  behaviorRuntime(): { size: number; list(): Array<{ entityId: string; behaviorId: string }> } | null;
 }
 
 export interface ViewportProps {
@@ -55,8 +62,9 @@ export function Viewport({ handleRef, tool, snap, onPlayStateChange, onStatus }:
   const editorCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const playCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const viewportRef = useRef<EditorViewport | null>(null);
-  const worldRef = useRef<RuntimeWorld | null>(null);
+  const sessionRef2 = useRef<RuntimeSession | null>(null);
   const assetCacheRef = useRef<AssetCache | null>(null);
+  const hudRootRef = useRef<HTMLDivElement | null>(null);
   const [playState, setPlayState] = useState<PlayState>('stopped');
   const [error, setError] = useState<string | null>(null);
 
@@ -137,15 +145,15 @@ export function Viewport({ handleRef, tool, snap, onPlayStateChange, onStatus }:
   }, [snap]);
 
   const stopPlay = useCallback(() => {
-    worldRef.current?.dispose();
-    worldRef.current = null;
+    void sessionRef2.current?.dispose();
+    sessionRef2.current = null;
     viewportRef.current?.resume();
     setPlayState('stopped');
     onPlayStateChange('stopped');
   }, [onPlayStateChange]);
 
   const play = useCallback(async () => {
-    if (worldRef.current) return;
+    if (sessionRef2.current) return;
     const canvas = playCanvasRef.current;
     const currentScene: SceneDocument | null = sessionRef.current.scene;
     const game = sessionRef.current.game;
@@ -156,22 +164,34 @@ export function Viewport({ handleRef, tool, snap, onPlayStateChange, onStatus }:
     setError(null);
     try {
       viewportRef.current?.suspend();
-      const world = await RuntimeWorld.create({
+      const runtimeSession = await RuntimeSession.create({
         canvas,
         game,
-        scene: currentScene,
+        // Play always starts from a snapshot of the authored document, never from the live
+        // scene the editor is projecting.
+        scene: structuredClone(currentScene),
+        resolveScene: async (sceneId) => {
+          await sessionRef.current.openScene(sceneId);
+          const loaded = sessionRef.current.scene;
+          if (!loaded) throw new Error(`scene "${sceneId}" could not be loaded`);
+          return structuredClone(loaded);
+        },
         assets: sessionRef.current.assetResolver,
         assetCache,
+        // Play uses the compiled behavior library — the same code an export ships. The
+        // project's registry.json is metadata for the inspector and the validator, not the
+        // executable registration.
+        hudRoot: hudRootRef.current,
         wasmLocateFile: () => wasmUrl,
         label: 'editor-play',
+        onLog: (level, message) => sessionRef.current.log(level, message),
         onError: (runtimeError: RuntimeWorldError) => {
           setError(`${runtimeError.code}: ${runtimeError.message}`);
           sessionRef.current.log('error', runtimeError.message, runtimeError.code);
         },
       });
-      worldRef.current = world;
-      for (const warning of world.warnings) sessionRef.current.log('warning', warning);
-      world.start();
+      sessionRef2.current = runtimeSession;
+      void runtimeSession.current?.activateAudio();
       setPlayState('running');
       onPlayStateChange('running');
     } catch (cause) {
@@ -182,35 +202,47 @@ export function Viewport({ handleRef, tool, snap, onPlayStateChange, onStatus }:
       setPlayState('stopped');
       onPlayStateChange('stopped');
     }
-  }, [onPlayStateChange]);
+  }, [assetCache, onPlayStateChange]);
 
   const pause = useCallback(() => {
-    const world = worldRef.current;
-    if (!world) return;
-    if (world.getState() === 'paused') {
-      world.resume();
+    const runtimeSession = sessionRef2.current;
+    if (!runtimeSession) return;
+    if (runtimeSession.state === 'paused') {
+      runtimeSession.resume();
       setPlayState('running');
       onPlayStateChange('running');
     } else {
-      world.pause();
+      runtimeSession.pause();
       setPlayState('paused');
       onPlayStateChange('paused');
     }
   }, [onPlayStateChange]);
 
   const step = useCallback(() => {
-    const world = worldRef.current;
-    if (!world) return;
-    world.pause();
-    world.step();
+    const runtimeSession = sessionRef2.current;
+    if (!runtimeSession) return;
+    runtimeSession.pause();
+    runtimeSession.step();
     setPlayState('paused');
     onPlayStateChange('paused');
   }, [onPlayStateChange]);
 
   useEffect(() => () => {
-    worldRef.current?.dispose();
-    worldRef.current = null;
+    void sessionRef2.current?.dispose();
+    sessionRef2.current = null;
   }, []);
+
+  // Audio cannot start before a user gesture; the first click or key press activates it.
+  useEffect(() => {
+    if (playState === 'stopped') return;
+    const activate = () => void sessionRef2.current?.current?.activateAudio();
+    window.addEventListener('pointerdown', activate);
+    window.addEventListener('keydown', activate);
+    return () => {
+      window.removeEventListener('pointerdown', activate);
+      window.removeEventListener('keydown', activate);
+    };
+  }, [playState]);
 
   useImperativeHandle(
     handleRef,
@@ -229,7 +261,7 @@ export function Viewport({ handleRef, tool, snap, onPlayStateChange, onStatus }:
       },
       samplePlayPixels: () => {
         const canvas = playCanvasRef.current;
-        const world = worldRef.current;
+        const world = sessionRef2.current?.current ?? null;
         if (!canvas || !world) return null;
         world.renderNow(1);
         const gl = canvas.getContext('webgl2');
@@ -248,11 +280,20 @@ export function Viewport({ handleRef, tool, snap, onPlayStateChange, onStatus }:
         for (const count of counts.values()) if (count > background) background = count;
         return { width, height, distinctColors: counts.size, nonBackgroundPixels: width * height - background };
       },
-      playStats: () => (worldRef.current ? worldRef.current.getStats() : null),
+      playStats: () => sessionRef2.current?.stats() ?? null,
       modelStatus: (entityId: string) => viewportRef.current?.modelStatus(entityId) ?? 'none',
       clipNames: (entityId: string) => viewportRef.current?.clipNames(entityId) ?? null,
       animationState: (entityId: string) => viewportRef.current?.animationState(entityId) ?? null,
-      playAnimationState: (entityId: string) => worldRef.current?.getAnimationState(entityId) ?? null,
+      playAnimationState: (entityId: string) => sessionRef2.current?.current?.getAnimationState(entityId) ?? null,
+      playGameState: () => sessionRef2.current?.current?.getGameState().snapshot() ?? null,
+      playEntityTransform: (entityId: string) => {
+        const world = sessionRef2.current?.current;
+        if (!world) return null;
+        const sample = new Float32Array(7);
+        if (!world.readEntityTransform(entityId, sample)) return null;
+        return [sample[0]!, sample[1]!, sample[2]!];
+      },
+      behaviorRuntime: () => sessionRef2.current?.current?.getBehaviorRuntime() ?? null,
     }),
     [play, pause, step, stopPlay],
   );
@@ -261,6 +302,7 @@ export function Viewport({ handleRef, tool, snap, onPlayStateChange, onStatus }:
     <div className="viewport" ref={containerRef}>
       <canvas id="editor-canvas" ref={editorCanvasRef} tabIndex={0} />
       <canvas id="play-canvas" ref={playCanvasRef} className={playState === 'stopped' ? 'hidden' : ''} />
+      <div className="hud-host" ref={hudRootRef} />
       {playState !== 'stopped' && <div className="viewport-badge">Play mode — authoring is paused</div>}
       {error && (
         <div className="viewport-error" role="alert">
