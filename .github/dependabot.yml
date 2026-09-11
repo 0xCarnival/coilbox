@@ -1,0 +1,28 @@
+version: 2
+updates:
+  # The workflow pins actions to commits, so the bumps have to come from somewhere. Weekly is
+  # enough: a new action release is not urgent, and a reviewable pull request is better than a
+  # mutable tag.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "ci"
+    labels:
+      - dependencies
+
+  # Runtime and tooling dependencies, grouped so one pull request carries the routine bumps and a
+  # major version arrives on its own.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps"
+    labels:
+      - dependencies
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
