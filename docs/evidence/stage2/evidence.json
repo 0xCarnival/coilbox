@@ -1,8 +1,8 @@
 {
   "stage": 2,
-  "generatedAt": "2026-09-11T14:44:18.204Z",
+  "generatedAt": "2026-09-11T14:48:16.997Z",
   "node": "v24.18.0",
-  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage2-WuW0oX",
+  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage2-PNiBoU",
   "steps": [
     {
       "name": "typecheck",
@@ -68,10 +68,10 @@
       "id": "clip-playback",
       "title": "The imported clip is discoverable and plays in the editor preview",
       "passed": true,
-      "detail": "clips offered: First clip, Hop; preview time advanced from 0.12790000009536742 to 0.6305999999046327",
+      "detail": "clips offered: First clip, Hop; preview time advanced from 0.12390000009536743 to 0.6332999997138976",
       "observed": {
-        "before": 0.12790000009536742,
-        "after": 0.6305999999046327,
+        "before": 0.12390000009536743,
+        "after": 0.6332999997138976,
         "clip": "Hop"
       }
     },
@@ -118,7 +118,7 @@
       "id": "drag-cancellation",
       "title": "A transform drag abandoned with Escape changes nothing and records nothing",
       "passed": true,
-      "detail": "grabbed=true; during the drag the projection moved to [0,1,-0.5] while the document stayed [0,1,0]; after Escape the projection is [0,1,0] and the undo label is still Rename Crate Awer to Crate A",
+      "detail": "grabbed=true; during the drag the projection moved to [-0.5,1,0] while the document stayed [0,1,0]; after Escape the projection is [0,1,0] and the undo label is still Rename Crate Awer to Crate A",
       "observed": {
         "beforeDrag": {
           "id": "box",
@@ -146,9 +146,9 @@
             0
           ],
           "projected": [
-            0,
+            -0.5,
             1,
-            -0.5
+            0
           ],
           "dragging": true,
           "undoLabel": "Rename Crate Awer to Crate A",
@@ -214,7 +214,7 @@
       "id": "play-animates",
       "title": "Play runs the runtime animation: clips advance inside the play world",
       "passed": true,
-      "detail": "Limb clip \"Wave\" advanced 0.050 -> 0.133; 2 animated entities, 2 models loaded",
+      "detail": "Limb clip \"Wave\" advanced 0.050 -> 0.150; 2 animated entities, 2 models loaded",
       "observed": {
         "ids": {
           "limbId": "box-2",
@@ -239,7 +239,7 @@
           "playing": true,
           "loop": true,
           "speed": 1,
-          "time": 0.13333333333333333,
+          "time": 0.15,
           "duration": 1
         },
         "crate": {
@@ -250,18 +250,18 @@
           "playing": true,
           "loop": true,
           "speed": 1,
-          "time": 0.13333333333333333,
+          "time": 0.15,
           "duration": 0.800000011920929
         },
         "stats": {
           "state": "running",
-          "frames": 6,
-          "steps": 8,
-          "fps": 20.57765426429491,
-          "frameTimeMs": 48.596404000000085,
-          "physicsTimeMs": 0.08517592519081595,
-          "droppedTime": 0.18330666666666678,
-          "clampedTime": 0.25,
+          "frames": 7,
+          "steps": 9,
+          "fps": 26.594534063710032,
+          "frameTimeMs": 37.60171159999997,
+          "physicsTimeMs": 0.04735138899474479,
+          "droppedTime": 0.18330666666666656,
+          "clampedTime": 0.24990000000000007,
           "drawCalls": 6,
           "triangles": 1268,
           "geometries": 4,

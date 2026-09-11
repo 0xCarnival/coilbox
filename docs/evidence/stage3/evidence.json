@@ -1,8 +1,8 @@
 {
   "stage": 3,
-  "generatedAt": "2026-09-11T14:45:02.490Z",
+  "generatedAt": "2026-09-11T14:49:00.432Z",
   "node": "v24.18.0",
-  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage3-zcLRJz",
+  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage3-SuZiqn",
   "steps": [
     {
       "name": "typecheck",
@@ -78,19 +78,19 @@
       "id": "collect-room-input",
       "title": "Keyboard input drives the character mover, and it stays on the floor",
       "passed": true,
-      "detail": "player moved 5.43 m from (0.0, -6.0) to (0.0, -0.6); y went -0.00 → -0.00",
+      "detail": "player moved 5.54 m from (0.0, -6.0) to (0.0, -0.5); y went -0.00 → -0.00",
       "observed": {
         "beforeWalk": {
           "x": 0,
-          "y": -9.934105982267738e-9,
+          "y": -3.973641860000043e-9,
           "z": -6
         },
         "afterWalk": {
           "x": 0,
-          "y": -3.973640971821624e-9,
-          "z": -0.5735003352165222
+          "y": -9.934105094089318e-9,
+          "z": -0.4583176076412201
         },
-        "walked": 5.426499664783478,
+        "walked": 5.54168239235878,
         "grounded": true
       }
     },
@@ -102,17 +102,17 @@
       "observed": {
         "atWall": {
           "x": 0,
-          "y": -3.973639195464784e-9,
+          "y": -1.5894567440000174e-8,
           "z": 7.400000095367432
         },
         "stillAtWall": {
           "x": 0,
-          "y": -3.9736383072863646e-9,
+          "y": -9.93410242955406e-9,
           "z": 7.400000095367432
         },
         "slid": {
           "x": 2.799133062362671,
-          "y": 7.947290825427444e-9,
+          "y": 1.9868267031597497e-9,
           "z": 7.400000095367432
         },
         "approachGap": 0,
@@ -217,14 +217,14 @@
       "id": "targets-physics",
       "title": "Clicking launches the ball and knocking targets down updates the score",
       "passed": true,
-      "detail": "5 targets knocked down, score 5, launches 8",
+      "detail": "5 targets knocked down, score 5, launches 7",
       "observed": {
         "knocked": 5,
         "boardState": {
           "score": 5,
           "targetsDown": 5,
-          "launches": 8,
-          "timeRemaining": 50.8,
+          "launches": 7,
+          "timeRemaining": 51.88,
           "won": true,
           "lost": false,
           "scoreTarget": 5,
@@ -263,12 +263,12 @@
         "studioWalked": 10.858749389648438,
         "before": {
           "x": 0,
-          "y": 7.947287272713766e-9,
+          "y": 1.986822706356861e-9,
           "z": -6
         },
         "after": {
           "x": 0,
-          "y": -3.973640971821624e-9,
+          "y": -9.934105982267738e-9,
           "z": 4.8587493896484375
         }
       }
