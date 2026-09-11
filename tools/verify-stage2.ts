@@ -477,11 +477,29 @@ async function main(): Promise<void> {
       const limbId = entities.find((entity) => entity.name === 'Limb')?.id ?? '';
       const crateId = entities.find((entity) => entity.name === 'Crate A')?.id ?? '';
       if (!viewport) return null;
-      const first = viewport.playAnimationState(limbId);
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      const second = viewport.playAnimationState(limbId);
+      // The play world builds asynchronously (WASM, then the skinned model), so poll for the clip
+      // actually advancing rather than sampling once: a slow start is not a broken animation.
+      const started = Date.now();
+      let first = viewport.playAnimationState(limbId);
+      let second = first;
+      while (Date.now() - started < 20_000) {
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        second = viewport.playAnimationState(limbId);
+        if (!first) {
+          first = second;
+          continue;
+        }
+        if (second && second.time > first.time) break;
+      }
       const crate = viewport.playAnimationState(crateId);
-      return { ids: { limbId, crateId }, first, second, crate, stats: viewport.playStats() };
+      return {
+        ids: { limbId, crateId },
+        first,
+        second,
+        crate,
+        stats: viewport.playStats(),
+        waitedMs: Date.now() - started,
+      };
     });
     const animated = Boolean(
       playAnimation &&
@@ -495,8 +513,8 @@ async function main(): Promise<void> {
       title: 'Play runs the runtime animation: clips advance inside the play world',
       passed: animated && (playAnimation?.stats?.animatedEntities ?? 0) >= 2,
       detail: animated
-        ? `Limb clip "${playAnimation?.second?.clip}" advanced ${playAnimation?.first?.time.toFixed(3)} -> ${playAnimation?.second?.time.toFixed(3)}; ${playAnimation?.stats?.animatedEntities} animated entities, ${playAnimation?.stats?.loadedModels} models loaded`
-        : `animation did not advance: ids ${JSON.stringify(playAnimation?.ids ?? null)}`,
+        ? `Limb clip "${playAnimation?.second?.clip}" advanced ${playAnimation?.first?.time.toFixed(3)} -> ${playAnimation?.second?.time.toFixed(3)} after ${playAnimation?.waitedMs ?? 0} ms; ${playAnimation?.stats?.animatedEntities} animated entities, ${playAnimation?.stats?.loadedModels} models loaded`
+        : `animation did not advance within 20 s: ids ${JSON.stringify(playAnimation?.ids ?? null)}, samples ${JSON.stringify(playAnimation?.first ?? null)} / ${JSON.stringify(playAnimation?.second ?? null)}`,
       observed: playAnimation,
     });
     await page.screenshot({ path: join(evidenceDir, 'play-with-models.png') });

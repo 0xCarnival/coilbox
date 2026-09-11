@@ -1,9 +1,9 @@
 {
   "stage": 5,
-  "generatedAt": "2026-09-11T15:25:22.103Z",
+  "generatedAt": "2026-09-11T15:50:25.352Z",
   "node": "v24.18.0",
   "host": "darwin",
-  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage5-iXt3vh",
+  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage5-0NHS1D",
   "measurements": {
     "playStopCycles": {
       "first": {
@@ -215,27 +215,27 @@
       ]
     },
     "referenceScene": {
-      "frames": 109,
-      "medianFrameMs": 36.316223357757885,
-      "p95FrameMs": 40.323846121928135,
-      "medianPhysicsMs": 0.031335656335713724,
+      "frames": 107,
+      "medianFrameMs": 38.109686811782765,
+      "p95FrameMs": 40.28573395847659,
+      "medianPhysicsMs": 0.03502743292068114,
       "drawCalls": 401,
       "triangles": 4812,
       "entities": 203,
       "physicsBodies": 26,
-      "fps": 26.658482266124107
+      "fps": 25.87941368169236
     },
     "frameRateIndependence": {
-      "stepsTaken": 21,
-      "droppedTime": 0.18316666666666723,
-      "clampedTime": 0.09990000000000054
+      "stepsTaken": 22,
+      "droppedTime": 0.18313333333333412,
+      "clampedTime": 0.11660000000000037
     },
     "narrowViewport": {
       "width": 390,
       "height": 844,
-      "rendered": 0.6066259569814072,
-      "distinctColors": 2295,
-      "steps": 78
+      "rendered": 0.6066077287641268,
+      "distinctColors": 2305,
+      "steps": 74
     }
   },
   "steps": [
@@ -271,7 +271,7 @@
       "id": "clean-checkout",
       "title": "A clean checkout installs from the frozen lockfile, typechecks, tests, and builds",
       "passed": true,
-      "detail": "built in /var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-clean-euSQN0 from a fresh clone"
+      "detail": "built in /var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-clean-RGk8TQ from a fresh clone"
     },
     {
       "id": "reference-scene",
@@ -296,50 +296,50 @@
       "id": "reference-performance",
       "title": "The reference scene renders on the declared conditions and the numbers are recorded",
       "passed": true,
-      "detail": "203 entities, 26 bodies, 401 draw calls, 4812 triangles; median frame 36.32 ms, p95 40.32 ms, physics 0.03 ms (software rasteriser, not the M1 Pro target)",
+      "detail": "203 entities, 26 bodies, 401 draw calls, 4812 triangles; median frame 38.11 ms, p95 40.29 ms, physics 0.04 ms (software rasteriser, not the M1 Pro target)",
       "observed": {
-        "frames": 109,
-        "medianFrameMs": 36.316223357757885,
-        "p95FrameMs": 40.323846121928135,
-        "medianPhysicsMs": 0.031335656335713724,
+        "frames": 107,
+        "medianFrameMs": 38.109686811782765,
+        "p95FrameMs": 40.28573395847659,
+        "medianPhysicsMs": 0.03502743292068114,
         "drawCalls": 401,
         "triangles": 4812,
         "entities": 203,
         "physicsBodies": 26,
-        "fps": 26.658482266124107
+        "fps": 25.87941368169236
       }
     },
     {
       "id": "frame-rate-independence",
       "title": "A stalled frame is clamped and its backlog dropped, not replayed as extra steps",
       "passed": true,
-      "detail": "a 400 ms stall produced 21 steps, 0.183 s dropped, 0.100 s clamped",
+      "detail": "a 400 ms stall produced 22 steps, 0.183 s dropped, 0.117 s clamped",
       "observed": {
-        "stepsTaken": 21,
-        "droppedTime": 0.18316666666666723,
-        "clampedTime": 0.09990000000000054
+        "stepsTaken": 22,
+        "droppedTime": 0.18313333333333412,
+        "clampedTime": 0.11660000000000037
       }
     },
     {
       "id": "no-catch-up-spiral",
       "title": "Time spent waiting is not replayed as a burst of simulation steps",
       "passed": true,
-      "detail": "74 steps during a 1.2 s wait (about 72 expected at 60 Hz)",
+      "detail": "71 steps during a 1.2 s wait (about 72 expected at 60 Hz)",
       "observed": {
-        "stepsDuringWait": 74
+        "stepsDuringWait": 71
       }
     },
     {
       "id": "narrow-viewport",
       "title": "The game runs at a narrow viewport (a viewport test, not a phone test)",
       "passed": true,
-      "detail": "390x844, 60.7% rendered, 78 steps",
+      "detail": "390x844, 60.7% rendered, 74 steps",
       "observed": {
         "width": 390,
         "height": 844,
-        "rendered": 0.6066259569814072,
-        "distinctColors": 2295,
-        "steps": 78
+        "rendered": 0.6066077287641268,
+        "distinctColors": 2305,
+        "steps": 74
       }
     },
     {
@@ -396,16 +396,16 @@
       "id": "acceptance-play-stop",
       "title": "Acceptance: play and stop without touching code",
       "passed": true,
-      "detail": "play world ran 65 steps with 9 behaviors, then stopped",
+      "detail": "play world ran 63 steps with 9 behaviors, then stopped",
       "observed": {
         "state": "running",
         "frames": 23,
-        "steps": 65,
-        "fps": 12.26597658678667,
-        "frameTimeMs": 81.52632551714099,
-        "physicsTimeMs": 0.09106440173434141,
-        "droppedTime": 0.6499333333333357,
-        "clampedTime": 1.133239999999998,
+        "steps": 63,
+        "fps": 12.053611012986694,
+        "frameTimeMs": 82.96269051013749,
+        "physicsTimeMs": 0.11745125879691616,
+        "droppedTime": 0.7332666666666692,
+        "clampedTime": 1.2333119999999982,
         "drawCalls": 17,
         "triangles": 5192,
         "geometries": 13,
@@ -468,7 +468,7 @@
       "id": "export-nested-path",
       "title": "The export runs from a nested path on a separate static server with no workspace service",
       "passed": true,
-      "detail": "8 requests from http://127.0.0.1:61847/releases/2026/gem-rush/, 0 failed, 77 steps",
+      "detail": "8 requests from http://127.0.0.1:64008/releases/2026/gem-rush/, 0 failed, 74 steps",
       "observed": {
         "failures": [],
         "requests": 8
@@ -503,7 +503,7 @@
         "gameState": {
           "score": 2,
           "collectiblesRemaining": 3,
-          "timeRemaining": 43.85,
+          "timeRemaining": 43.87,
           "objective": "",
           "won": false,
           "lost": false,
@@ -523,7 +523,7 @@
         "before": {
           "score": 2,
           "collectiblesRemaining": 3,
-          "timeRemaining": 43.83,
+          "timeRemaining": 43.85,
           "objective": "",
           "won": false,
           "lost": false,
@@ -565,13 +565,13 @@
       "id": "bounded-test-collect-room",
       "title": "The bounded test passes for collect-room",
       "passed": true,
-      "detail": "9/9 checks in 3.2s"
+      "detail": "9/9 checks in 2.9s"
     },
     {
       "id": "bounded-test-physics-targets",
       "title": "The bounded test passes for physics-targets",
       "passed": true,
-      "detail": "9/9 checks in 3.2s"
+      "detail": "9/9 checks in 2.9s"
     },
     {
       "id": "bounded-test-gem-rush",
