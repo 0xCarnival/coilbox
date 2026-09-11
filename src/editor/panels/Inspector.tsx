@@ -19,6 +19,8 @@ import { componentsFor, type CreatableKind } from '../document/factory.js';
 import { isFiniteJsonNumber, isJsonString, jsonQuaternion, jsonVec3 } from '../json-values.js';
 import { ChevronRight, Plus } from 'lucide-react';
 import { useScrub } from '../ui/useScrub.js';
+import { FieldShell, ScrubLabel } from '../ui/Field.js';
+import { Switch } from '../ui/Field.js';
 import { Button } from '../ui/Button.js';
 import {
   DropdownMenu,
@@ -167,6 +169,54 @@ const styles = stylex.create({
     alignItems: 'center',
     gap: space.sm,
     minHeight: '24px',
+  },
+  /**
+   * A boolean row: the name on the left, the switch on the right, on the panel's own background.
+   *
+   * It deliberately has no field box. The reference marks an on/off property with a bare row and a
+   * switch, which is what keeps a component's list of toggles from reading as a form of inputs.
+   */
+  fieldToggle: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: space.md,
+    minHeight: '28px',
+    paddingInline: space.lg,
+  },
+  fieldToggleLabel: {
+    fontSize: fontSize.md,
+    fontWeight: 500,
+    color: color.text,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  /**
+   * The input inside a field box. It is borderless and transparent because the *box* is the field
+   * now: an input drawing its own border inside a bordered shell is two boxes for one control, which
+   * is exactly what the previous version looked like.
+   */
+  fieldInput: {
+    flex: 1,
+    minWidth: 0,
+    height: '24px',
+    paddingInline: space.xs,
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    borderStyle: 'none',
+    color: color.text,
+    fontSize: fontSize.md,
+    textAlign: 'right',
+    fontVariantNumeric: 'tabular-nums',
+    ':hover': {
+      borderWidth: 0,
+      borderColor: 'transparent',
+    },
+    ':focus': {
+      outline: 'none',
+      borderColor: 'transparent',
+    },
   },
   /** `.field.checkbox` — the tighter gap of a checkbox row. */
   fieldCheckbox: {
@@ -683,11 +733,23 @@ function Field({
 
   switch (field.kind) {
     case 'boolean':
+      /**
+       * A switch, not a checkbox.
+       *
+       * The reference marks every on/off property with one, and the difference is not cosmetic: a
+       * checkbox is a box you tick as part of a form, a switch is a setting that is already in one of
+       * two states. These are all the latter.
+       */
       return (
-        <label {...stylex.props(styles.field, styles.fieldCheckbox)}>
-          <input type="checkbox" checked={Boolean(value)} disabled={disabled} onChange={(event) => onChange(event.target.checked)} />
-          <span {...stylex.props(styles.checkboxText)}>{field.label}</span>
-        </label>
+        <div {...withDomClass(styles.fieldToggle, DOM.field)}>
+          <span {...withDomClass(styles.fieldToggleLabel, DOM.fieldLabel)}>{field.label}</span>
+          <Switch
+            label={field.label}
+            checked={Boolean(value)}
+            disabled={disabled}
+            onCheckedChange={(next) => onChange(next)}
+          />
+        </div>
       );
     case 'color':
       return (
@@ -813,12 +875,35 @@ function Field({
         </label>
       );
     case 'number':
+      /**
+       * A scrub handle *and* a real number input.
+       *
+       * The input stays because the browser gates drive these fields through it, and because typing
+       * an exact value is a legitimate thing to want. The gesture is attached to the label, which is
+       * where the reference puts it — see `ScrubField` for why the gesture lives on the label rather
+       * than on the value.
+       */
       return (
-        <label {...withDomClass(styles.field, DOM.field)}>
-          <span {...withDomClass(styles.fieldLabel, DOM.fieldLabel)}>{field.label}</span>
+        <FieldShell
+          hookProps={withDomClass(styles.field, DOM.field)}
+          label={
+            <ScrubLabel
+              label={field.label}
+              config={{
+                value: isFiniteJsonNumber(value) ? value : 0,
+                onChange: (next) => onChange(componentValue(field, clamp(next, field))),
+                step: field.step ?? 0.1,
+                min: field.min,
+                max: field.max,
+                disabled,
+              }}
+            />
+          }
+        >
           <input
-            {...stylex.props(styles.fieldControl)}
+            {...stylex.props(styles.fieldInput)}
             type="number"
+            aria-label={field.label}
             value={isFiniteJsonNumber(value) ? value : ''}
             step={field.step ?? 0.1}
             min={field.min}
@@ -831,21 +916,24 @@ function Field({
               onChange(componentValue(field, clamped));
             }}
           />
-        </label>
+        </FieldShell>
       );
     case 'text':
     default:
       return (
-        <label {...withDomClass(styles.field, DOM.field)}>
-          <span {...withDomClass(styles.fieldLabel, DOM.fieldLabel)}>{field.label}</span>
+        <FieldShell
+          hookProps={withDomClass(styles.field, DOM.field)}
+          label={<span {...withDomClass(styles.fieldLabel, DOM.fieldLabel)}>{field.label}</span>}
+        >
           <input
-            {...stylex.props(styles.fieldControl)}
+            {...stylex.props(styles.fieldInput)}
             type="text"
+            aria-label={field.label}
             value={value === null || value === undefined ? '' : String(value)}
             disabled={disabled}
             onChange={(event) => onChange(event.target.value === '' && field.key === 'clip' ? null : event.target.value)}
           />
-        </label>
+        </FieldShell>
       );
   }
 }

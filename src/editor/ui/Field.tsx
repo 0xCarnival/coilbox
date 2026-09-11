@@ -3,7 +3,9 @@ import * as stylex from '@stylexjs/stylex';
 import * as SwitchPrimitive from '@radix-ui/react-switch';
 import * as SelectPrimitive from '@radix-ui/react-select';
 import { Check, ChevronDown, ChevronUp } from 'lucide-react';
-import { color, control, fontSize, radius, space, surface } from '../styles/tokens.stylex.js';
+import { color, control, controlSize, fontSize, radius, space, surface } from '../styles/tokens.stylex.js';
+import { useScrub, type ScrubOptions } from './useScrub.js';
+import type { DomClassProps } from '../dom-contract.js';
 import { mergedClass } from './merged-class.js';
 
 /**
@@ -328,3 +330,173 @@ export function FieldRow({
 }
 
 export { fieldStyles };
+
+/**
+ * The wrapper every Inspector field row uses: a label, then a control, with the control boxed as one
+ * rounded field.
+ *
+ * The reference draws a field as a single `rounded-lg` box whose label and value sit *inside* it, and
+ * that is what makes its inspector read as a column of instruments rather than a grid of inputs. The
+ * box lives on the shell so every field kind — a number, a select, a colour — shares it.
+ */
+const shellStyles = stylex.create({
+  shell: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: space.sm,
+    minHeight: controlSize.sm,
+    borderRadius: radius.lg,
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: 'rgba(255, 255, 255, 0.075)',
+    backgroundColor: 'rgba(51, 51, 51, 0.3)',
+    transitionProperty: 'border-color, box-shadow',
+    transitionDuration: '100ms',
+    ':hover': {
+      borderColor: color['border-input'],
+    },
+    ':focus-within': {
+      borderColor: color.ring,
+      boxShadow: `0 0 0 1px ${color.ring}`,
+    },
+  },
+  /**
+   * The label is the drag handle for a scrubbable field, so it carries the `ew-resize` cursor that
+   * advertises the gesture. It is a fixed 88px column: a content-sized label starts every value at a
+   * different x, and a column of numbers with no shared edge is unreadable.
+   */
+  label: {
+    flexShrink: 0,
+    flexBasis: '88px',
+    paddingInlineStart: space.lg,
+    fontSize: fontSize.xs,
+    fontWeight: 500,
+    color: color.muted,
+    userSelect: 'none',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  labelScrubbable: {
+    cursor: 'ew-resize',
+    transitionProperty: 'color',
+    transitionDuration: '120ms',
+    ':hover': {
+      color: color.text,
+    },
+  },
+  labelDragging: {
+    color: color.text,
+  },
+  /** The control slot: everything after the label, filling the rest of the box. */
+  control: {
+    display: 'flex',
+    alignItems: 'center',
+    flex: 1,
+    minWidth: 0,
+    paddingInlineEnd: space.sm,
+  },
+  /** A bare box with no label column, for a control that supplies its own context (a vector row). */
+  controlBare: {
+    display: 'flex',
+    alignItems: 'center',
+    flex: 1,
+    minWidth: 0,
+    paddingInline: space.md,
+  },
+});
+
+type ScrubConfig = Omit<ScrubOptions, 'disabled'> & { disabled?: boolean };
+
+/**
+ * `useScrub` in the shape a field needs: a nullable config, and a handler that is inert when null.
+ *
+ * The return type is inferred rather than restated — `anti-slop/no-known-value-widening` is right
+ * that an explicit anonymous object type here would throw away what the hook already knows.
+ */
+function useNumericScrub(config: ScrubConfig | null) {
+  const enabled = config !== null;
+  const noop = React.useCallback(() => undefined, []);
+  const scrub = useScrub({
+    value: config?.value ?? 0,
+    onChange: config?.onChange ?? noop,
+    step: config?.step ?? 0.1,
+    precision: config?.precision,
+    min: config?.min,
+    max: config?.max,
+    disabled: !enabled || (config?.disabled ?? false),
+    onInteractionChange: config?.onInteractionChange,
+  });
+  return { onPointerDown: enabled ? scrub.onPointerDown : undefined, dragging: enabled && scrub.dragging };
+}
+
+export function FieldShell({
+  label,
+  children,
+  bare = false,
+  hookProps,
+}: {
+  /**
+   * The label, as a node rather than a string.
+   *
+   * A scrubbable field passes a `ScrubLabel` here; a plain one passes text. That keeps the box and
+   * the label column in one place while letting the label own its own behaviour, which a string prop
+   * with a bag of extra props would not.
+   */
+  label?: React.ReactNode;
+  children: React.ReactNode;
+  /** Drop the label column and let the control own the whole box — a vector row supplies its own. */
+  bare?: boolean;
+  /**
+   * The DOM-contract props for the box, from `withDomClass(styles.field, DOM.field)`.
+   *
+   * The box is the element the browser gates scope their lookups through — they find `.field` and
+   * then an input inside it — so the hook has to land on this element. It arrives as an already
+   * merged props bag and is spread *first*, so the shell's own atomic classes cannot be replaced by
+   * a later `className`.
+   */
+  hookProps?: DomClassProps;
+}): React.ReactElement {
+  return (
+    <div {...hookProps} {...stylex.props(shellStyles.shell)}>
+      {!bare && label !== undefined ? label : null}
+      <span {...stylex.props(bare ? shellStyles.controlBare : shellStyles.control)}>{children}</span>
+    </div>
+  );
+}
+
+/**
+ * A field label that scrubs.
+ *
+ * The gesture is `useScrub`, which is the same one the toolbar-free `ScrubField` uses; the caller
+ * keeps its own control, so a field whose markup the browser gates drive — a real
+ * `<input type="number">` — can still gain the gesture without changing its DOM.
+ */
+export function ScrubLabel({
+  label,
+  config,
+  className,
+}: {
+  label: string;
+  /** `null` disables scrubbing, for a read-only or derived field. */
+  config: ScrubConfig | null;
+  className?: stylex.StyleXStyles;
+}): React.ReactElement {
+  const scrub = useNumericScrub(config);
+  return (
+    <span
+      {...stylex.props(
+        shellStyles.label,
+        config !== null && shellStyles.labelScrubbable,
+        scrub.dragging && shellStyles.labelDragging,
+        className,
+      )}
+      onPointerDown={scrub.onPointerDown}
+      title={config === null ? undefined : `${label} — drag to change, Shift for coarse, Alt for fine`}
+    >
+      {label}
+    </span>
+  );
+}
+
+export { shellStyles };
