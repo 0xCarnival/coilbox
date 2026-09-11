@@ -29,6 +29,16 @@ import { testGame } from '../server/test-runner.js';
  */
 
 const execFileAsync = promisify(execFile);
+
+/**
+ * Command output is recorded verbatim in the evidence, and a build log is full of absolute paths.
+ * Those paths carry the machine's user name, which has no business being published with the
+ * evidence, so the repository root is replaced with a stable placeholder before anything is
+ * written to disk.
+ */
+function sanitize(text: string): string {
+  return text.split(root).join('<repo>/').split(process.env.HOME ?? '\u0000').join('~');
+}
 const root = fileURLToPath(new URL('..', import.meta.url));
 const args = new Set(process.argv.slice(2));
 const skipBuild = args.has('--skip-build');
@@ -165,7 +175,7 @@ async function main(): Promise<void> {
       title: 'The documented CLI (validate → test → build) works on the agent game unmodified',
       passed: cli.ok && cliReport !== null && cliReport[1] === cliReport[2],
       detail: cli.ok ? `studio test reported ${cliReport?.[0] ?? 'no summary'}` : 'studio test failed',
-      observed: cli.output.split('\n').slice(-12),
+      observed: sanitize(cli.output).split('\n').slice(-12),
     });
 
     const game = JSON.parse(await readFile(join(workspaceRoot, AGENT_GAME, 'game.json'), 'utf8')) as {
