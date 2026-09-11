@@ -2,9 +2,10 @@
   "name": "coilbox",
   "version": "0.1.0",
   "private": true,
-  "type": "module",
   "description": "Local-first Three.js game studio: author, play, and export standalone browser games.",
   "license": "MIT",
+  "author": "0xCarnival",
+  "type": "module",
   "engines": {
     "node": ">=22 <25"
   },
