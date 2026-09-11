@@ -203,14 +203,16 @@ describe('scene reads and writes', () => {
     expect(valid.status).toBe(200);
     expect(valid.body.ok).toBe(true);
 
-    // A later version of the schema must be reported, not silently rewritten.
+    // A newer schema version is reported as an error and the file is never rewritten.
     const gamePath = join(workspaceRoot, 'g', 'game.json');
     const game = JSON.parse(await readFile(gamePath, 'utf8'));
     game.schemaVersion = 99;
     await writeFile(gamePath, JSON.stringify(game, null, 2));
     const invalid = await request('/api/projects/g/validate', { method: 'POST' });
-    expect(invalid.body.ok).toBe(true); // schemaVersion is structurally valid; scene checks still run
-    expect(game.schemaVersion).toBe(99);
+    expect(invalid.body.ok).toBe(false);
+    expect(invalid.body.issues.map((issue: { code: string }) => issue.code)).toContain('unsupported-schema-version');
+    const onDisk = JSON.parse(await readFile(gamePath, 'utf8'));
+    expect(onDisk.schemaVersion).toBe(99);
   });
 });
 

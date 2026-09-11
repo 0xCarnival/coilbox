@@ -11,7 +11,7 @@ gaps that are knowingly left open.
 | 2. Comfortable scene editing | complete | `pnpm verify:stage2` — 13/13 checks |
 | 3. Actual games | complete | `pnpm verify:stage3` — 13/13 checks |
 | 4. Agent and management workflow | complete | `pnpm verify:stage4` — 18/18 checks |
-| 5. Reliability and release | not started | — |
+| 5. Reliability and release | complete | `pnpm verify:stage5` — 22/22 checks |
 
 ## Stage 0 — compatibility probe — **complete**
 
@@ -248,3 +248,184 @@ evidence in `docs/evidence/stage2/evidence.json`.
 - Groups exist and reparenting preserves world transforms, but hierarchy drag-and-drop is still
   a button ("Group") rather than a gesture.
 
+
+## Stage 3 — actual games — **complete**
+
+Two demonstration games run on the shared runtime, and their level layout and tuning values are
+editable in the inspector.
+
+### How to run
+
+```bash
+pnpm games                 # regenerate games/ and the matching templates from code
+pnpm verify:stage3         # the gate, with browser evidence
+pnpm studio test collect-room      # validate + export + play one game, bounded
+```
+
+### Demonstrated result
+
+`tools/verify-stage3.ts` plays both games headlessly through the exported player:
+
+| Requirement | Observed |
+|---|---|
+| Behaviors registered | `collect-room`: 7 instances across `player.mover`, `game.collectible`, `game.exit-zone`, `camera.follow`, `game.rules` |
+| Player input | The player walked 5.38 m from `(0, -6.0)` to `(0, -0.6)` under simulated key input |
+| Triggers and score | Visiting three gems left `score 3`, `collectiblesRemaining 0` |
+| Win condition | `won=true`, the objective text updated, and the win overlay became visible |
+| Restart | After restart the player is back at its spawn and `score=0`, `won=false` |
+| Physics game | `physics-targets`: 5 targets knocked down by 7 launches, `score 5` |
+| Editable tuning | Move speed is exposed in the inspector; raising it to 12 made the player cover 10.47 m in 1.2 s instead of about 5 m |
+| Console | No page errors during either session |
+
+Screenshots: `docs/evidence/stage3/collect-room-win.png`, `physics-targets.png`,
+`studio-play-collect-room.png`; raw evidence in `docs/evidence/stage3/evidence.json`.
+
+### What was built
+
+- **Physics components** (`rigidBody`, `collider`) on the document, with the Box3D adapter as the
+  only file that touches the vendor binding.
+- **Registered behaviors** (`src/runtime/behaviors/library.ts`): `player.mover`, `game.collectible`,
+  `game.exit-zone`, `camera.follow`, `game.rules`, `physics.launcher`, `physics.knockdown`, with
+  declarative metadata that drives the inspector.
+- **Player layer**: action-based input, HUD (counters, labels, overlays), game state with
+  `initialGameState`, scene transitions, and a player entry point that shares the editor's runtime.
+- **Games as documents** (`tools/write-games.ts`): `collect-room` and `physics-targets` are
+  generated from code, so the committed scenes can always be reproduced.
+
+### Bugs this stage found (each fixed and covered by a test)
+
+1. The character sank through the floor until the mover applied its spawn height and ground probe
+   correctly.
+2. Trigger behaviors fired on sensor-*end* events; they now fire on sensor-begin only.
+3. The follow camera did not turn with the character, and an object authored facing `+Z` rendered
+   backwards.
+
+### Known gaps at this stage
+
+- No scripting escape hatch by design: new gameplay needs a registered behavior, not project code.
+- One active scene at a time; there is no additive streaming or open world support.
+
+## Stage 4 — agent and management workflow — **complete**
+
+An agent can create a third game from the documented contract, a person can then edit it, and two
+projects stay independent.
+
+### How to run
+
+```bash
+pnpm studio create my-game --template blank   # templates: blank, collect-room, physics-targets
+pnpm studio validate my-game
+pnpm studio test my-game
+pnpm studio build my-game
+pnpm verify:stage4
+```
+
+### Demonstrated result
+
+`tools/verify-stage4.ts` drives the CLI and the editor against a temporary workspace:
+
+| Requirement | Observed |
+|---|---|
+| Contract documents | `AGENTS.md`, `docs/agent-contract.md`, `docs/project-format.md`, `docs/engine-sdk.md` all present and linked |
+| Templates | `blank`, `collect-room`, `physics-targets` |
+| Agent-built game | `games/gem-rush` validates and `studio test` reports 9/9 checks |
+| Editable gameplay | The agent's game exposes `moveSpeed`; a person changed it to 9 in the inspector and it persisted to disk |
+| External change | An edit made outside the editor raises the "file changed on disk" banner with *Reload from disk* / *Keep my version* |
+| Project independence | Opening `collect-room` afterwards shows its own player, move speed 5, 14 entities, and a fresh history |
+| Management | Duplicate, source export/import round trip (6 files), archive, and restore |
+| Demo games | `collect-room` and `physics-targets` still pass their bounded tests |
+
+Screenshot: `docs/evidence/stage4/editor-agent-game.png`; raw evidence in
+`docs/evidence/stage4/evidence.json`.
+
+### What was built
+
+- **CLI** (`server/cli.ts`): `list`, `create`, `validate`, `test`, `build`, `duplicate`, `archive`,
+  `archives`, `restore`, `export-source`, `import`, and `api`/`dev`.
+- **Management** (`server/management.ts`, `server/archive.ts`): dependency-free `tar.gz` source
+  archives, duplicate with a new id, archive/restore, and reference-safe deletion.
+- **Conflict handling** (`server/watcher.ts`): debounced external-change events over SSE, and saves
+  refused when the revision moved on.
+- **Agent contract** (`docs/agent-contract.md`): the create → validate → test → report loop a game
+  agent follows, including the behavior registry it may use without touching engine code.
+
+### Bugs this stage found (each fixed and covered by a test)
+
+1. `studio validate` did not check behavior ids or property types against the project's registry;
+   it now loads `scripts/registry.json` and reports unknown ids and mistyped properties.
+2. A time-limited round counted wall-clock time, so a backgrounded tab lost the round; the clock now
+   counts fixed simulation steps and waits for the start overlay.
+3. A loss could overwrite an already-won round; a win is now final.
+
+### Known gaps at this stage
+
+- Archives are local directories under `<workspace>/.archive/`; there is no remote storage.
+- `studio test` runs one project at a time.
+
+## Stage 5 — reliability and release — **complete**
+
+Compatibility fixtures, resource ownership, measured performance, and the startup/recovery
+documentation, with every release acceptance test recorded.
+
+### How to run
+
+```bash
+pnpm verify:stage5                 # typecheck, unit tests, clean-checkout build, browser + export checks
+pnpm verify:stage5 --skip-build --skip-clean-clone   # reuse dist/ and the working tree
+pnpm verify                        # every gate in order
+```
+
+### Demonstrated result
+
+`tools/verify-stage5.ts` passes 22/22 checks. The measured and observed results:
+
+| Requirement | Observed |
+|---|---|
+| Compatibility fixtures | `tests/fixtures/projects/{compat-current,compat-future,compat-invalid}`: the current version loads, a newer `schemaVersion` is refused with an explicit message, an invalid document is refused |
+| Clean checkout | A fresh `git clone` of the committed tree installs from the frozen lockfile, typechecks, tests, and builds |
+| Resource ownership | 20 Play/Stop cycles on `collect-room`: geometries 10→10, textures 3→3, listeners 2→2, physics bodies 10→10, HUD elements 4→4 |
+| Reference scene | 203 entities, 26 physics bodies, 401 draw calls, 4812 triangles; median frame 36.2 ms, p95 38.0 ms, physics 0.03 ms under SwiftShader |
+| Frame-rate independence | A 400 ms stall produced 21 steps with 0.183 s dropped and 0.117 s clamped, and a 1.2 s wait produced 73 steps (about 72 expected at 60 Hz) |
+| Narrow viewport | 390×844: 60.7% of pixels rendered, 77 steps — a viewport test, not a phone test |
+| User acceptance session | Open `gem-rush`; move five objects to x=1.25; replace a model (`spinning-crate` → `animated-limb`, both loaded in the viewport); set move speed 7, undo to 6, redo to 7; Play 67 steps with 9 behaviors; Stop; reopen with every edit intact; export from the editor |
+| Export independence | The export runs from `/releases/2026/gem-rush/` on a separate static server with the workspace service shut down: 8 requests, 0 failures, 1 WASM served as `application/wasm`, no dev URLs, 111 steps of gameplay, audio activated by a user gesture, and restart returning the run to its authored initial state (`score 2 → 0`, collectibles `3 → 5`, new world) |
+| Bounded project tests | `collect-room`, `physics-targets`, and `gem-rush` each pass 9/9 checks |
+| Console | No page errors in the studio, the games, or the export |
+
+Screenshots: `docs/evidence/stage5/acceptance-play.png`, `narrow-viewport.png`; raw measurements in
+`docs/evidence/stage5/evidence.json`.
+
+### What was built
+
+- **Compatibility fixtures and tests** (`tests/fixtures/projects/`, `tests/unit/compatibility.test.ts`):
+  older/current, newer, and invalid documents, pinned by version.
+- **Version refusal**: `parseScene`/`parseGame` report `unsupported-schema-version`, and the readers
+  refuse to load instead of silently accepting a document from a newer studio.
+- **Audio activation** (`src/runtime/world.ts`): the world arms a one-shot gesture listener on
+  start, so the editor, the player, and an export get working audio without the host remembering.
+- **Play/Stop ownership**: the player handle exposes live `session`/`game`/`scene` getters rather
+  than a frozen snapshot, which the 20-cycle audit depends on.
+- **Release documentation**: `docs/runbook.md` (start, recovery, exports, limits) plus this status.
+
+### Bugs this stage found (each fixed and covered by a test)
+
+1. The workspace service hung on shutdown while an editor tab held an event stream open; closing now
+   ends the streams and closes lingering connections.
+2. The verification static server buffered proxied responses, so SSE never reached the browser; the
+   proxy now streams.
+3. Concurrent atomic writes could collide on a temporary file name; the name now includes a random
+   suffix.
+4. A corrupt `game.json` was reported as "project not found"; the parse error is now surfaced.
+5. A newer `schemaVersion` was accepted silently; it is now refused with the version it saw.
+6. Audio never activated in the player or an export because nothing armed a gesture listener.
+7. The stage gate itself reused a `.coilbox` export copied from the working tree, so it verified a
+   stale bundle; it now strips build output from the workspace copy and always builds the export it
+   tests.
+
+### Known gaps at this stage
+
+- Performance is measured under a software rasteriser in headless Chromium, not on the M1 Pro
+  reference machine; the numbers are recorded as conditions, not as a promise for arbitrary content.
+- Mobile support is **not** claimed. A narrow viewport is tested; a real device is not.
+- The reference scene is the only performance contract: a declared 200 objects, 25 dynamic bodies,
+  and one shadow light. Other content is not characterised.

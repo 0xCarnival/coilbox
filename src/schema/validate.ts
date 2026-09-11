@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { componentSchema, type Component } from './components.js';
-import { assetManifestSchema, gameSchema, type AssetManifest, type GameDocument } from './project.js';
-import { sceneSchema, type Entity, type SceneDocument } from './scene.js';
+import { PROJECT_SCHEMA_VERSION, ENGINE_VERSION, assetManifestSchema, gameSchema, type AssetManifest, type GameDocument } from './project.js';
+import { SCENE_SCHEMA_VERSION, sceneSchema, type Entity, type SceneDocument } from './scene.js';
 
 /**
  * Structural validation (Zod) plus relationship validation (application logic),
@@ -61,6 +61,25 @@ export function parseScene(input: unknown, context: SceneValidationContext = {})
   }
   const scene = parsed.data;
   const issues = validateSceneRelationships(scene, context);
+  // A document from a newer build must be refused, not half-read: its fields may mean something
+  // else. The file is never rewritten, so the author can open it with the build that wrote it.
+  if (scene.schemaVersion > SCENE_SCHEMA_VERSION) {
+    issues.unshift(
+      error(
+        'unsupported-schema-version',
+        'schemaVersion',
+        `this scene was written with schema version ${scene.schemaVersion}; this build supports up to ${SCENE_SCHEMA_VERSION}. Open it with a newer studio, or export the source and migrate it deliberately.`,
+      ),
+    );
+  } else if (scene.schemaVersion < SCENE_SCHEMA_VERSION) {
+    issues.push(
+      warning(
+        'older-schema-version',
+        'schemaVersion',
+        `this scene uses schema version ${scene.schemaVersion}; it is loaded as-is and written back at version ${SCENE_SCHEMA_VERSION}`,
+      ),
+    );
+  }
   return { ok: issues.every((i) => i.severity !== 'error'), value: scene, issues };
 }
 
@@ -207,6 +226,24 @@ export function parseGame(input: unknown): ValidationResult<GameDocument> {
   }
   const game = parsed.data;
   const issues: ValidationIssue[] = [];
+  if (game.schemaVersion > PROJECT_SCHEMA_VERSION) {
+    issues.push(
+      error(
+        'unsupported-schema-version',
+        'schemaVersion',
+        `this project was written with schema version ${game.schemaVersion}; this build supports up to ${PROJECT_SCHEMA_VERSION}. Open it with a newer studio instead of editing it with this one.`,
+      ),
+    );
+  }
+  if (game.engineCompat !== ENGINE_VERSION) {
+    issues.push(
+      warning(
+        'engine-version-mismatch',
+        'engineCompat',
+        `this project was authored against engine ${game.engineCompat}; this build is ${ENGINE_VERSION}. It will open as-is and is not rewritten.`,
+      ),
+    );
+  }
   const sceneIds = new Set<string>();
   game.scenes.forEach((entry, index) => {
     if (sceneIds.has(entry.id)) {
@@ -217,7 +254,7 @@ export function parseGame(input: unknown): ValidationResult<GameDocument> {
   if (!sceneIds.has(game.startScene)) {
     issues.push(error('missing-start-scene', 'startScene', `start scene "${game.startScene}" is not in the scene list`));
   }
-  return { ok: issues.length === 0, value: game, issues };
+  return { ok: issues.every((issue) => issue.severity !== 'error'), value: game, issues };
 }
 
 export function parseAssetManifest(input: unknown): ValidationResult<AssetManifest> {

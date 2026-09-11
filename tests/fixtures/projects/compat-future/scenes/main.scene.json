@@ -1,0 +1,104 @@
+{
+  "schemaVersion": 1,
+  "revision": 3,
+  "id": "main",
+  "name": "Main",
+  "activeCameraId": "camera",
+  "environment": {
+    "background": {
+      "type": "color",
+      "color": "#101319"
+    },
+    "gravity": [
+      0,
+      -9.81,
+      0
+    ],
+    "fog": {
+      "type": "none"
+    }
+  },
+  "entities": [
+    {
+      "id": "floor",
+      "name": "Floor",
+      "order": 0,
+      "transform": {
+        "position": [
+          0,
+          -0.25,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            10,
+            0.5,
+            10
+          ]
+        },
+        {
+          "type": "material",
+          "color": "#4b5563"
+        },
+        {
+          "type": "rigidBody",
+          "bodyType": "static"
+        },
+        {
+          "type": "collider",
+          "shape": "box",
+          "size": [
+            10,
+            0.5,
+            10
+          ]
+        }
+      ]
+    },
+    {
+      "id": "camera",
+      "name": "Camera",
+      "order": 1,
+      "transform": {
+        "position": [
+          6,
+          4,
+          6
+        ],
+        "rotation": [
+          -0.3535534,
+          0.3535534,
+          0.1464466,
+          0.8535534
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "camera",
+          "mode": "free",
+          "fov": 55
+        }
+      ]
+    }
+  ]
+}

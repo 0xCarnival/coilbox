@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { cp, mkdir, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
@@ -131,13 +132,20 @@ export class Workspace {
   async findProjectDirectory(projectId: string): Promise<string> {
     assertSafeSegment(projectId, 'project id');
     const entries = await readdir(this.root, { withFileTypes: true }).catch(() => []);
+    let parseFailure: WorkspaceError | null = null;
     for (const entry of entries) {
       if (!isDirectoryLike(entry) || entry.name.startsWith('.')) continue;
       const gamePath = join(this.root, entry.name, PROJECT_FILES.game);
       if (!existsSync(gamePath)) continue;
-      const raw = await readJson(gamePath).catch(() => null);
+      const raw = await readJson(gamePath).catch((error: unknown) => {
+        // Remember it: "game.json is not valid JSON" is a far more useful answer than
+        // "project not found" when the folder is sitting right there.
+        if (error instanceof WorkspaceError && !parseFailure) parseFailure = error;
+        return null;
+      });
       if (raw && typeof raw === 'object' && (raw as { id?: unknown }).id === projectId) return entry.name;
     }
+    if (parseFailure) throw parseFailure;
     throw new WorkspaceError('project-not-found', `no project with id "${projectId}" in the workspace`, 404);
   }
 
@@ -153,6 +161,12 @@ export class Workspace {
     const parsed = parseGame(raw);
     if (!parsed.value) {
       throw new WorkspaceError('invalid-project', 'game.json is not valid', 422, parsed.issues);
+    }
+    // A project from a newer build is refused here rather than opened and misread; the file is
+    // left exactly as it was.
+    if (!parsed.ok) {
+      const first = parsed.issues.find((issue) => issue.severity === 'error');
+      throw new WorkspaceError(first?.code ?? 'invalid-project', first?.message ?? 'the project cannot be opened', 422, parsed.issues);
     }
     const summary = await this.readSummary(directory);
     if (!summary) throw new WorkspaceError('project-not-found', `project "${projectId}" disappeared`, 404);
@@ -179,6 +193,12 @@ export class Workspace {
     });
     if (!parsed.value) {
       throw new WorkspaceError('invalid-scene', `scene "${sceneId}" is not valid`, 422, parsed.issues);
+    }
+    if (!parsed.ok) {
+      // Refusing to load is the safe answer: the editor keeps whatever it already had, and the
+      // file on disk is untouched.
+      const first = parsed.issues.find((issue) => issue.severity === 'error');
+      throw new WorkspaceError(first?.code ?? 'invalid-scene', first?.message ?? `scene "${sceneId}" cannot be loaded`, 422, parsed.issues);
     }
     return parsed.value;
   }
@@ -469,7 +489,9 @@ async function readJson(path: string): Promise<unknown> {
 /** Write via a temporary file and rename, so an interrupted save cannot truncate a document. */
 export async function writeFileAtomic(path: string, contents: string): Promise<void> {
   await mkdir(dirname(path), { recursive: true });
-  const temporary = `${path}.tmp-${process.pid}-${Date.now().toString(36)}`;
+  // A unique suffix per write: two writers (the editor and an agent, say) landing in the same
+  // millisecond would otherwise share a temp path and clobber each other's rename.
+  const temporary = `${path}.tmp-${process.pid}-${Date.now().toString(36)}-${randomBytes(4).toString('hex')}`;
   await writeFile(temporary, contents, 'utf8');
   await rename(temporary, path);
 }

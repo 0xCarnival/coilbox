@@ -144,6 +144,8 @@ export class RuntimeWorld {
 
   private state: WorldState = 'ready';
   private disposed = false;
+  private audioArmed = false;
+  private audioListeners: Array<{ target: EventTarget; type: string; handler: EventListener }> = [];
   private physicsTimeMs = 0;
   private frameTimeMs = 0;
   private lastCanvasWidth = 0;
@@ -296,7 +298,30 @@ export class RuntimeWorld {
     this.assertLive();
     if (this.state === 'running') return;
     this.state = 'running';
+    this.armAudioActivation();
     this.loop.start();
+  }
+
+  /**
+   * Browsers refuse to start an AudioContext before a user gesture, so the world arms one-shot
+   * listeners for the first interaction. Doing it here means the editor, the player, and an
+   * export all get working audio without their host remembering to ask.
+   */
+  private armAudioActivation(): void {
+    if (this.audioArmed || typeof globalThis.window === 'undefined') return;
+    this.audioArmed = true;
+    const activate = () => {
+      void this.activateAudio();
+      globalThis.window.removeEventListener('pointerdown', activate);
+      globalThis.window.removeEventListener('keydown', activate);
+      this.audioListeners = [];
+    };
+    globalThis.window.addEventListener('pointerdown', activate);
+    globalThis.window.addEventListener('keydown', activate);
+    this.audioListeners = [
+      { target: globalThis.window, type: 'pointerdown', handler: activate },
+      { target: globalThis.window, type: 'keydown', handler: activate },
+    ];
   }
 
   pause(): void {
@@ -627,6 +652,8 @@ export class RuntimeWorld {
     this.state = 'stopped';
     this.loop.stop();
     this.removeAllListeners();
+    for (const { target, type, handler } of this.audioListeners) target.removeEventListener(type, handler);
+    this.audioListeners = [];
     this.behaviors?.dispose();
     this.input.dispose();
     this.hud?.dispose();

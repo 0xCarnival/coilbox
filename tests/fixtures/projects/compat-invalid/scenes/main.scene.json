@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "main",
+  "name": "Main",
+  "entities": [
+    {
+      "id": "a",
+      "name": "A",
+      "parentId": "b"
+    },
+    {
+      "id": "b",
+      "name": "B",
+      "parentId": "a"
+    },
+    {
+      "id": "a",
+      "name": "duplicate"
+    }
+  ]
+}

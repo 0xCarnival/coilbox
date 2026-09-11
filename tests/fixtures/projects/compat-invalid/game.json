@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "engineVersion": "0.1.0",
+  "engineCompat": "0.1.0",
+  "id": "compat-invalid",
+  "name": "Compatibility (invalid)",
+  "description": "Fixture at the schema version this build writes.",
+  "scenes": [
+    {
+      "id": "main",
+      "name": "Main",
+      "path": "scenes/main.scene.json"
+    }
+  ],
+  "startScene": "main",
+  "assetManifest": "assets/manifest.json",
+  "behaviorRegistry": "scripts/registry.json"
+}

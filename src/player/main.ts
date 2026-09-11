@@ -151,8 +151,14 @@ if (canvas) {
     statusLine.textContent =
       state.errors.length > 0 ? `load errors: ${state.errors.join(' | ')}` : `${state.projectName} — ${state.sceneName}`;
   }
-  window.__PLAYER__ = {
-    ...handle,
+  // Spread would freeze `session`, `game`, and `scene` at their start-up values (null, because the
+  // project is still loading), so the live ones are defined as getters.
+  const exposed = {
+    ready: handle.ready,
+    start: () => handle.start(),
+    stop: () => handle.stop(),
+    restart: () => handle.restart(),
+    state: () => handle.state(),
     projectBaseUrl,
     gameState: () => handle.session?.current?.getGameState().snapshot() ?? null,
     behaviorList: () => handle.session?.current?.getBehaviorRuntime()?.list() ?? [],
@@ -178,4 +184,10 @@ if (canvas) {
       return { width, height, nonBackgroundPixels: width * height - backgroundCount, distinctColors: counts.size };
     },
   };
+  Object.defineProperties(exposed, {
+    session: { get: () => handle.session, enumerable: true },
+    game: { get: () => handle.game, enumerable: true },
+    scene: { get: () => handle.scene, enumerable: true },
+  });
+  window.__PLAYER__ = exposed as unknown as Window['__PLAYER__'];
 }

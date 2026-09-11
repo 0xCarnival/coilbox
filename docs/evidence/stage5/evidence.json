@@ -1,0 +1,580 @@
+{
+  "stage": 5,
+  "generatedAt": "2026-09-11T14:11:00.993Z",
+  "node": "v24.18.0",
+  "host": "darwin",
+  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage5-0sxdqr",
+  "measurements": {
+    "playStopCycles": {
+      "first": {
+        "geometries": 10,
+        "textures": 3,
+        "programs": 2,
+        "listeners": 2,
+        "bodies": 10,
+        "physicsByteCount": 170424,
+        "hudElements": 4
+      },
+      "last": {
+        "geometries": 10,
+        "textures": 3,
+        "programs": 2,
+        "listeners": 2,
+        "bodies": 10,
+        "physicsByteCount": 170424,
+        "hudElements": 4
+      },
+      "growth": {
+        "geometries": 0,
+        "textures": 0,
+        "listeners": 0,
+        "bodies": 0,
+        "hudElements": 0
+      },
+      "samples": [
+        {
+          "geometries": 10,
+          "textures": 3,
+          "programs": 2,
+          "listeners": 2,
+          "bodies": 10,
+          "physicsByteCount": 170424,
+          "hudElements": 4
+        },
+        {
+          "geometries": 10,
+          "textures": 3,
+          "programs": 2,
+          "listeners": 2,
+          "bodies": 10,
+          "physicsByteCount": 170424,
+          "hudElements": 4
+        },
+        {
+          "geometries": 10,
+          "textures": 3,
+          "programs": 2,
+          "listeners": 2,
+          "bodies": 10,
+          "physicsByteCount": 170424,
+          "hudElements": 4
+        },
+        {
+          "geometries": 10,
+          "textures": 3,
+          "programs": 2,
+          "listeners": 2,
+          "bodies": 10,
+          "physicsByteCount": 170424,
+          "hudElements": 4
+        },
+        {
+          "geometries": 10,
+          "textures": 3,
+          "programs": 2,
+          "listeners": 2,
+          "bodies": 10,
+          "physicsByteCount": 170424,
+          "hudElements": 4
+        },
+        {
+          "geometries": 10,
+          "textures": 3,
+          "programs": 2,
+          "listeners": 2,
+          "bodies": 10,
+          "physicsByteCount": 170424,
+          "hudElements": 4
+        },
+        {
+          "geometries": 10,
+          "textures": 3,
+          "programs": 2,
+          "listeners": 2,
+          "bodies": 10,
+          "physicsByteCount": 170424,
+          "hudElements": 4
+        },
+        {
+          "geometries": 10,
+          "textures": 3,
+          "programs": 2,
+          "listeners": 2,
+          "bodies": 10,
+          "physicsByteCount": 170424,
+          "hudElements": 4
+        },
+        {
+          "geometries": 10,
+          "textures": 3,
+          "programs": 2,
+          "listeners": 2,
+          "bodies": 10,
+          "physicsByteCount": 170424,
+          "hudElements": 4
+        },
+        {
+          "geometries": 10,
+          "textures": 3,
+          "programs": 2,
+          "listeners": 2,
+          "bodies": 10,
+          "physicsByteCount": 170424,
+          "hudElements": 4
+        },
+        {
+          "geometries": 10,
+          "textures": 3,
+          "programs": 2,
+          "listeners": 2,
+          "bodies": 10,
+          "physicsByteCount": 170424,
+          "hudElements": 4
+        },
+        {
+          "geometries": 10,
+          "textures": 3,
+          "programs": 2,
+          "listeners": 2,
+          "bodies": 10,
+          "physicsByteCount": 170424,
+          "hudElements": 4
+        },
+        {
+          "geometries": 10,
+          "textures": 3,
+          "programs": 2,
+          "listeners": 2,
+          "bodies": 10,
+          "physicsByteCount": 170424,
+          "hudElements": 4
+        },
+        {
+          "geometries": 10,
+          "textures": 3,
+          "programs": 2,
+          "listeners": 2,
+          "bodies": 10,
+          "physicsByteCount": 170424,
+          "hudElements": 4
+        },
+        {
+          "geometries": 10,
+          "textures": 3,
+          "programs": 2,
+          "listeners": 2,
+          "bodies": 10,
+          "physicsByteCount": 170424,
+          "hudElements": 4
+        },
+        {
+          "geometries": 10,
+          "textures": 3,
+          "programs": 2,
+          "listeners": 2,
+          "bodies": 10,
+          "physicsByteCount": 170424,
+          "hudElements": 4
+        },
+        {
+          "geometries": 10,
+          "textures": 3,
+          "programs": 2,
+          "listeners": 2,
+          "bodies": 10,
+          "physicsByteCount": 170424,
+          "hudElements": 4
+        },
+        {
+          "geometries": 10,
+          "textures": 3,
+          "programs": 2,
+          "listeners": 2,
+          "bodies": 10,
+          "physicsByteCount": 170424,
+          "hudElements": 4
+        },
+        {
+          "geometries": 10,
+          "textures": 3,
+          "programs": 2,
+          "listeners": 2,
+          "bodies": 10,
+          "physicsByteCount": 170424,
+          "hudElements": 4
+        },
+        {
+          "geometries": 10,
+          "textures": 3,
+          "programs": 2,
+          "listeners": 2,
+          "bodies": 10,
+          "physicsByteCount": 170424,
+          "hudElements": 4
+        }
+      ]
+    },
+    "referenceScene": {
+      "frames": 111,
+      "medianFrameMs": 36.24303533652291,
+      "p95FrameMs": 37.97924650099298,
+      "medianPhysicsMs": 0.03356149262375401,
+      "drawCalls": 401,
+      "triangles": 4812,
+      "entities": 203,
+      "physicsBodies": 26,
+      "fps": 27.52425685346626
+    },
+    "frameRateIndependence": {
+      "stepsTaken": 21,
+      "droppedTime": 0.1831333333333345,
+      "clampedTime": 0.11659999999999948
+    },
+    "narrowViewport": {
+      "width": 390,
+      "height": 844,
+      "rendered": 0.6066168428727671,
+      "distinctColors": 2308,
+      "steps": 77
+    }
+  },
+  "steps": [
+    {
+      "name": "typecheck",
+      "ok": true,
+      "detail": "exit 0"
+    },
+    {
+      "name": "unit tests",
+      "ok": true,
+      "detail": "exit 0"
+    },
+    {
+      "name": "clean checkout install + build",
+      "ok": true,
+      "detail": "skipped (--skip-clean-clone)"
+    }
+  ],
+  "checks": [
+    {
+      "id": "release-docs",
+      "title": "Startup, recovery, and release documentation exists",
+      "passed": true,
+      "detail": "README.md, AGENTS.md, docs/runbook.md, docs/status.md, docs/pinned-versions.md"
+    },
+    {
+      "id": "reference-scene",
+      "title": "The declared reference scene (200 objects, 25 bodies, one shadow light) is a valid project",
+      "passed": true,
+      "detail": "validates"
+    },
+    {
+      "id": "resource-ownership",
+      "title": "Twenty Play/Stop cycles leave no continuing growth in owned resources",
+      "passed": true,
+      "detail": "geometries 10→10, textures 3→3, listeners 2→2, bodies 10→10, HUD elements 4→4",
+      "observed": {
+        "geometries": 0,
+        "textures": 0,
+        "listeners": 0,
+        "bodies": 0,
+        "hudElements": 0
+      }
+    },
+    {
+      "id": "reference-performance",
+      "title": "The reference scene renders on the declared conditions and the numbers are recorded",
+      "passed": true,
+      "detail": "203 entities, 26 bodies, 401 draw calls, 4812 triangles; median frame 36.24 ms, p95 37.98 ms, physics 0.03 ms (software rasteriser, not the M1 Pro target)",
+      "observed": {
+        "frames": 111,
+        "medianFrameMs": 36.24303533652291,
+        "p95FrameMs": 37.97924650099298,
+        "medianPhysicsMs": 0.03356149262375401,
+        "drawCalls": 401,
+        "triangles": 4812,
+        "entities": 203,
+        "physicsBodies": 26,
+        "fps": 27.52425685346626
+      }
+    },
+    {
+      "id": "frame-rate-independence",
+      "title": "A stalled frame is clamped and its backlog dropped, not replayed as extra steps",
+      "passed": true,
+      "detail": "a 400 ms stall produced 21 steps, 0.183 s dropped, 0.117 s clamped",
+      "observed": {
+        "stepsTaken": 21,
+        "droppedTime": 0.1831333333333345,
+        "clampedTime": 0.11659999999999948
+      }
+    },
+    {
+      "id": "no-catch-up-spiral",
+      "title": "Time spent waiting is not replayed as a burst of simulation steps",
+      "passed": true,
+      "detail": "73 steps during a 1.2 s wait (about 72 expected at 60 Hz)",
+      "observed": {
+        "stepsDuringWait": 73
+      }
+    },
+    {
+      "id": "narrow-viewport",
+      "title": "The game runs at a narrow viewport (a viewport test, not a phone test)",
+      "passed": true,
+      "detail": "390x844, 60.7% rendered, 77 steps",
+      "observed": {
+        "width": 390,
+        "height": 844,
+        "rendered": 0.6066168428727671,
+        "distinctColors": 2308,
+        "steps": 77
+      }
+    },
+    {
+      "id": "acceptance-move-five",
+      "title": "Acceptance: move five objects",
+      "passed": true,
+      "detail": "moved 5 objects; positions now 1.25, 1.25, 1.25, 1.25, 1.25",
+      "observed": [
+        {
+          "name": "Gem 1",
+          "x": 1.25
+        },
+        {
+          "name": "Gem 2",
+          "x": 1.25
+        },
+        {
+          "name": "Gem 3",
+          "x": 1.25
+        },
+        {
+          "name": "Gem 4",
+          "x": 1.25
+        },
+        {
+          "name": "Gem 5",
+          "x": 1.25
+        }
+      ]
+    },
+    {
+      "id": "acceptance-replace-model",
+      "title": "Acceptance: replace a model on an object",
+      "passed": true,
+      "detail": "model spinning-crate (loaded=true) → animated-limb (loaded=true), imported through the editor",
+      "observed": {
+        "crateAsset": "spinning-crate",
+        "limbAsset": "animated-limb",
+        "crateLoaded": true,
+        "limbLoaded": true
+      }
+    },
+    {
+      "id": "acceptance-undo",
+      "title": "Acceptance: change a gameplay value, undo the mistake, keep the change",
+      "passed": true,
+      "detail": "move speed 7 → undo 6 → redo 7",
+      "observed": {
+        "afterUndo": 6,
+        "afterRedo": 7
+      }
+    },
+    {
+      "id": "acceptance-play-stop",
+      "title": "Acceptance: play and stop without touching code",
+      "passed": true,
+      "detail": "play world ran 67 steps with 9 behaviors, then stopped",
+      "observed": {
+        "state": "running",
+        "frames": 23,
+        "steps": 67,
+        "fps": 12.006497375533804,
+        "frameTimeMs": 83.28823708717468,
+        "physicsTimeMs": 0.10486606935938499,
+        "droppedTime": 0.6665999999999969,
+        "clampedTime": 1.2166460000000026,
+        "drawCalls": 17,
+        "triangles": 5192,
+        "geometries": 13,
+        "textures": 4,
+        "programs": 3,
+        "entities": 17,
+        "physicsBodies": 12,
+        "physics": {
+          "bodyCount": 12,
+          "shapeCount": 12,
+          "contactCount": 0,
+          "jointCount": 0,
+          "islandCount": 1,
+          "awakeBodyCount": 1,
+          "byteCount": 175704
+        },
+        "contactEvents": 0,
+        "sensorEvents": 8,
+        "hitEvents": 0,
+        "listeners": 2,
+        "animatedEntities": 0,
+        "loadedModels": 1,
+        "behaviors": 9,
+        "hudElements": 7,
+        "inputListeners": 8,
+        "audioActivated": true
+      }
+    },
+    {
+      "id": "acceptance-reopen",
+      "title": "Acceptance: reopen shows every edit still in place",
+      "passed": true,
+      "detail": "move speed 7, 5 gems, replaced model animated-limb after reopening",
+      "observed": {
+        "moveSpeed": 7,
+        "gemPositions": [
+          5,
+          5,
+          5,
+          5,
+          5
+        ],
+        "gemCount": 5,
+        "modelAsset": "animated-limb"
+      }
+    },
+    {
+      "id": "acceptance-export",
+      "title": "Acceptance: export from the editor without touching code",
+      "passed": true,
+      "detail": "Exported to .coilbox/export — serve it with any static serverscene mainsaved (1 model entity in the exported documents)",
+      "observed": {
+        "status": "Exported to .coilbox/export — serve it with any static serverscene mainsaved",
+        "exportedModelEntities": [
+          "Model Swap"
+        ]
+      }
+    },
+    {
+      "id": "export-nested-path",
+      "title": "The export runs from a nested path on a separate static server with no workspace service",
+      "passed": true,
+      "detail": "8 requests from http://127.0.0.1:55668/releases/2026/gem-rush/, 0 failed, 111 steps",
+      "observed": {
+        "failures": [],
+        "requests": 8
+      }
+    },
+    {
+      "id": "export-no-dev-artifacts",
+      "title": "The export references no development server, source folder, or wrong MIME type",
+      "passed": true,
+      "detail": "1 WASM request(s) served as application/wasm, 0 dev URLs",
+      "observed": {
+        "devUrls": [],
+        "wasm": [
+          {
+            "method": "GET",
+            "url": "/releases/2026/gem-rush/assets/box3d-BRo-Inah.wasm",
+            "status": 200,
+            "bytes": 837687,
+            "contentType": "application/wasm"
+          }
+        ]
+      }
+    },
+    {
+      "id": "export-audio-activation",
+      "title": "Audio activates after a user interaction in the export",
+      "passed": true,
+      "detail": "audioActivated=true (clicked the start overlay button)",
+      "observed": {
+        "audioActivated": true,
+        "gesture": "clicked the start overlay button",
+        "gameState": {
+          "score": 2,
+          "collectiblesRemaining": 3,
+          "timeRemaining": 43.4,
+          "objective": "",
+          "won": false,
+          "lost": false,
+          "scoreTarget": 0,
+          "started": true,
+          "playerGrounded": true,
+          "paused": false
+        }
+      }
+    },
+    {
+      "id": "export-restart",
+      "title": "Restart builds a fresh world and returns the run to its authored initial state",
+      "passed": true,
+      "detail": "score 2 → 0 (authored 0), collectibles 3 → 5, new world=true",
+      "observed": {
+        "before": {
+          "score": 2,
+          "collectiblesRemaining": 3,
+          "timeRemaining": 43.4,
+          "objective": "",
+          "won": false,
+          "lost": false,
+          "scoreTarget": 0,
+          "started": true,
+          "playerGrounded": true,
+          "paused": false
+        },
+        "after": {
+          "score": 0,
+          "collectiblesRemaining": 5,
+          "timeRemaining": 45,
+          "objective": "",
+          "won": false,
+          "lost": false,
+          "scoreTarget": 0,
+          "started": false
+        },
+        "authored": {
+          "score": 0,
+          "collectiblesRemaining": 5,
+          "timeRemaining": 45,
+          "objective": "Collect all 5 gems, then reach the exit gate",
+          "won": false,
+          "lost": false
+        },
+        "rebuilt": true,
+        "pausedState": "paused"
+      }
+    },
+    {
+      "id": "export-no-errors",
+      "title": "No page errors in the exported game",
+      "passed": true,
+      "detail": "clean console",
+      "observed": []
+    },
+    {
+      "id": "bounded-test-collect-room",
+      "title": "The bounded test passes for collect-room",
+      "passed": true,
+      "detail": "9/9 checks in 3.2s"
+    },
+    {
+      "id": "bounded-test-physics-targets",
+      "title": "The bounded test passes for physics-targets",
+      "passed": true,
+      "detail": "9/9 checks in 3.2s"
+    },
+    {
+      "id": "bounded-test-gem-rush",
+      "title": "The bounded test passes for gem-rush",
+      "passed": true,
+      "detail": "9/9 checks in 3.6s"
+    },
+    {
+      "id": "no-console-errors",
+      "title": "No page errors across the studio, the games, and the export",
+      "passed": true,
+      "detail": "clean console",
+      "observed": []
+    }
+  ],
+  "note": "Frame times were measured under a software rasteriser (SwiftShader) in a headless browser, not on the M1 Pro reference machine; they are recorded as measurements, not as a promise."
+}
