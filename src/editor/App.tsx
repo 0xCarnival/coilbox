@@ -16,6 +16,7 @@ import type { SnapSettings, TransformTool } from './viewport/viewport-controller
 import { isFiniteJsonNumber, isJsonString, jsonField } from './json-values.js';
 import { IconRail } from './ui/IconRail.js';
 import { ResizeHandle } from './ui/ResizeHandle.js';
+import { SelectionToolbar } from './ui/SelectionToolbar.js';
 
 /**
  * Editor shell: one fixed, resizable layout instead of a window manager (plan §3).
@@ -375,6 +376,17 @@ function StudioShell(): JSX.Element {
                   setStatus(message);
                   session.log('warning', message);
                 }}
+              />
+              {/**
+               * The selection's own verbs, floating over the stage rather than living in the
+               * inspector footer. The viewport owns the focus action, so the bar is mounted beside
+               * it rather than inside the inspector.
+               */}
+              <SelectionToolbar
+                tool={tool}
+                onToolChange={setTool}
+                onFocus={() => viewportRef.current?.focusSelection()}
+                visible={!editorLocked}
               />
             </div>
             <div {...stylex.props(surface.panel, surface.edgeStart, surface.edgeBottom)}>
