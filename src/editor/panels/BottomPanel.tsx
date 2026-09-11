@@ -162,10 +162,30 @@ const styles = stylex.create({
   },
 });
 
-export function BottomPanel({ onReloadScene }: { onReloadScene(): void }): JSX.Element {
+export function BottomPanel({
+  onReloadScene,
+  tab: controlledTab,
+  onTabChange,
+}: {
+  onReloadScene(): void;
+  /**
+   * The visible tab, owned by the shell.
+   *
+   * It is hoisted because the icon rail can select a tab from outside this panel — clicking the
+   * Assets icon in the rail has to open the assets tab, and a tab that owned its own state could
+   * not be told to.
+   */
+  tab?: BottomTab;
+  onTabChange?(tab: BottomTab): void;
+}): JSX.Element {
   const session = useSession();
   const snapshot = useSessionSnapshot();
-  const [tab, setTab] = useState<BottomTab>('console');
+  const [ownTab, setOwnTab] = useState<BottomTab>('console');
+  const tab = controlledTab ?? ownTab;
+  const setTab = (next: BottomTab) => {
+    setOwnTab(next);
+    onTabChange?.(next);
+  };
 
   const errors = snapshot.logs.filter((entry) => entry.level === 'error').length;
 

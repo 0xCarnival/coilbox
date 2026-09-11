@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { JSX } from 'react';
 import * as stylex from '@stylexjs/stylex';
 import type { JsonValue } from '@schema/index.js';
-import { color, fontSize, radius, space, surface } from './styles/tokens.stylex.js';
+import { color, controlSize, fontSize, radius, space, surface } from './styles/tokens.stylex.js';
 import { DOM, withDomClass } from './dom-contract.js';
 import { SessionProvider, isTextEntryTarget, useSession, useSessionSnapshot } from './hooks.js';
 import { EditorSession } from './state/editor-session.js';
@@ -10,10 +10,12 @@ import { ProjectHome } from './panels/ProjectHome.js';
 import { Hierarchy } from './panels/Hierarchy.js';
 import { Inspector } from './panels/Inspector.js';
 import { Toolbar, SaveIndicator } from './panels/Toolbar.js';
-import { BottomPanel } from './panels/BottomPanel.js';
+import { BottomPanel, type BottomTab } from './panels/BottomPanel.js';
 import { Viewport, type PlayState, type ViewportHandle } from './panels/Viewport.js';
 import type { SnapSettings, TransformTool } from './viewport/viewport-controller.js';
 import { isFiniteJsonNumber, isJsonString, jsonField } from './json-values.js';
+import { IconRail } from './ui/IconRail.js';
+import { ResizeHandle } from './ui/ResizeHandle.js';
 
 /**
  * Editor shell: one fixed, resizable layout instead of a window manager (plan §3).
@@ -72,9 +74,20 @@ const styles = stylex.create({
     overflow: 'hidden',
   },
   bottomHost: {
-    gridColumn: '1 / -1',
+    gridColumn: '2 / -1',
     minHeight: 0,
     minWidth: 0,
+  },
+  /** The left column anchors the resize handle to its leading edge. */
+  leftColumn: {
+    position: 'relative',
+    minHeight: 0,
+  },
+  /** The rail spans both rows, so it is a full-height spine down the left edge. */
+  railHost: {
+    gridRow: '1 / -1',
+    display: 'flex',
+    minHeight: 0,
   },
   /**
    * The status bar: 28px of quiet text at the bottom of the window, separated by a hairline. Their
@@ -117,6 +130,17 @@ const styles = stylex.create({
     backgroundColor: color.ok,
   },
 });
+
+/**
+ * Whether a rail panel id names a bottom tab.
+ *
+ * A type predicate rather than a cast: the rail's ids are strings, the bottom panel's tabs are a
+ * union, and the narrowing has to be a runtime check rather than an assertion about a value that
+ * arrived from a click handler.
+ */
+function isBottomTab(id: string): id is BottomTab {
+  return id === 'assets' || id === 'scenes' || id === 'console';
+}
 
 /** Panel sizes from browser storage: this module wrote them, and every field is range-checked. */
 function loadLayout(): Layout {
@@ -170,7 +194,17 @@ function StudioShell(): JSX.Element {
   const [tool, setTool] = useState<TransformTool>('translate');
   const [snap, setSnap] = useState<SnapSettings>({ enabled: false, translate: 0.5, rotateDegrees: 15, scale: 0.25 });
   const [status, setStatus] = useState<string>('');
-  const [layout] = useState<Layout>(() => loadLayout());
+  const [layout, setLayout] = useState<Layout>(() => loadLayout());
+  /**
+   * The rail drives two things at once: which panel column is showing, and which bottom tab.
+   *
+   * `objects` is the hierarchy column; the other three are tabs in the bottom panel. Collapsing is
+   * tracked separately from the width so that reopening restores the width the user had, rather
+   * than snapping back to the default.
+   */
+  const [railPanel, setRailPanel] = useState('objects');
+  const [leftCollapsed, setLeftCollapsed] = useState(false);
+  const [bottomTab, setBottomTab] = useState<BottomTab>('console');
   const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
@@ -232,6 +266,21 @@ function StudioShell(): JSX.Element {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [editorLocked, session]);
 
+  /**
+   * A rail click selects a panel. Selecting the hierarchy toggles its column; selecting one of the
+   * project panels also brings the bottom panel to the matching tab, so the icon and the visible
+   * content can never disagree.
+   */
+  const selectRailPanel = useCallback((id: string) => {
+    setRailPanel(id);
+    if (id === 'objects') {
+      setLeftCollapsed((collapsed) => !collapsed);
+      return;
+    }
+    setLeftCollapsed(false);
+    if (isBottomTab(id)) setBottomTab(id);
+  }, []);
+
   const exportGame = useCallback(async () => {
     if (!snapshot.project) return;
     setExporting(true);
@@ -284,11 +333,38 @@ function StudioShell(): JSX.Element {
           />
           <div
             {...withDomClass(styles.studioBody, DOM.studioBody)}
-            style={{ gridTemplateColumns: `${layout.left}px 1fr ${layout.right}px`, gridTemplateRows: `1fr ${layout.bottom}px` }}
+            style={{
+              gridTemplateColumns: `${controlSize.rail} ${leftCollapsed ? 0 : layout.left}px 1fr ${layout.right}px`,
+              gridTemplateRows: `1fr ${layout.bottom}px`,
+            }}
           >
-            <div {...stylex.props(surface.panel, surface.edgeEnd, surface.edgeBottom)}>
-              <Hierarchy locked={editorLocked} />
+            <div {...stylex.props(styles.railHost)}>
+              <IconRail active={railPanel} onSelect={selectRailPanel} />
             </div>
+            {/**
+             * The hierarchy column collapses to zero rather than to a minimum. A panel shrunk to a
+             * sliver is worse than no panel: the rail stays, so the way back is always visible.
+             */}
+            {!leftCollapsed && (
+              <div {...stylex.props(styles.leftColumn, surface.panel, surface.edgeEnd, surface.edgeBottom)}>
+                <Hierarchy locked={editorLocked} />
+                {/**
+                 * The resize handle is absolutely positioned into the boundary between the rail and
+                 * the column rather than given a grid track. A track would add its width to the
+                 * layout; this overlays the seam that is already there, so the handle is draggable
+                 * without the workspace gaining a permanent 7px of nothing.
+                 */}
+                <ResizeHandle
+                  label="Resize the scene panel"
+                  width={layout.left}
+                  min={220}
+                  max={520}
+                  collapseBelow={200}
+                  onCollapse={() => setLeftCollapsed(true)}
+                  onResize={(next) => setLayout((current) => ({ ...current, left: next }))}
+                />
+              </div>
+            )}
             <div {...stylex.props(styles.centerPanel)}>
               <Viewport
                 handleRef={viewportRef}
@@ -305,7 +381,11 @@ function StudioShell(): JSX.Element {
               <Inspector locked={editorLocked} />
             </div>
             <div {...stylex.props(styles.bottomHost, surface.panel, surface.edgeBottom)}>
-              <BottomPanel onReloadScene={() => void session.reloadScene()} />
+              <BottomPanel
+                onReloadScene={() => void session.reloadScene()}
+                tab={bottomTab}
+                onTabChange={setBottomTab}
+              />
             </div>
           </div>
           <footer {...withDomClass(styles.statusbar, DOM.statusbar)}>

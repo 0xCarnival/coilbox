@@ -2,6 +2,7 @@ import * as React from 'react';
 import * as stylex from '@stylexjs/stylex';
 import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu';
 import { color, control, fontSize, space, surface } from '../styles/tokens.stylex.js';
+import { mergedClass } from './merged-class.js';
 
 /**
  * Dropdown menu, on Radix.
@@ -24,23 +25,6 @@ import { color, control, fontSize, space, surface } from '../styles/tokens.style
  * This is why the exports below are thin: they exist to apply one style each, and to keep the
  * `asChild` rule in one place instead of at forty call sites.
  */
-
-/**
- * The class list for a Radix part, as a plain string.
- *
- * Radix's parts take a `className` and merge it themselves, and that merge **replaces** the classes
- * StyleX generated rather than adding to them. So for a part this file owns, the atomic classes have
- * to be handed over as the part's own `className` — there is no second slot for them.
- *
- * `stylex.props()` is the only thing that may produce that string, and it is called once per part
- * here rather than at a call site, which is what keeps the merge in one place. The editor's
- * `coilbox/no-classname-after-spread` rule exists to stop `className` being written beside a
- * *component's* spread, where it silently wins; this is the different, deliberate case of a wrapper
- * that is the merge, and naming it is what makes the difference legible in review.
- */
-function mergedClass(...styles: stylex.StyleXStyles[]): string {
-  return stylex.props(...styles).className ?? '';
-}
 
 export const DropdownMenu = DropdownMenuPrimitive.Root;
 export const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;

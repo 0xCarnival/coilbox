@@ -144,11 +144,17 @@ export const fontFamily = stylex.defineVars({
 });
 
 /**
- * Control geometry.
+ * Control geometry, as numbers.
  *
- * Their sizes, as plain numbers rather than tokens, because they are used for both `height` and
- * `width` (their `icon-sm` is a square) and a custom property per property would be six tokens
- * describing one decision.
+ * These are plain numbers rather than `defineVars` custom properties because they are consumed by
+ * JavaScript as well as by styles — an icon's `size` prop, an SVG's width. A custom property is a
+ * string and would have to be parsed back out at every call site.
+ *
+ * The consequence is that a *length* in a `stylex.create` rule must be written as a literal, not
+ * read from here: StyleX resolves its own variables, and a value it cannot resolve is dropped from
+ * the emitted CSS silently. `control.rail` used as a `width` produced no declaration at all, and the
+ * rail sized itself from its content — 37px instead of 56px. Anything that needs a tokenised length
+ * uses `defineVars` below.
  */
 export const control = {
   /** `h-8` — the compact control: toolbar buttons, icon buttons, the scrub field. */
@@ -162,6 +168,21 @@ export const control = {
   /** The left icon rail in their layout. */
   rail: '56px',
 } as const;
+
+/**
+ * The control lengths that styles need, as real custom properties.
+ *
+ * StyleX emits these as `--control-rail` and resolves them inside `stylex.create`, so a rule can
+ * reference a named length and still get a declaration out the other side.
+ */
+export const controlSize = stylex.defineVars({
+  rail: '56px',
+  sm: '32px',
+  md: '36px',
+  row: '24px',
+  /** The reserved trailing lane in a tree row. */
+  lane: '112px',
+});
 
 /**
  * Shared button treatments.
@@ -395,6 +416,14 @@ export const surface = stylex.create({
     ':hover': {
       backgroundColor: color.surface,
     },
+  },
+  /** The label slot of a menu row, so an icon-bearing row and a plain one align. */
+  menuItemLabel: {
+    flex: 1,
+    minWidth: 0,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   },
   /** A group label inside a menu. */
   menuLabel: {
