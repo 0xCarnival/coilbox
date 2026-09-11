@@ -1,8 +1,8 @@
 {
   "stage": 2,
-  "generatedAt": "2026-09-11T19:49:15.443Z",
+  "generatedAt": "2026-09-11T20:13:44.356Z",
   "node": "v24.18.0",
-  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage2-xcgrnz",
+  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage2-gyMm6U",
   "steps": [
     {
       "name": "typecheck",
@@ -68,10 +68,10 @@
       "id": "clip-playback",
       "title": "The imported clip is discoverable and plays in the editor preview",
       "passed": true,
-      "detail": "clips offered: First clip, Hop; preview time advanced from 0.11059999990463257 to 0.6255999999046326",
+      "detail": "clips offered: First clip, Hop; preview time advanced from 0.111 to 0.6079000000953675",
       "observed": {
-        "before": 0.11059999990463257,
-        "after": 0.6255999999046326,
+        "before": 0.111,
+        "after": 0.6079000000953675,
         "clip": "Hop"
       }
     },
@@ -214,7 +214,7 @@
       "id": "play-animates",
       "title": "Play runs the runtime animation: clips advance inside the play world",
       "passed": true,
-      "detail": "Limb clip \"Wave\" advanced 0.067 -> 0.117 after 252 ms; 2 animated entities, 2 models loaded",
+      "detail": "Limb clip \"Wave\" advanced 0.050 -> 0.100 after 252 ms; 2 animated entities, 2 models loaded",
       "observed": {
         "ids": {
           "limbId": "box-2",
@@ -228,7 +228,7 @@
           "playing": true,
           "loop": true,
           "speed": 1,
-          "time": 0.06666666666666667,
+          "time": 0.05,
           "duration": 1
         },
         "second": {
@@ -239,7 +239,7 @@
           "playing": true,
           "loop": true,
           "speed": 1,
-          "time": 0.11666666666666665,
+          "time": 0.09999999999999999,
           "duration": 1
         },
         "crate": {
@@ -250,16 +250,16 @@
           "playing": true,
           "loop": true,
           "speed": 1,
-          "time": 0.11666666666666665,
+          "time": 0.09999999999999999,
           "duration": 0.800000011920929
         },
         "stats": {
           "state": "running",
           "frames": 7,
-          "steps": 7,
-          "fps": 27.50974807097602,
-          "frameTimeMs": 36.35075092000001,
-          "physicsTimeMs": 0.08187294028577807,
+          "steps": 6,
+          "fps": 37.71707944379205,
+          "frameTimeMs": 26.513187520000105,
+          "physicsTimeMs": 0.0971487636651993,
           "droppedTime": 0,
           "clampedTime": 0,
           "drawCalls": 6,

@@ -1,9 +1,9 @@
 {
   "stage": 0,
-  "generatedAt": "2026-09-11T19:48:27.643Z",
+  "generatedAt": "2026-09-11T20:12:51.866Z",
   "node": "v24.18.0",
   "nestedPrefix": "/nested/coilbox/",
-  "baseUrl": "http://127.0.0.1:49358/nested/coilbox/",
+  "baseUrl": "http://127.0.0.1:50396/nested/coilbox/",
   "steps": [
     {
       "name": "typecheck",
@@ -30,39 +30,39 @@
       "observed": {
         "binding": "box3d.js@0.1.1",
         "version": "0.1.0",
-        "wasmUrl": "http://127.0.0.1:49358/nested/coilbox/assets/box3d-BRo-Inah.wasm"
+        "wasmUrl": "http://127.0.0.1:50396/nested/coilbox/assets/box3d-BRo-Inah.wasm"
       }
     },
     {
       "id": "physics-runs",
       "title": "Physics simulates: the box falls from its authored height and rests on the ground",
       "passed": true,
-      "detail": "box settled at y=0.4630 (expected 0.5), dropped from y=4, physics steps=52",
+      "detail": "box settled at y=0.4893 (expected 0.5), dropped from y=4, physics steps=54",
       "observed": {
-        "boxY": 0.46300339698791504,
-        "steps": 52
+        "boxY": 0.48930907249450684,
+        "steps": 54
       }
     },
     {
       "id": "fixed-step-rate",
       "title": "Simulation advances on the fixed step, not one step per frame",
       "passed": true,
-      "detail": "52 fixed steps executed while rendering",
+      "detail": "54 fixed steps executed while rendering",
       "observed": {
-        "steps": 52
+        "steps": 54
       }
     },
     {
       "id": "box-renders",
       "title": "The world renders: frame contains shaded geometry and shadows",
       "passed": true,
-      "detail": "59.9% of 1280x640 pixels differ from the background, 110 distinct colours, mean luminance 51.4",
+      "detail": "59.9% of 1280x640 pixels differ from the background, 127 distinct colours, mean luminance 51.4",
       "observed": {
         "width": 1280,
         "height": 640,
         "nonBackgroundPixels": 490535,
-        "distinctColors": 110,
-        "meanLuminance": 51.41089803838659
+        "distinctColors": 127,
+        "meanLuminance": 51.41717724639534
       }
     },
     {
@@ -72,8 +72,8 @@
       "detail": "state after pause=\"paused\", steps advanced=1",
       "observed": {
         "advanced": 1,
-        "before": 66,
-        "after": 67
+        "before": 80,
+        "after": 81
       }
     },
     {
@@ -88,7 +88,7 @@
         "expectedRestingY": 0.5,
         "physicsWorldCount": 0,
         "wasmBytes": 0,
-        "wasmUrl": "http://127.0.0.1:49358/nested/coilbox/assets/box3d-BRo-Inah.wasm",
+        "wasmUrl": "http://127.0.0.1:50396/nested/coilbox/assets/box3d-BRo-Inah.wasm",
         "binding": "box3d.js@0.1.1",
         "bindingVersion": "0.1.0",
         "doublePrecision": false,
@@ -109,13 +109,13 @@
           "cycle": 1,
           "worlds": 0,
           "wasmBytes": 0,
-          "boxY": 3.645750045776367
+          "boxY": 3.600446939468384
         },
         {
           "cycle": 2,
           "worlds": 0,
           "wasmBytes": 0,
-          "boxY": 3.5524189472198486
+          "boxY": 3.391984701156616
         },
         {
           "cycle": 3,
@@ -127,13 +127,13 @@
           "cycle": 4,
           "worlds": 0,
           "wasmBytes": 0,
-          "boxY": 3.600446939468384
+          "boxY": 3.333056688308716
         },
         {
           "cycle": 5,
           "worlds": 0,
           "wasmBytes": 0,
-          "boxY": 3.5524189472198486
+          "boxY": 3.448187828063965
         }
       ]
     },
@@ -149,7 +149,7 @@
         "expectedRestingY": 0.5,
         "physicsWorldCount": 0,
         "wasmBytes": 0,
-        "wasmUrl": "http://127.0.0.1:49358/nested/coilbox/assets/box3d-BRo-Inah.wasm",
+        "wasmUrl": "http://127.0.0.1:50396/nested/coilbox/assets/box3d-BRo-Inah.wasm",
         "binding": "box3d.js@0.1.1",
         "bindingVersion": "0.1.0",
         "doublePrecision": false,
@@ -208,7 +208,7 @@
       "id": "no-dev-urls",
       "title": "The build does not reference the development server or source folders",
       "passed": true,
-      "detail": "no dev-server URLs requested from http://127.0.0.1:49358",
+      "detail": "no dev-server URLs requested from http://127.0.0.1:50396",
       "observed": []
     },
     {

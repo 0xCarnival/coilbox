@@ -149,6 +149,25 @@ select:focus,
 textarea:focus {
   border-color: var(--accent);
   background: color-mix(in srgb, var(--bg) 85%, transparent);
+  /**
+   * The ring is spelled out rather than left to the universal `:focus-visible` rule above, because
+   * the UA stylesheet's own focus ring on a form control is `outline: auto` and does not inherit
+   * `outline-color`. Clearing `outline` alone left a 3px ring in the UA's colour — a white halo on
+   * a near-black panel, which is exactly the kind of default this redesign exists to remove.
+   */
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+/**
+ * A field keeps its accent border when focused by pointer but only draws the ring for keyboard
+ * focus. Inputs are the one control where an always-on ring is noise: the caret already says which
+ * field is live, and the rule above would otherwise put a ring inside every panel that clips
+ * overflow.
+ */
+input:focus:not(:focus-visible),
+select:focus:not(:focus-visible),
+textarea:focus:not(:focus-visible) {
   outline: none;
 }
 
