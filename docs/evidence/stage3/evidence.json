@@ -1,8 +1,8 @@
 {
   "stage": 3,
-  "generatedAt": "2026-09-11T21:57:03.259Z",
+  "generatedAt": "2026-09-11T22:46:59.239Z",
   "node": "v24.18.0",
-  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage3-FrvCQ4",
+  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage3-rd7TEf",
   "steps": [
     {
       "name": "typecheck",
@@ -78,19 +78,19 @@
       "id": "collect-room-input",
       "title": "Keyboard input drives the character mover, and it stays on the floor",
       "passed": true,
-      "detail": "player moved 5.63 m from (0.0, -6.0) to (0.0, -0.4); y went 0.00 → -0.00",
+      "detail": "player moved 5.71 m from (0.0, -6.0) to (0.0, -0.3); y went -0.00 → -0.00",
       "observed": {
         "beforeWalk": {
           "x": 0,
-          "y": 1.986822928401466e-9,
+          "y": -3.973641860000043e-9,
           "z": -6
         },
         "afterWalk": {
           "x": 0,
-          "y": -9.934105094089318e-9,
-          "z": -0.37498635053634644
+          "y": -3.973640971821624e-9,
+          "z": -0.2916548550128937
         },
-        "walked": 5.625013649463654,
+        "walked": 5.708345144987106,
         "grounded": true
       }
     },
@@ -98,11 +98,11 @@
       "id": "collect-room-wall-contact",
       "title": "A wall stops the character, and a diagonal push slides along it",
       "passed": true,
-      "detail": "walked into the wall at z=7.75: stopped at (0.00, -0.00, 7.40); 1.5 s later z=7.400 (moved 0.0000 m); walking forward and right slid 2.92 m along the wall to x=2.92 at z=7.400",
+      "detail": "walked into the wall at z=7.75: stopped at (0.00, 0.00, 7.40); 1.5 s later z=7.400 (moved 0.0000 m); walking forward and right slid 2.92 m along the wall to x=2.92 at z=7.400",
       "observed": {
         "atWall": {
           "x": 0,
-          "y": -1.5894567440000174e-8,
+          "y": 7.947290825427444e-9,
           "z": 7.400000095367432
         },
         "stillAtWall": {
@@ -224,7 +224,7 @@
           "score": 5,
           "targetsDown": 5,
           "launches": 8,
-          "timeRemaining": 50.77,
+          "timeRemaining": 50.78,
           "won": true,
           "lost": false,
           "scoreTarget": 5,
@@ -258,9 +258,9 @@
       "id": "editor-tuning-affects-play",
       "title": "The edited tuning value changes how the game plays",
       "passed": true,
-      "detail": "with move speed 12 the player covered 11.84 m over 72 simulated steps; at the default 5 m/s the same time allows 6.00 m",
+      "detail": "with move speed 12 the player covered 11.06 m over 72 simulated steps; at the default 5 m/s the same time allows 6.00 m",
       "observed": {
-        "studioWalked": 11.84414529800415,
+        "studioWalked": 11.055485725402832,
         "defaultSpeedDistance": 6,
         "before": {
           "x": 0,
@@ -269,8 +269,8 @@
         },
         "after": {
           "x": 0,
-          "y": -9.934105094089318e-9,
-          "z": 5.84414529800415
+          "y": 7.947288160892185e-9,
+          "z": 5.055485725402832
         }
       }
     },

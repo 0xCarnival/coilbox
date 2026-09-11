@@ -1,9 +1,9 @@
 {
   "stage": 5,
-  "generatedAt": "2026-09-11T21:59:35.864Z",
+  "generatedAt": "2026-09-11T22:49:36.539Z",
   "node": "v24.18.0",
   "host": "darwin",
-  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage5-zWnsJZ",
+  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage5-SNkWob",
   "measurements": {
     "playStopCycles": {
       "first": {
@@ -216,18 +216,18 @@
     },
     "referenceScene": {
       "frames": 120,
-      "medianFrameMs": 35.215075719797944,
-      "p95FrameMs": 36.64931179259341,
-      "medianPhysicsMs": 0.03639823079388378,
+      "medianFrameMs": 36.236889687176934,
+      "p95FrameMs": 38.18125466955553,
+      "medianPhysicsMs": 0.03883262668519099,
       "drawCalls": 401,
       "triangles": 4812,
       "entities": 203,
       "physicsBodies": 26,
-      "fps": 28.930596822866487
+      "fps": 27.400467696711427
     },
     "frameRateIndependence": {
-      "stepsTaken": 15,
-      "droppedTime": 0.18303333333333432,
+      "stepsTaken": 14,
+      "droppedTime": 0.1830666666666676,
       "clampedTime": 0.1166999999999998,
       "busiestFrameSteps": 5,
       "maxSubSteps": 5,
@@ -236,9 +236,9 @@
     "narrowViewport": {
       "width": 390,
       "height": 844,
-      "rendered": 0.6060213877749423,
-      "distinctColors": 2286,
-      "steps": 62
+      "rendered": 0.6061246810061975,
+      "distinctColors": 2298,
+      "steps": 64
     }
   },
   "steps": [
@@ -274,7 +274,7 @@
       "id": "clean-checkout",
       "title": "A clean checkout installs from the frozen lockfile, typechecks, tests, and builds",
       "passed": true,
-      "detail": "built in /var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-clean-Yvx94B from a fresh clone"
+      "detail": "built in /var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-clean-bCgqTO from a fresh clone"
     },
     {
       "id": "reference-scene",
@@ -299,27 +299,27 @@
       "id": "reference-performance",
       "title": "The reference scene renders on the declared conditions and the numbers are recorded",
       "passed": true,
-      "detail": "203 entities, 26 bodies, 401 draw calls, 4812 triangles; median frame 35.22 ms, p95 36.65 ms, physics 0.04 ms (software rasteriser, not the M1 Pro target)",
+      "detail": "203 entities, 26 bodies, 401 draw calls, 4812 triangles; median frame 36.24 ms, p95 38.18 ms, physics 0.04 ms (software rasteriser, not the M1 Pro target)",
       "observed": {
         "frames": 120,
-        "medianFrameMs": 35.215075719797944,
-        "p95FrameMs": 36.64931179259341,
-        "medianPhysicsMs": 0.03639823079388378,
+        "medianFrameMs": 36.236889687176934,
+        "p95FrameMs": 38.18125466955553,
+        "medianPhysicsMs": 0.03883262668519099,
         "drawCalls": 401,
         "triangles": 4812,
         "entities": 203,
         "physicsBodies": 26,
-        "fps": 28.930596822866487
+        "fps": 27.400467696711427
       }
     },
     {
       "id": "frame-rate-independence",
       "title": "A stalled frame is clamped and its backlog dropped, not replayed as extra steps",
       "passed": true,
-      "detail": "a 400 ms stall produced 15 steps, 0.183 s dropped, 0.117 s clamped; the busiest of the 8 following frames ran 5 steps (cap 5)",
+      "detail": "a 400 ms stall produced 14 steps, 0.183 s dropped, 0.117 s clamped; the busiest of the 8 following frames ran 5 steps (cap 5)",
       "observed": {
-        "stepsTaken": 15,
-        "droppedTime": 0.18303333333333432,
+        "stepsTaken": 14,
+        "droppedTime": 0.1830666666666676,
         "clampedTime": 0.1166999999999998,
         "busiestFrameSteps": 5,
         "maxSubSteps": 5,
@@ -330,22 +330,22 @@
       "id": "no-catch-up-spiral",
       "title": "Time spent waiting is not replayed as a burst of simulation steps",
       "passed": true,
-      "detail": "71 steps during a 1.2 s wait (about 72 expected at 60 Hz)",
+      "detail": "73 steps during a 1.2 s wait (about 72 expected at 60 Hz)",
       "observed": {
-        "stepsDuringWait": 71
+        "stepsDuringWait": 73
       }
     },
     {
       "id": "narrow-viewport",
       "title": "The game runs at a narrow viewport (a viewport test, not a phone test)",
       "passed": true,
-      "detail": "390x844, 60.6% rendered, 62 steps",
+      "detail": "390x844, 60.6% rendered, 64 steps",
       "observed": {
         "width": 390,
         "height": 844,
-        "rendered": 0.6060213877749423,
-        "distinctColors": 2286,
-        "steps": 62
+        "rendered": 0.6061246810061975,
+        "distinctColors": 2298,
+        "steps": 64
       }
     },
     {
@@ -405,15 +405,15 @@
       "detail": "play world ran 62 steps with 9 behaviors, then stopped",
       "observed": {
         "state": "running",
-        "frames": 22,
+        "frames": 21,
         "steps": 62,
-        "fps": 10.953800457866063,
-        "frameTimeMs": 91.2925156749489,
-        "physicsTimeMs": 0.1063222775925816,
-        "droppedTime": 0.7666333333333328,
-        "clampedTime": 1.6833079999999991,
-        "drawCalls": 16,
-        "triangles": 5048,
+        "fps": 10.087283705281216,
+        "frameTimeMs": 99.13471547116774,
+        "physicsTimeMs": 0.0936490517510495,
+        "droppedTime": 0.7332333333333314,
+        "clampedTime": 1.8332800000000025,
+        "drawCalls": 14,
+        "triangles": 4076,
         "geometries": 13,
         "textures": 4,
         "programs": 3,
@@ -474,7 +474,7 @@
       "id": "export-nested-path",
       "title": "The export runs from a nested path on a separate static server with no workspace service",
       "passed": true,
-      "detail": "8 requests from http://127.0.0.1:56273/releases/2026/gem-rush/, 0 failed, 63 steps",
+      "detail": "8 requests from http://127.0.0.1:59434/releases/2026/gem-rush/, 0 failed, 62 steps",
       "observed": {
         "failures": [],
         "requests": 8
@@ -583,7 +583,7 @@
       "id": "bounded-test-gem-rush",
       "title": "The bounded test passes for gem-rush",
       "passed": true,
-      "detail": "9/9 checks in 3.6s"
+      "detail": "9/9 checks in 3.7s"
     },
     {
       "id": "no-console-errors",

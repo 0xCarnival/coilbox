@@ -889,6 +889,7 @@ function Field({
           label={
             <ScrubLabel
               label={field.label}
+              hookProps={withDomClass(styles.fieldLabel, DOM.fieldLabel)}
               config={{
                 value: isFiniteJsonNumber(value) ? value : 0,
                 onChange: (next) => onChange(componentValue(field, clamp(next, field))),

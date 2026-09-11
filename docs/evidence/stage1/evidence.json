@@ -1,8 +1,8 @@
 {
   "stage": 1,
-  "generatedAt": "2026-09-11T21:55:45.133Z",
+  "generatedAt": "2026-09-11T22:45:38.797Z",
   "node": "v24.18.0",
-  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage1-WgV3jc",
+  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage1-sgjVSo",
   "steps": [
     {
       "name": "typecheck",
@@ -85,23 +85,23 @@
       "id": "play-runs",
       "title": "Play builds a fresh runtime world and simulates it",
       "passed": true,
-      "detail": "745 distinct colours, 47.4% rendered, 60 fixed steps, 1 physics bodies",
+      "detail": "741 distinct colours, 49.0% rendered, 62 fixed steps, 1 physics bodies",
       "observed": {
         "pixels": {
-          "width": 820,
+          "width": 764,
           "height": 692,
-          "distinctColors": 745,
-          "nonBackgroundPixels": 268880
+          "distinctColors": 741,
+          "nonBackgroundPixels": 259163
         },
         "stats": {
           "state": "running",
-          "frames": 51,
-          "steps": 60,
-          "fps": 52.33842944945195,
-          "frameTimeMs": 19.106419709551894,
-          "physicsTimeMs": 0.037122280684906195,
-          "droppedTime": 0.28323333333333334,
-          "clampedTime": 0.4334000000000001,
+          "frames": 52,
+          "steps": 62,
+          "fps": 51.22019570715013,
+          "frameTimeMs": 19.523548986760392,
+          "physicsTimeMs": 0.04080937437116481,
+          "droppedTime": 0.1666733333333335,
+          "clampedTime": 0.38319999999999976,
           "drawCalls": 4,
           "triangles": 1112,
           "geometries": 2,
@@ -135,12 +135,12 @@
       "id": "pause-and-step",
       "title": "Pause stops the clock and Step advances exactly one tick",
       "passed": true,
-      "detail": "paused at 76 steps, still 76 after 400 ms, 77 after one Step (and 77 400 ms later)",
+      "detail": "paused at 77 steps, still 77 after 400 ms, 78 after one Step (and 78 400 ms later)",
       "observed": {
-        "pausedSteps": 76,
-        "stillPausedSteps": 76,
-        "steppedSteps": 77,
-        "afterStepSteps": 77
+        "pausedSteps": 77,
+        "stillPausedSteps": 77,
+        "steppedSteps": 78,
+        "afterStepSteps": 78
       }
     },
     {
@@ -157,16 +157,16 @@
       "id": "export-produces-build",
       "title": "Export produces a standalone player plus the project documents",
       "passed": true,
-      "detail": "index.html and project documents present in /var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage1-WgV3jc/stage1-room/.coilbox/export",
+      "detail": "index.html and project documents present in /var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage1-sgjVSo/stage1-room/.coilbox/export",
       "observed": {
-        "exportDir": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage1-WgV3jc/stage1-room/.coilbox/export"
+        "exportDir": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage1-sgjVSo/stage1-room/.coilbox/export"
       }
     },
     {
       "id": "export-runs-standalone",
       "title": "The export runs with the editor and workspace service switched off",
       "passed": true,
-      "detail": "running at http://127.0.0.1:55852/games/stage1/ — 37.9% rendered, 799 colours, 0 failed requests",
+      "detail": "running at http://127.0.0.1:59007/games/stage1/ — 37.9% rendered, 799 colours, 0 failed requests",
       "observed": {
         "requests": 7,
         "failures": 0

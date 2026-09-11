@@ -457,8 +457,19 @@ export function FieldShell({
    */
   hookProps?: DomClassProps;
 }): React.ReactElement {
+  /**
+   * The two class lists are concatenated rather than spread one after the other.
+   *
+   * `hookProps.className` and `stylex.props(...).className` are the same JSX attribute, so whichever
+   * spread comes second silently wins — spreading the shell's props second dropped the `.field` hook
+   * and the browser gates could no longer find any field at all. This is the failure
+   * `coilbox/no-classname-after-spread` exists to prevent, reached through a spread rather than
+   * through a literal `className`, which is why the rule did not catch it.
+   */
+  const shell = stylex.props(shellStyles.shell);
+  const merged = hookProps?.className ? { ...shell, className: `${shell.className ?? ''} ${hookProps.className}`.trim() } : shell;
   return (
-    <div {...hookProps} {...stylex.props(shellStyles.shell)}>
+    <div {...merged}>
       {!bare && label !== undefined ? label : null}
       <span {...stylex.props(bare ? shellStyles.controlBare : shellStyles.control)}>{children}</span>
     </div>
@@ -475,22 +486,33 @@ export function FieldShell({
 export function ScrubLabel({
   label,
   config,
-  className,
+  hookProps,
 }: {
   label: string;
   /** `null` disables scrubbing, for a read-only or derived field. */
   config: ScrubConfig | null;
-  className?: stylex.StyleXStyles;
+  /**
+   * The DOM-contract props for this label, from `withDomClass(styles.fieldLabel, DOM.fieldLabel)`.
+   *
+   * The gates locate a field by `.field:has(.field-label:text-is("Intensity"))`, so a scrubbable
+   * label that dropped the hook made its field invisible to every one of them — the field was on
+   * screen and unreachable. Merged rather than spread, for the reason given on `FieldShell`.
+   */
+  hookProps?: DomClassProps;
 }): React.ReactElement {
   const scrub = useNumericScrub(config);
+  const own = stylex.props(
+    shellStyles.label,
+    config !== null && shellStyles.labelScrubbable,
+    scrub.dragging && shellStyles.labelDragging,
+  );
+  const merged =
+    hookProps?.className
+      ? { ...own, className: `${own.className ?? ''} ${hookProps.className}`.trim() }
+      : own;
   return (
     <span
-      {...stylex.props(
-        shellStyles.label,
-        config !== null && shellStyles.labelScrubbable,
-        scrub.dragging && shellStyles.labelDragging,
-        className,
-      )}
+      {...merged}
       onPointerDown={scrub.onPointerDown}
       title={config === null ? undefined : `${label} — drag to change, Shift for coarse, Alt for fine`}
     >
