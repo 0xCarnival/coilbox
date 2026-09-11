@@ -93,6 +93,21 @@ body {
  * from that corner is what makes a dropdown read as growing out of its trigger rather than fading
  * in above it.
  */
+/**
+ * A toast rises and fades in. It comes from the bottom edge because that is where it sits, and the
+ * motion is what tells the eye something arrived without a sound.
+ */
+@keyframes coilbox-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 @keyframes coilbox-menu-in {
   from {
     opacity: 0;

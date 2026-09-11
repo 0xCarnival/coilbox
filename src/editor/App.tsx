@@ -17,6 +17,7 @@ import { isFiniteJsonNumber, isJsonString, jsonField } from './json-values.js';
 import { IconRail } from './ui/IconRail.js';
 import { ResizeHandle } from './ui/ResizeHandle.js';
 import { SelectionToolbar } from './ui/SelectionToolbar.js';
+import { Toasts } from './ui/Toasts.js';
 
 /**
  * Editor shell: one fixed, resizable layout instead of a window manager (plan §3).
@@ -400,6 +401,11 @@ function StudioShell(): JSX.Element {
               />
             </div>
           </div>
+          {/**
+           * Toasts float over the workspace and are suppressed while the console tab is showing:
+           * repeating the line the user is already looking at is noise, not a notification.
+           */}
+          <Toasts enabled={bottomTab !== 'console'} />
           <footer {...withDomClass(styles.statusbar, DOM.statusbar)}>
             <span>{status || 'Ready'}</span>
             <span {...withDomClass(styles.statusbarSpacer, DOM.toolbarSpacer)} />
