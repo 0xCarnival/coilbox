@@ -1,8 +1,8 @@
 {
   "stage": 2,
-  "generatedAt": "2026-09-11T23:39:09.421Z",
+  "generatedAt": "2026-09-11T23:45:35.736Z",
   "node": "v24.18.0",
-  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage2-Lg9lsJ",
+  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage2-3axgu8",
   "steps": [
     {
       "name": "typecheck",
@@ -68,10 +68,10 @@
       "id": "clip-playback",
       "title": "The imported clip is discoverable and plays in the editor preview",
       "passed": true,
-      "detail": "clips offered: Hop; preview time advanced from 0.06669999980926514 to 0.6380999994277954",
+      "detail": "clips offered: Hop; preview time advanced from 0.03609999990463257 to 0.6136999998092652",
       "observed": {
-        "before": 0.06669999980926514,
-        "after": 0.6380999994277954,
+        "before": 0.03609999990463257,
+        "after": 0.6136999998092652,
         "clip": "Hop"
       }
     },
@@ -214,7 +214,7 @@
       "id": "play-animates",
       "title": "Play runs the runtime animation: clips advance inside the play world",
       "passed": true,
-      "detail": "Limb clip \"Wave\" advanced 0.100 -> 0.350 after 756 ms; 2 animated entities, 2 models loaded",
+      "detail": "Limb clip \"Wave\" advanced 0.083 -> 0.100 after 253 ms; 2 animated entities, 2 models loaded",
       "observed": {
         "ids": {
           "limbId": "box-2",
@@ -228,7 +228,7 @@
           "playing": true,
           "loop": true,
           "speed": 1,
-          "time": 0.09999999999999999,
+          "time": 0.08333333333333333,
           "duration": 1
         },
         "second": {
@@ -239,7 +239,7 @@
           "playing": true,
           "loop": true,
           "speed": 1,
-          "time": 0.35,
+          "time": 0.09999999999999999,
           "duration": 1
         },
         "crate": {
@@ -250,18 +250,18 @@
           "playing": true,
           "loop": true,
           "speed": 1,
-          "time": 0.35,
+          "time": 0.09999999999999999,
           "duration": 0.800000011920929
         },
         "stats": {
           "state": "running",
-          "frames": 14,
-          "steps": 21,
-          "fps": 26.226437138673987,
-          "frameTimeMs": 38.129464353561836,
-          "physicsTimeMs": 0.05813722202770134,
-          "droppedTime": 0.16674466666666665,
-          "clampedTime": 0.3665999999999999,
+          "frames": 6,
+          "steps": 6,
+          "fps": 25.93027641166416,
+          "frameTimeMs": 38.56495720000008,
+          "physicsTimeMs": 0.10551975568199158,
+          "droppedTime": 0,
+          "clampedTime": 0,
           "drawCalls": 6,
           "triangles": 1268,
           "geometries": 4,
@@ -289,7 +289,7 @@
           "inputListeners": 8,
           "audioActivated": true
         },
-        "waitedMs": 756
+        "waitedMs": 253
       }
     },
     {
