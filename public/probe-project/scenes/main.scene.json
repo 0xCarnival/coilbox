@@ -1,0 +1,352 @@
+{
+  "schemaVersion": 1,
+  "revision": 0,
+  "id": "probe",
+  "name": "Stage 0 probe",
+  "activeCameraId": "probe-camera",
+  "environment": {
+    "background": {
+      "type": "color",
+      "color": "#202431"
+    },
+    "fog": {
+      "type": "none"
+    },
+    "gravity": [
+      0,
+      -9.81,
+      0
+    ]
+  },
+  "entities": [
+    {
+      "id": "ground",
+      "name": "Ground",
+      "parentId": null,
+      "order": 0,
+      "enabled": true,
+      "transform": {
+        "position": [
+          0,
+          -0.25,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            20,
+            0.5,
+            20
+          ],
+          "castShadow": false,
+          "receiveShadow": true
+        },
+        {
+          "type": "material",
+          "color": "#4b5563",
+          "roughness": 0.95,
+          "metalness": 0,
+          "emissive": "#000000",
+          "emissiveIntensity": 1,
+          "opacity": 1,
+          "transparent": false,
+          "doubleSided": false,
+          "flatShading": false,
+          "visible": true
+        },
+        {
+          "type": "rigidBody",
+          "bodyType": "static",
+          "mass": null,
+          "gravityScale": 1,
+          "linearDamping": 0,
+          "angularDamping": 0.05,
+          "lockRotation": false,
+          "continuous": false,
+          "moveWithPhysics": true
+        },
+        {
+          "type": "collider",
+          "shape": "box",
+          "size": [
+            20,
+            0.5,
+            20
+          ],
+          "offset": [
+            0,
+            0,
+            0
+          ],
+          "localRotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "isSensor": false,
+          "friction": 0.7,
+          "restitution": 0,
+          "density": 1,
+          "reportContacts": false
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "falling-box",
+      "name": "Falling Box",
+      "parentId": null,
+      "order": 1,
+      "enabled": true,
+      "transform": {
+        "position": [
+          0,
+          4,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            1,
+            1,
+            1
+          ],
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        {
+          "type": "material",
+          "color": "#e0a458",
+          "roughness": 0.5,
+          "metalness": 0.05,
+          "emissive": "#000000",
+          "emissiveIntensity": 1,
+          "opacity": 1,
+          "transparent": false,
+          "doubleSided": false,
+          "flatShading": false,
+          "visible": true
+        },
+        {
+          "type": "rigidBody",
+          "bodyType": "dynamic",
+          "mass": null,
+          "gravityScale": 1,
+          "linearDamping": 0,
+          "angularDamping": 0.2,
+          "lockRotation": false,
+          "continuous": false,
+          "moveWithPhysics": true
+        },
+        {
+          "type": "collider",
+          "shape": "box",
+          "size": [
+            1,
+            1,
+            1
+          ],
+          "offset": [
+            0,
+            0,
+            0
+          ],
+          "localRotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "isSensor": false,
+          "friction": 0.6,
+          "restitution": 0.1,
+          "density": 1,
+          "reportContacts": false
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "key-light",
+      "name": "Key Light",
+      "parentId": null,
+      "order": 2,
+      "enabled": true,
+      "transform": {
+        "position": [
+          6,
+          9,
+          5
+        ],
+        "rotation": [
+          -0.375889653805,
+          0.385890695131,
+          0.176057296297,
+          0.823892692039
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "light",
+          "kind": "directional",
+          "color": "#fff6e6",
+          "intensity": 2.4,
+          "groundColor": "#444444",
+          "castShadow": true,
+          "shadowMapSize": 1024,
+          "shadowBias": -0.0005,
+          "shadowExtent": 12,
+          "range": 20,
+          "decay": 2,
+          "coneAngleDegrees": 30
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "fill-light",
+      "name": "Fill Light",
+      "parentId": null,
+      "order": 3,
+      "enabled": true,
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "light",
+          "kind": "hemisphere",
+          "color": "#8fa6c8",
+          "intensity": 0.7,
+          "groundColor": "#2a2f3a",
+          "castShadow": false,
+          "shadowMapSize": 1024,
+          "shadowBias": -0.0005,
+          "shadowExtent": 25,
+          "range": 20,
+          "decay": 2,
+          "coneAngleDegrees": 30
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "probe-camera",
+      "name": "Probe Camera",
+      "parentId": null,
+      "order": 4,
+      "enabled": true,
+      "transform": {
+        "position": [
+          6,
+          4.5,
+          8
+        ],
+        "rotation": [
+          -0.179403146855,
+          0.310521874502,
+          0.059801048952,
+          0.931565623506
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "camera",
+          "mode": "free",
+          "fov": 55,
+          "near": 0.1,
+          "far": 500,
+          "targetId": null,
+          "distance": 8,
+          "height": 5,
+          "offset": [
+            0,
+            0,
+            0
+          ],
+          "damping": 0.12
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    }
+  ]
+}

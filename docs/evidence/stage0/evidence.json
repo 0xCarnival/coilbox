@@ -1,0 +1,229 @@
+{
+  "stage": 0,
+  "generatedAt": "2026-09-11T12:03:29.196Z",
+  "node": "v24.18.0",
+  "nestedPrefix": "/nested/coilbox/",
+  "baseUrl": "http://127.0.0.1:65304/nested/coilbox/",
+  "steps": [
+    {
+      "name": "typecheck",
+      "ok": true,
+      "detail": "exit 0"
+    },
+    {
+      "name": "unit tests",
+      "ok": true,
+      "detail": "exit 0"
+    },
+    {
+      "name": "production build",
+      "ok": true,
+      "detail": "exit 0"
+    }
+  ],
+  "checks": [
+    {
+      "id": "wasm-loaded",
+      "title": "Box3D WASM loads in the built bundle",
+      "passed": true,
+      "detail": "box3d.js@0.1.1 engine 0.1.0, doublePrecision=false, world=1",
+      "observed": {
+        "binding": "box3d.js@0.1.1",
+        "version": "0.1.0",
+        "wasmUrl": "http://127.0.0.1:65304/nested/coilbox/assets/box3d-BRo-Inah.wasm"
+      }
+    },
+    {
+      "id": "physics-runs",
+      "title": "Physics simulates: the box falls from its authored height and rests on the ground",
+      "passed": true,
+      "detail": "box settled at y=0.4630 (expected 0.5), dropped from y=4, physics steps=52",
+      "observed": {
+        "boxY": 0.46300339698791504,
+        "steps": 52
+      }
+    },
+    {
+      "id": "fixed-step-rate",
+      "title": "Simulation advances on the fixed step, not one step per frame",
+      "passed": true,
+      "detail": "52 fixed steps executed while rendering",
+      "observed": {
+        "steps": 52
+      }
+    },
+    {
+      "id": "box-renders",
+      "title": "The world renders: frame contains shaded geometry and shadows",
+      "passed": true,
+      "detail": "59.9% of 1280x640 pixels differ from the background, 110 distinct colours, mean luminance 51.4",
+      "observed": {
+        "width": 1280,
+        "height": 640,
+        "nonBackgroundPixels": 490535,
+        "distinctColors": 110,
+        "meanLuminance": 51.41089803838659
+      }
+    },
+    {
+      "id": "pause-step",
+      "title": "Step advances exactly one fixed simulation tick while paused",
+      "passed": true,
+      "detail": "state after pause=\"paused\", steps advanced=1",
+      "observed": {
+        "advanced": 1,
+        "before": 66,
+        "after": 67
+      }
+    },
+    {
+      "id": "stop-cleanup",
+      "title": "Stop releases the physics world, render resources, and event listeners",
+      "passed": true,
+      "detail": "physics worlds=0, listeners=0, renderer disposed, canvas context reusable=true",
+      "observed": {
+        "state": "stopped",
+        "boxY": null,
+        "boxDroppedFrom": 4,
+        "expectedRestingY": 0.5,
+        "physicsWorldCount": 0,
+        "wasmBytes": 0,
+        "wasmUrl": "http://127.0.0.1:65304/nested/coilbox/assets/box3d-BRo-Inah.wasm",
+        "binding": "box3d.js@0.1.1",
+        "bindingVersion": "0.1.0",
+        "doublePrecision": false,
+        "warnings": [],
+        "rendererInfo": null,
+        "listenerCount": 0,
+        "worldsCreated": 1,
+        "contextAlive": true
+      }
+    },
+    {
+      "id": "no-world-leak",
+      "title": "Five Play/Stop cycles leave no live physics world behind",
+      "passed": true,
+      "detail": "world counts after stop: 0, 0, 0, 0, 0; wasm bytes: 0, 0, 0, 0, 0",
+      "observed": [
+        {
+          "cycle": 1,
+          "worlds": 0,
+          "wasmBytes": 0,
+          "boxY": 3.5016658306121826
+        },
+        {
+          "cycle": 2,
+          "worlds": 0,
+          "wasmBytes": 0,
+          "boxY": 3.448187828063965
+        },
+        {
+          "cycle": 3,
+          "worlds": 0,
+          "wasmBytes": 0,
+          "boxY": 3.448187828063965
+        },
+        {
+          "cycle": 4,
+          "worlds": 0,
+          "wasmBytes": 0,
+          "boxY": 3.448187828063965
+        },
+        {
+          "cycle": 5,
+          "worlds": 0,
+          "wasmBytes": 0,
+          "boxY": 3.448187828063965
+        }
+      ]
+    },
+    {
+      "id": "authored-scene-untouched",
+      "title": "Stopping restores the authored scene instead of an undone simulation",
+      "passed": true,
+      "detail": "state=stopped, warnings=none",
+      "observed": {
+        "state": "stopped",
+        "boxY": null,
+        "boxDroppedFrom": 4,
+        "expectedRestingY": 0.5,
+        "physicsWorldCount": 0,
+        "wasmBytes": 0,
+        "wasmUrl": "http://127.0.0.1:65304/nested/coilbox/assets/box3d-BRo-Inah.wasm",
+        "binding": "box3d.js@0.1.1",
+        "bindingVersion": "0.1.0",
+        "doublePrecision": false,
+        "warnings": [],
+        "rendererInfo": null,
+        "listenerCount": 0,
+        "worldsCreated": 6,
+        "contextAlive": true
+      }
+    },
+    {
+      "id": "player-loads-project",
+      "title": "Standalone player loads a project from files and runs the same runtime",
+      "passed": true,
+      "detail": "project=\"Stage 0 probe\" scene=\"Stage 0 probe\" state=running rendered=60.9% errors=0",
+      "observed": {
+        "state": {
+          "state": "running",
+          "projectName": "Stage 0 probe",
+          "sceneName": "Stage 0 probe",
+          "errors": []
+        },
+        "pixels": {
+          "width": 1280,
+          "height": 720,
+          "nonBackgroundPixels": 561342,
+          "distinctColors": 114
+        }
+      }
+    },
+    {
+      "id": "no-404",
+      "title": "Every request from the built game is served successfully",
+      "passed": true,
+      "detail": "8 requests, none failed",
+      "observed": {
+        "total": 8
+      }
+    },
+    {
+      "id": "wasm-served",
+      "title": "The Box3D WASM binary is part of the build and is served as application/wasm",
+      "passed": true,
+      "detail": "/nested/coilbox/assets/box3d-BRo-Inah.wasm -> 200 application/wasm 818 KiB",
+      "observed": [
+        {
+          "method": "GET",
+          "url": "/nested/coilbox/assets/box3d-BRo-Inah.wasm",
+          "status": 200,
+          "bytes": 837687,
+          "contentType": "application/wasm"
+        }
+      ]
+    },
+    {
+      "id": "no-dev-urls",
+      "title": "The build does not reference the development server or source folders",
+      "passed": true,
+      "detail": "no dev-server URLs requested from http://127.0.0.1:65304",
+      "observed": []
+    },
+    {
+      "id": "no-missing-assets-anywhere",
+      "title": "No request for either page returned an error",
+      "passed": true,
+      "detail": "13 requests across probe and player, none failed",
+      "observed": []
+    },
+    {
+      "id": "no-console-errors",
+      "title": "No page errors or console errors while running the built game",
+      "passed": true,
+      "detail": "clean console"
+    }
+  ],
+  "browserErrors": []
+}

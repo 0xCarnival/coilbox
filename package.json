@@ -1,0 +1,41 @@
+{
+  "name": "coilbox",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Local-first Three.js game studio: author, play, and export standalone browser games.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22 <25"
+  },
+  "scripts": {
+    "dev": "tsx server/cli.ts dev",
+    "studio": "tsx server/cli.ts",
+    "build": "vite build",
+    "build:player": "tsx tools/cli.ts build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:unit": "vitest run --project unit",
+    "test:browser": "vitest run --project browser",
+    "verify:stage0": "tsx tools/verify-stage0.ts"
+  },
+  "dependencies": {
+    "box3d.js": "0.1.1",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "three": "0.185.1",
+    "zod": "4.6.2"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "@types/node": "24.10.1",
+    "@types/react": "19.2.7",
+    "@types/react-dom": "19.2.3",
+    "@types/three": "0.185.4",
+    "@vitejs/plugin-react": "6.1.1",
+    "tsx": "4.23.13",
+    "typescript": "5.9.3",
+    "vite": "8.3.0",
+    "vitest": "5.0.0"
+  }
+}

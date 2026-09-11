@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Coilbox game</title>
+    <style>
+      :root { color-scheme: dark; }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; margin: 0; background: #0b0d12; overflow: hidden; }
+      body { font: 12px/1.4 ui-sans-serif, -apple-system, "Segoe UI", sans-serif; color: #cfd6e4; }
+      #game-canvas { display: block; width: 100vw; height: 100vh; }
+      #player-status {
+        position: fixed;
+        left: 10px;
+        bottom: 8px;
+        padding: 3px 8px;
+        border-radius: 5px;
+        background: rgba(12, 15, 22, 0.72);
+        color: #93a0b8;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="game-canvas"></canvas>
+    <div id="player-status">loading project…</div>
+    <script type="module" src="/src/player/main.ts"></script>
+  </body>
+</html>

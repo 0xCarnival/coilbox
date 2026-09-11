@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Coilbox</title>
+    <style>
+      :root { color-scheme: dark; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background: #0d0f14;
+        color: #e6e9ef;
+        font: 14px/1.6 ui-sans-serif, -apple-system, "Segoe UI", sans-serif;
+      }
+      main { max-width: 640px; padding: 32px; }
+      h1 { font-size: 20px; margin: 0 0 4px; }
+      p { color: #98a2b6; }
+      ul { padding-left: 18px; }
+      a { color: #6ea8ff; }
+      code { background: #171b24; padding: 1px 5px; border-radius: 4px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Coilbox</h1>
+      <p>Local-first Three.js game studio. The editor shell arrives with stage 1 of the implementation plan.</p>
+      <ul>
+        <li><a href="./probe.html">Stage 0 runtime probe</a> — falling box, physics, Play/Stop cleanup</li>
+        <li><a href="./player.html?project=./probe-project/">Player</a> — standalone game entry point loading a project from files</li>
+      </ul>
+      <p>Run <code>pnpm dev</code> for the development server, or <code>pnpm verify:stage0</code> for the stage 0 evidence.</p>
+    </main>
+  </body>
+</html>

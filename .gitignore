@@ -1,0 +1,14 @@
+node_modules/
+dist/
+dist-*/
+.DS_Store
+*.log
+.probe/
+.cache/
+.generated/
+games/*/dist/
+games/*/.cache/
+tests/.tmp/
+playwright-report/
+test-results/
+*.tsbuildinfo

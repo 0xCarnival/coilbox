@@ -1,0 +1,8 @@
+packages:
+  - '.'
+
+allowBuilds:
+  esbuild: true
+
+minimumReleaseAgeExclude:
+  - zod@4.6.2

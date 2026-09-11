@@ -1,0 +1,92 @@
+import { z } from 'zod';
+import { componentSchema } from './components.js';
+import { entityId, finiteNumber, hexColor, quat, vec3 } from './fields.js';
+
+/**
+ * Scene document (plan §7).
+ *
+ * A scene stores stable entity IDs, display names, parent IDs, local transforms,
+ * explicit sibling order, enabled state, and typed component records. It also names
+ * the active game camera. Editor-only visibility/locking is kept apart from `enabled`
+ * so hiding a helper never disables gameplay content.
+ */
+
+export const SCENE_SCHEMA_VERSION = 1;
+
+export const transformSchema = z.object({
+  position: vec3.default([0, 0, 0]),
+  /** Normalised quaternion [x, y, z, w]. */
+  rotation: quat.default([0, 0, 0, 1]),
+  scale: vec3.default([1, 1, 1]),
+});
+
+export const editorStateSchema = z.object({
+  /** Editor-only visibility. Does not affect gameplay. */
+  visible: z.boolean().default(true),
+  /** Editor-only lock. Prevents accidental selection/transform. */
+  locked: z.boolean().default(false),
+  /** Optional folder colour used by the hierarchy tree. */
+  color: hexColor.nullable().default(null),
+  /** Editor-only helper flag (grid markers, spawn points) — never gameplay content. */
+  helper: z.boolean().default(false),
+});
+
+export const entitySchema = z.object({
+  id: entityId,
+  name: z.string().min(1).max(200),
+  parentId: entityId.nullable().default(null),
+  /** Explicit sibling order within the parent. */
+  order: finiteNumber.default(0),
+  /** Whether the entity participates in the game at all. */
+  enabled: z.boolean().default(true),
+  transform: transformSchema.prefault({}),
+  components: z.array(componentSchema).default([]),
+  editor: editorStateSchema.prefault({}),
+});
+
+export const fogSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('none') }),
+  z.object({
+    type: z.literal('linear'),
+    color: hexColor.default('#dfe6ee'),
+    near: finiteNumber.min(0).default(10),
+    far: finiteNumber.min(0).default(80),
+  }),
+  z.object({
+    type: z.literal('exponential'),
+    color: hexColor.default('#dfe6ee'),
+    density: finiteNumber.min(0).default(0.02),
+  }),
+]);
+
+export const environmentSchema = z.object({
+  background: z
+    .discriminatedUnion('type', [
+      z.object({ type: z.literal('color'), color: hexColor.default('#202431') }),
+      z.object({ type: z.literal('none') }),
+    ])
+    .default({ type: 'color', color: '#202431' }),
+  fog: fogSchema.default({ type: 'none' }),
+  /** Scene-level gravity in metres per second squared. */
+  gravity: vec3.default([0, -9.81, 0]),
+});
+
+export const sceneSchema = z.object({
+  schemaVersion: z.number().int().positive(),
+  /** Document revision, used to detect concurrent edits. Distinct from schemaVersion. */
+  revision: finiteNumber.int().min(0).default(0),
+  id: z.string().min(1).max(128),
+  name: z.string().min(1).max(200),
+  /** Entity used as the game camera; null falls back to the first camera entity. */
+  activeCameraId: entityId.nullable().default(null),
+  environment: environmentSchema.prefault({}),
+  entities: z.array(entitySchema).default([]),
+});
+
+export type Transform = z.infer<typeof transformSchema>;
+export type EditorState = z.infer<typeof editorStateSchema>;
+export type Entity = z.infer<typeof entitySchema>;
+export type SceneDocument = z.infer<typeof sceneSchema>;
+export type SceneDocumentInput = z.input<typeof sceneSchema>;
+export type Environment = z.infer<typeof environmentSchema>;
+export type Fog = z.infer<typeof fogSchema>;

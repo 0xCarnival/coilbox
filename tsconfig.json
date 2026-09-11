@@ -1,0 +1,32 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "moduleDetection": "force",
+    "jsx": "react-jsx",
+    "types": ["node", "vite/client"],
+    "strict": true,
+    "noUncheckedIndexedAccess": false,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "exactOptionalPropertyTypes": false,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@schema/*": ["src/schema/*"],
+      "@runtime/*": ["src/runtime/*"],
+      "@editor/*": ["src/editor/*"],
+      "@shared/*": ["src/shared/*"]
+    }
+  },
+  "include": ["src", "server", "tools", "tests", "vite.config.ts", "vitest.config.ts", "playwright.config.ts"],
+  "exclude": ["node_modules", "dist", "games/*/dist"]
+}
