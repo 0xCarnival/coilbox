@@ -28,7 +28,7 @@ import { isFiniteJsonNumber, isJsonString, jsonField } from './json-values.js';
  * would otherwise keep the old, taller console forever. Bumping the version is what makes a new
  * default actually reach an existing install.
  */
-const LAYOUT_KEY = 'coilbox.layout.v3';
+const LAYOUT_KEY = 'coilbox.layout.v4';
 
 interface Layout {
   left: number;
@@ -36,80 +36,85 @@ interface Layout {
   bottom: number;
 }
 
-const DEFAULT_LAYOUT: Layout = { left: 264, right: 324, bottom: 116 };
+const DEFAULT_LAYOUT: Layout = { left: 256, right: 320, bottom: 132 };
 
 /**
  * Shell chrome.
  *
- * `.studio-body` keeps its grid template inline because the tracks come from the stored layout at
- * runtime; everything else here is static. The panels no longer carry their surface here — each one
- * spreads `surface.panel`, so "what is a panel" has a single definition.
+ * The layout is the reference editor's: a **flush** workspace of bordered columns meeting at hard
+ * 1px edges, not a set of rounded cards on a gutter. The previous version's insets and radii were
+ * an invention of this editor's, and they are what made the workspace read as four unrelated boxes
+ * — the reference's panels are a single continuous surface divided by hairlines, so the eye reads
+ * the stage as the content and the panels as its frame.
  *
- * The gutter is the grid's own `gap` showing the app backdrop through, which is why `studioBody`
- * paints `color.bg` and not `color.line`. The previous arrangement used `gap: 1px` over a line-
- * coloured background so the gaps *were* the borders; that is what made the workspace read as one
- * welded slab with no region identity. A real gutter plus a radius per panel costs 12px and buys
- * the whole layout its structure.
+ * `.studio-body` keeps its grid template inline because the tracks come from the stored layout at
+ * runtime; everything else here is static. Panels spread `surface.panel`, so "what is a panel" has
+ * one definition.
  */
 const styles = stylex.create({
   studio: {
     display: 'flex',
     flexDirection: 'column',
     height: '100%',
+    backgroundColor: color.bg,
   },
   studioBody: {
     flex: 1,
     display: 'grid',
     minHeight: 0,
-    gap: space.sm,
     backgroundColor: color.bg,
-    paddingBlockEnd: space.sm,
-    paddingInline: space.sm,
   },
   centerPanel: {
     minHeight: 0,
     minWidth: 0,
     position: 'relative',
+    backgroundColor: color.bg,
+    overflow: 'hidden',
   },
   bottomHost: {
     gridColumn: '1 / -1',
     minHeight: 0,
     minWidth: 0,
   },
+  /**
+   * The status bar: 28px of quiet text at the bottom of the window, separated by a hairline. Their
+   * editor has no status bar at all, so this keeps the previous placement but drops to their
+   * `text-xs` on `muted` rather than the near-invisible tier it was using.
+   */
   statusbar: {
     display: 'flex',
     alignItems: 'center',
-    gap: space.md,
-    paddingBlock: space.xs,
-    paddingInline: space.md,
-    backgroundColor: color['panel-2'],
+    gap: space.lg,
+    height: '28px',
+    paddingInline: space.lg,
+    backgroundColor: color.bg,
     borderBlockStartWidth: '1px',
     borderBlockStartStyle: 'solid',
-    borderBlockStartColor: color.line,
-    color: color.dim,
+    borderBlockStartColor: color.border,
+    color: color.muted,
     fontSize: fontSize.xs,
     fontVariantNumeric: 'tabular-nums',
+    flexShrink: 0,
   },
   statusbarSpacer: {
     flex: 1,
   },
   /**
-   * The live play state. It was uppercase and letter-spaced in the status bar, which made a mode
-   * indicator look like a section heading; here it is a small accent dot and a word, so the eye
-   * catches it without the status bar gaining a second typographic voice.
+   * The live play state. A small filled dot and a word: the one place the status bar is allowed to
+   * be brighter than its neighbours, so a running simulation is visible at a glance.
    */
   playState: {
     display: 'flex',
     alignItems: 'center',
-    gap: space.xs,
-    color: color.accent,
-    fontWeight: 600,
+    gap: space.sm,
+    color: color.text,
+    fontWeight: 500,
   },
   playDot: {
     width: '6px',
     height: '6px',
     borderRadius: radius.pill,
-    backgroundColor: color.accent,
+    backgroundColor: color.ok,
   },
 });
 
@@ -281,10 +286,10 @@ function StudioShell(): JSX.Element {
             {...withDomClass(styles.studioBody, DOM.studioBody)}
             style={{ gridTemplateColumns: `${layout.left}px 1fr ${layout.right}px`, gridTemplateRows: `1fr ${layout.bottom}px` }}
           >
-            <div {...stylex.props(surface.panel)}>
+            <div {...stylex.props(surface.panel, surface.edgeEnd, surface.edgeBottom)}>
               <Hierarchy locked={editorLocked} />
             </div>
-            <div {...stylex.props(styles.centerPanel, surface.panel)}>
+            <div {...stylex.props(styles.centerPanel)}>
               <Viewport
                 handleRef={viewportRef}
                 tool={tool}
@@ -296,10 +301,10 @@ function StudioShell(): JSX.Element {
                 }}
               />
             </div>
-            <div {...stylex.props(surface.panel)}>
+            <div {...stylex.props(surface.panel, surface.edgeStart, surface.edgeBottom)}>
               <Inspector locked={editorLocked} />
             </div>
-            <div {...stylex.props(styles.bottomHost, surface.panel)}>
+            <div {...stylex.props(styles.bottomHost, surface.panel, surface.edgeBottom)}>
               <BottomPanel onReloadScene={() => void session.reloadScene()} />
             </div>
           </div>

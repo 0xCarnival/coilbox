@@ -26,7 +26,7 @@ const styles = stylex.create({
   dragging: {
     outlineWidth: '1px',
     outlineStyle: 'dashed',
-    outlineColor: color.accent,
+    outlineColor: color.primary,
     outlineOffset: '-4px',
     borderRadius: radius.lg,
   },
@@ -78,7 +78,7 @@ const styles = stylex.create({
     textTransform: 'uppercase',
     borderBlockEndWidth: '1px',
     borderBlockEndStyle: 'solid',
-    borderBlockEndColor: color.line,
+    borderBlockEndColor: color.border,
     paddingBlock: space.sm,
     paddingInline: space.sm,
   },

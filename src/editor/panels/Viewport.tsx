@@ -75,7 +75,7 @@ const styles = stylex.create({
     backdropFilter: 'blur(6px)',
     borderWidth: '1px',
     borderStyle: 'solid',
-    borderColor: color.stroke,
+    borderColor: color['border-strong'],
     borderRadius: radius.pill,
     paddingBlock: '3px',
     paddingInline: space.sm,
@@ -88,7 +88,7 @@ const styles = stylex.create({
     width: '6px',
     height: '6px',
     borderRadius: radius.pill,
-    backgroundColor: color.accent,
+    backgroundColor: color.primary,
   },
   /**
    * A load failure is the one thing in the viewport that must not be missable, so it is the only

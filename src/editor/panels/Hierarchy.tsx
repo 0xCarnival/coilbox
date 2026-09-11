@@ -2,25 +2,31 @@ import { useMemo, useState } from 'react';
 import type { JSX } from 'react';
 import * as stylex from '@stylexjs/stylex';
 import type { Entity } from '@schema/index.js';
-import { color, fontSize, space } from '../styles/tokens.stylex.js';
+import {
+  Box,
+  ChevronRight,
+  Boxes,
+  Copy,
+  Eye,
+  EyeOff,
+  Layers,
+  Lightbulb,
+  Lock,
+  LockOpen,
+  Pause,
+  Play,
+  Search,
+  Trash2,
+  Video,
+  Workflow,
+} from 'lucide-react';
+import { color, control, fontSize, radius, space } from '../styles/tokens.stylex.js';
+import { IconButton } from '../ui/Button.js';
 import { DOM, DOM_STATE, withDomClass } from '../dom-contract.js';
 import { useSession, useSessionSnapshot } from '../hooks.js';
 import { createEntity, reparentPreservingWorldTransform } from '../document/factory.js';
 import { createEntityId, subtreeOf } from '../document/commands.js';
-import {
-  IconBehavior,
-  IconCamera,
-  IconClose,
-  IconEye,
-  IconGroup,
-  IconLight,
-  IconLock,
-  IconMesh,
-  IconPause,
-  IconPlay,
-  IconSearch,
-  IconTrigger,
-} from './icons.js';
+
 
 /**
  * Hierarchy panel (plan §3): search, selection, rename, visibility, lock, grouping.
@@ -37,49 +43,62 @@ interface TreeRow {
 /**
  * Pick the glyph for an entity from the components it actually carries.
  *
- * The order matters: a camera is also a mesh-shaped thing to the schema, and a light with a
- * behavior attached is still a light. Matching most-specific-first is what keeps the icon honest —
- * an entity is labelled by what makes it *different* from the rows around it.
+ * The order matters: a camera is also a mesh-shaped thing to the schema, and a light with a behavior
+ * attached is still a light. Matching most-specific-first is what keeps the icon honest — an entity
+ * is labelled by what makes it *different* from the rows around it.
+ *
+ * These are `lucide-react` glyphs, the same set the reference editor uses. A hand-drawn icon set was
+ * tried first here and read as amateurish next to a real one: lucide's 24px grid, 2px stroke, and
+ * round caps are consistent across every glyph, which is not something a set drawn one at a time
+ * arrives at by accident.
  */
 function entityIcon(entity: Entity) {
   const types = new Set(entity.components.map((component) => component.type));
-  if (types.has('light')) return IconLight;
-  if (types.has('camera')) return IconCamera;
-  if (types.has('collider')) return IconTrigger;
-  if (types.has('behavior')) return IconBehavior;
+  if (types.has('light')) return Lightbulb;
+  if (types.has('camera')) return Video;
+  if (types.has('collider')) return Boxes;
+  if (types.has('behavior')) return Workflow;
   /**
    * A group carries no renderable component of its own — it exists to transform its children. The
    * group glyph is the fall-through rather than a lookup because "has nothing that draws" *is* the
    * definition of a group here.
    */
-  if (types.size === 0) return IconGroup;
-  return IconMesh;
+  if (types.size === 0) return Layers;
+  return Box;
 }
 
 /** The tree's base row layout, shared by the row and the muted name treatment. */
+/**
+ * The tree row: 24px tall, the reference's density.
+ *
+ * Selection is a filled neutral chip with no accent edge — the reference marks a selected row with
+ * `bg-accent` and nothing else. An accent-coloured left border was the previous version's invention
+ * and it made the tree look like a form with one field focused.
+ */
 const treeRow = {
   display: 'flex',
   alignItems: 'center',
   gap: space.xs,
-  paddingBlock: '3px',
-  paddingInline: space.sm,
+  height: '24px',
+  paddingInline: space.md,
+  borderRadius: radius.sm,
   cursor: 'default',
-  borderInlineStartWidth: '2px',
-  borderInlineStartStyle: 'solid',
-  borderInlineStartColor: 'transparent',
 } as const;
 
-/** Bare icon buttons: no chrome, muted, and sized to the glyph they carry. */
-const iconButton = {
-  backgroundColor: 'transparent',
-  borderWidth: 0,
-  borderStyle: 'none',
+/**
+ * The three per-row state toggles are inline rather than permanently painted.
+ *
+ * Their resting state is a 22px slot, not a 32px control: the reference's tree rows are 24px tall,
+ * and a 32px button inside one would set the row height. The control inside is a real `IconButton`,
+ * so the hit area is still the full slot. A row that is *already* hidden, locked, or disabled keeps
+ * its toggle painted: hiding it would hide the explanation for why the row looks different, which is
+ * the one case where the toggle carries information rather than offering an action.
+ */
+const rowToggleBase = {
   display: 'grid',
   placeItems: 'center',
-  width: '18px',
-  height: '18px',
-  paddingInline: 0,
-  color: color.dim,
+  width: '22px',
+  height: '22px',
   flexShrink: 0,
 } as const;
 
@@ -95,12 +114,21 @@ const styles = stylex.create({
    * band with a rule under it. The count is what tells the reader the panel is a live list, which
    * a border never did.
    */
+  /**
+   * The panel header carries a search field and a count. It is not a filled band with a rule under
+   * it: a hairline and a slightly taller row is enough to separate a header from its list, and a
+   * filled band would compete with the selected row for attention.
+   */
   panelHeader: {
     display: 'flex',
     alignItems: 'center',
-    gap: space.sm,
-    paddingBlock: space.sm,
-    paddingInline: space.sm,
+    gap: space.md,
+    paddingBlock: space.md,
+    paddingInline: space.lg,
+    borderBlockEndWidth: '1px',
+    borderBlockEndStyle: 'solid',
+    borderBlockEndColor: color.border,
+    flexShrink: 0,
   },
   searchWrap: {
     position: 'relative',
@@ -132,7 +160,7 @@ const styles = stylex.create({
     overflow: 'auto',
     flex: 1,
     paddingBlock: space.xs,
-    paddingInline: 0,
+    paddingInline: space.xs,
   },
   treeRow: {
     ...treeRow,
@@ -152,9 +180,9 @@ const styles = stylex.create({
    * Selection is a quiet accent fill with an accent edge, not a saturated block. The edge is what
    * carries "selected" at a glance; the fill only has to separate the row from its neighbours.
    */
+  /** The reference's selected row: the same `accent` fill its tab bar uses, and nothing more. */
   treeRowSelected: {
-    backgroundColor: color['accent-quiet'],
-    borderInlineStartColor: color.accent,
+    backgroundColor: color.surface,
   },
   /**
    * The entity's kind, as a glyph. Three identical dots in a column told the reader nothing about
@@ -177,14 +205,15 @@ const styles = stylex.create({
    * does not have.
    */
   treeDisclosure: {
-    width: '12px',
     display: 'grid',
     placeItems: 'center',
+    width: control.iconSm,
+    height: control.iconSm,
     color: color.dim,
     flexShrink: 0,
   },
   treeIconSelected: {
-    color: color.accent,
+    color: color.text,
   },
   treeName: {
     flex: 1,
@@ -203,6 +232,11 @@ const styles = stylex.create({
     color: color.dim,
     textDecorationLine: 'line-through',
   },
+  /**
+   * Duplicate and delete appear only on the hovered row. They are permanent-looking chrome that most
+   * rows never need, and keeping them painted cost the name column 44px on a 256px panel — which is
+   * why a five-word object name was rendering as "Wall No…".
+   */
   treeActions: {
     display: 'none',
     gap: space.xxs,
@@ -211,18 +245,13 @@ const styles = stylex.create({
   treeActionsVisible: {
     display: 'flex',
   },
-  iconToggle: iconButton,
-  /**
-   * The visibility, lock, and enabled toggles are per-row state that most rows never change, so
-   * they only appear on the hovered row. A permanently visible column of toggles is what made the
-   * tree read as a table of controls rather than a list of objects.
-   *
-   * A row that is *already* hidden, locked, or disabled keeps its toggle visible: hiding it would
-   * hide the explanation for why that row looks different, which is the one case where the toggle
-   * is information rather than an action.
-   */
-  iconToggleHidden: {
-    display: 'none',
+  rowToggle: rowToggleBase,
+  rowToggleHidden: {
+    visibility: 'hidden',
+  },
+  /** A toggle whose state is not the default: painted, and the row's only bright glyph. */
+  rowToggleOn: {
+    color: color.text,
   },
   rename: {
     flex: 1,
@@ -335,7 +364,7 @@ export function Hierarchy({ locked }: { locked: boolean }): JSX.Element {
       <div {...stylex.props(styles.panelHeader)}>
         <span {...stylex.props(styles.searchWrap)}>
           <span {...stylex.props(styles.searchIcon)}>
-            <IconSearch size={12} />
+            <Search size={control.iconSm} />
           </span>
           <input
             {...stylex.props(styles.search)}
@@ -368,7 +397,7 @@ export function Hierarchy({ locked }: { locked: boolean }): JSX.Element {
                 DOM.treeRow,
                 isSelected && DOM_STATE.selected,
               )}
-              style={{ paddingLeft: 6 + depth * 12 }}
+              style={{ paddingLeft: 4 + depth * 10 }}
               onClick={(event) => session.select(entity.id, { additive: event.shiftKey || event.metaKey || event.ctrlKey })}
               onDoubleClick={() => !locked && setRenaming(entity.id)}
               onMouseEnter={() => setHovered(entity.id)}
@@ -376,72 +405,19 @@ export function Hierarchy({ locked }: { locked: boolean }): JSX.Element {
               data-entity-id={entity.id}
             >
               {/**
-               * Visibility and lock are per-row state that most rows never change, so they only
-               * appear on the hovered row. The exception is a row that is *already* hidden or
-               * locked: hiding that toggle would hide the reason the row looks different, so it
-               * stays visible and takes the accent.
+               * The row reads: disclosure, kind, name — then the per-row state toggles, which only
+               * appear on the hovered row. A row that is *already* hidden, locked, or disabled keeps
+               * its toggle painted, because hiding it would hide the reason the row looks different.
+               *
+               * Everything before the name is a fixed-width slot, which is what keeps one
+               * alignment line down the tree however deep a node sits.
                */}
-              <button
-                {...stylex.props(
-                  styles.iconToggle,
-                  !isHovered && entity.editor.visible && styles.iconToggleHidden,
-                  !entity.editor.visible && styles.treeIconSelected,
-                )}
-                type="button"
-                title={entity.editor.visible ? 'Hide in the editor' : 'Show in the editor'}
-                aria-label={entity.editor.visible ? 'Hide in the editor' : 'Show in the editor'}
-                disabled={locked}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  toggleEditorState(entity, { visible: !entity.editor.visible });
-                }}
-              >
-                <IconEye size={13} hidden={!entity.editor.visible} />
-              </button>
-              <button
-                {...stylex.props(
-                  styles.iconToggle,
-                  !isHovered && !entity.editor.locked && styles.iconToggleHidden,
-                  entity.editor.locked && styles.treeIconSelected,
-                )}
-                type="button"
-                title={entity.editor.locked ? 'Unlock' : 'Lock (prevents selection in the viewport)'}
-                aria-label={entity.editor.locked ? 'Unlock' : 'Lock'}
-                disabled={locked}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  toggleEditorState(entity, { locked: !entity.editor.locked });
-                }}
-              >
-                <IconLock size={13} open={!entity.editor.locked} />
-              </button>
-              <button
-                {...stylex.props(
-                  styles.iconToggle,
-                  !isHovered && entity.enabled && styles.iconToggleHidden,
-                  !entity.enabled && styles.treeIconSelected,
-                )}
-                type="button"
-                title={entity.enabled ? 'Enabled in the game — click to disable' : 'Disabled in the game — click to enable'}
-                aria-label={entity.enabled ? 'Disable in the game' : 'Enable in the game'}
-                disabled={locked}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  session.execute({ kind: 'setEntityEnabled', entityId: entity.id, enabled: !entity.enabled });
-                }}
-              >
-                {entity.enabled ? <IconPause size={12} /> : <IconPlay size={12} />}
-              </button>
-              <span {...stylex.props(styles.treeIcon, isSelected && styles.treeIconSelected)}>
-                <EntityIcon size={13} />
+              <span {...stylex.props(styles.treeDisclosure)} aria-hidden="true">
+                {hasChildren.has(entity.id) ? <ChevronRight size={control.iconSm} /> : null}
               </span>
-              {hasChildren.has(entity.id) ? (
-                <span {...stylex.props(styles.treeDisclosure)} aria-hidden="true">
-                  ·
-                </span>
-              ) : (
-                <span {...stylex.props(styles.treeDisclosureEmpty)} />
-              )}
+              <span {...stylex.props(styles.treeIcon, isSelected && styles.treeIconSelected)}>
+                <EntityIcon size={control.iconSm} />
+              </span>
               {renaming === entity.id ? (
                 <input
                   {...stylex.props(styles.rename)}
@@ -465,33 +441,85 @@ export function Hierarchy({ locked }: { locked: boolean }): JSX.Element {
                   {entity.name}
                 </span>
               )}
+              <span
+                {...stylex.props(
+                  styles.rowToggle,
+                  !isHovered && entity.editor.visible && styles.rowToggleHidden,
+                  !entity.editor.visible && styles.rowToggleOn,
+                )}
+              >
+                <IconButton
+                  label={entity.editor.visible ? 'Hide in the editor' : 'Show in the editor'}
+                  disabled={locked}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    toggleEditorState(entity, { visible: !entity.editor.visible });
+                  }}
+                >
+                  {entity.editor.visible ? <Eye size={control.iconSm} /> : <EyeOff size={control.iconSm} />}
+                </IconButton>
+              </span>
+              <span
+                {...stylex.props(
+                  styles.rowToggle,
+                  !isHovered && !entity.editor.locked && styles.rowToggleHidden,
+                  entity.editor.locked && styles.rowToggleOn,
+                )}
+              >
+                <IconButton
+                  label={entity.editor.locked ? 'Unlock' : 'Lock (prevents selection in the viewport)'}
+                  disabled={locked}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    toggleEditorState(entity, { locked: !entity.editor.locked });
+                  }}
+                >
+                  {entity.editor.locked ? <Lock size={control.iconSm} /> : <LockOpen size={control.iconSm} />}
+                </IconButton>
+              </span>
+              <span
+                {...stylex.props(
+                  styles.rowToggle,
+                  !isHovered && entity.enabled && styles.rowToggleHidden,
+                  !entity.enabled && styles.rowToggleOn,
+                )}
+              >
+                <IconButton
+                  label={
+                    entity.enabled
+                      ? 'Enabled in the game — click to disable'
+                      : 'Disabled in the game — click to enable'
+                  }
+                  disabled={locked}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    session.execute({ kind: 'setEntityEnabled', entityId: entity.id, enabled: !entity.enabled });
+                  }}
+                >
+                  {entity.enabled ? <Pause size={control.iconSm} /> : <Play size={control.iconSm} />}
+                </IconButton>
+              </span>
               <span {...stylex.props(styles.treeActions, isHovered && styles.treeActionsVisible)}>
-                <button
-                  {...stylex.props(styles.iconToggle)}
-                  type="button"
-                  title="Duplicate"
-                  aria-label="Duplicate"
+                <IconButton
+                  label="Duplicate"
                   disabled={locked}
                   onClick={(event) => {
                     event.stopPropagation();
                     duplicate(entity);
                   }}
                 >
-                  ⧉
-                </button>
-                <button
-                  {...stylex.props(styles.iconToggle)}
-                  type="button"
-                  title="Delete"
-                  aria-label="Delete"
+                  <Copy size={control.iconSm} />
+                </IconButton>
+                <IconButton
+                  label="Delete"
                   disabled={locked}
                   onClick={(event) => {
                     event.stopPropagation();
                     session.execute({ kind: 'deleteEntities', entityIds: [entity.id] });
                   }}
                 >
-                  <IconClose size={12} />
-                </button>
+                  <Trash2 size={control.iconSm} />
+                </IconButton>
               </span>
             </div>
           );

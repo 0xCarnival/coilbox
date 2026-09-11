@@ -17,7 +17,8 @@ import {
 import type { BehaviorPropertyDescriptor } from '@runtime/behaviors/types.js';
 import { componentsFor, type CreatableKind } from '../document/factory.js';
 import { isFiniteJsonNumber, isJsonString, jsonQuaternion, jsonVec3 } from '../json-values.js';
-import { IconChevron } from './icons.js';
+import { ChevronRight } from 'lucide-react';
+import { useScrub } from '../ui/useScrub.js';
 
 /**
  * Inspector (plan §3): only the selected object's applicable properties, with readable
@@ -86,7 +87,7 @@ const styles = stylex.create({
   section: {
     borderBlockStartWidth: '1px',
     borderBlockStartStyle: 'solid',
-    borderBlockStartColor: color.line,
+    borderBlockStartColor: color.border,
     paddingBlock: space.sm,
   },
   /**
@@ -209,10 +210,24 @@ const styles = stylex.create({
    * `.axis span`. The axis letter stays at 10px: it is a colour-coded suffix on a number, not a
    * label the reader parses, so it has to be quieter than the value beside it.
    */
+  /**
+   * The axis letter is the scrub handle, so it carries the `ew-resize` cursor that advertises the
+   * gesture. It is deliberately not a chip or a button: it must stay a 10px letter so the number
+   * beside it keeps the row's width.
+   */
   axisLabel: {
     color: color.dim,
-    fontSize: '10px',
+    fontSize: fontSize.micro,
     fontWeight: 600,
+    cursor: 'ew-resize',
+    userSelect: 'none',
+    paddingInlineEnd: space.xs,
+    ':hover': {
+      color: color.text,
+    },
+  },
+  axisLabelDragging: {
+    color: color.text,
   },
   /** `.axis input` — the width moves onto the input itself. */
   axisInput: {
@@ -537,7 +552,7 @@ function BehaviorSection({ entity, component, locked }: { entity: Entity; compon
       {advanced.length > 0 && (
         <div>
           <button {...stylex.props(styles.advancedToggle)} type="button" onClick={() => setAdvancedOpen((open) => !open)}>
-            <IconChevron open={advancedOpen} size={11} />
+            <ChevronRight size={14} style={{ transform: advancedOpen ? 'rotate(90deg)' : undefined, transition: 'transform 120ms ease' }} />
             {advancedOpen ? 'Hide advanced' : `${advanced.length} advanced`}
           </button>
           {advancedOpen &&
@@ -626,7 +641,7 @@ function ComponentSection({
       {advanced.length > 0 && (
         <div>
           <button {...stylex.props(styles.advancedToggle)} type="button" onClick={() => setAdvancedOpen((open) => !open)}>
-            <IconChevron open={advancedOpen} size={11} />
+            <ChevronRight size={14} style={{ transform: advancedOpen ? 'rotate(90deg)' : undefined, transition: 'transform 120ms ease' }} />
             {advancedOpen ? 'Hide advanced' : `${advanced.length} advanced`}
           </button>
           {advancedOpen &&
@@ -881,26 +896,84 @@ function VectorField({
       {label && <span {...withDomClass(styles.fieldLabel, DOM.fieldLabel)}>{label}</span>}
       <div {...stylex.props(styles.vectorInputs)}>
         {(['X', 'Y', 'Z'] as const).map((axis, index) => (
-          <label key={axis} {...stylex.props(styles.axis)}>
-            <span {...stylex.props(styles.axisLabel)}>{axis}</span>
-            <input
-              {...stylex.props(styles.axisInput)}
-              type="number"
-              step={step}
-              disabled={disabled}
-              value={Number.isFinite(value[index]) ? String(value[index]) : ''}
-              onChange={(event) => {
-                const parsed = Number(event.target.value);
-                if (!Number.isFinite(parsed)) return;
-                const next: Vec3 = [value[0], value[1], value[2]];
-                next[index] = positive ? Math.max(0.001, Math.abs(parsed)) : parsed;
-                onChange(next);
-              }}
-            />
-          </label>
+          <ScrubAxisInput
+            key={axis}
+            axis={axis}
+            componentIndex={index}
+            value={value}
+            step={step}
+            disabled={disabled}
+            positive={positive}
+            onChange={onChange}
+          />
         ))}
       </div>
     </div>
+  );
+}
+
+/**
+ * One axis of a vector row.
+ *
+ * The markup stays a `<label>` and a real `<input type="number">` on purpose: the browser gates
+ * drive these fields through `.vector-field … input`, so replacing them with the `ScrubField`
+ * readout would change the DOM contract to gain a gesture. Instead the *axis letter* is the drag
+ * handle — the same affordance the reference puts on a field's label — and the input is left exactly
+ * as it was for typing, arrow keys, and the gates.
+ */
+function ScrubAxisInput({
+  axis,
+  componentIndex,
+  value,
+  step,
+  disabled,
+  positive,
+  onChange,
+}: {
+  axis: 'X' | 'Y' | 'Z';
+  componentIndex: number;
+  value: Vec3;
+  step: number;
+  disabled: boolean;
+  positive?: boolean;
+  onChange(value: Vec3): void;
+}): JSX.Element {
+  const setComponent = (next: number) => {
+    const out: Vec3 = [value[0], value[1], value[2]];
+    out[componentIndex] = positive ? Math.max(0.001, Math.abs(next)) : next;
+    onChange(out);
+  };
+  const scrub = useScrub({
+    value: value[componentIndex],
+    onChange: setComponent,
+    step,
+    min: positive ? 0.001 : undefined,
+    disabled,
+  });
+
+  return (
+    <label {...stylex.props(styles.axis)}>
+      <span
+        {...stylex.props(styles.axisLabel, scrub.dragging && styles.axisLabelDragging)}
+        onPointerDown={scrub.onPointerDown}
+        title={`${axis} — drag to change, Shift for coarse, Alt for fine`}
+      >
+        {axis}
+      </span>
+      <input
+        {...stylex.props(styles.axisInput)}
+        type="number"
+        step={step}
+        disabled={disabled}
+        aria-label={`${axis} component`}
+        value={Number.isFinite(value[componentIndex]) ? String(value[componentIndex]) : ''}
+        onChange={(event) => {
+          const parsed = Number(event.target.value);
+          if (!Number.isFinite(parsed)) return;
+          setComponent(parsed);
+        }}
+      />
+    </label>
   );
 }
 
@@ -965,7 +1038,7 @@ function Section({
          * trailing it keeps one alignment line down the whole panel.
          */}
         <span {...stylex.props(subtitle ? undefined : styles.chevronTrailing)}>
-          <IconChevron open={open} size={12} />
+          <ChevronRight size={14} style={{ transform: open ? 'rotate(90deg)' : undefined, transition: 'transform 120ms ease' }} />
         </span>
       </button>
       {open && <div {...stylex.props(styles.sectionBody)}>{children}</div>}

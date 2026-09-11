@@ -5,7 +5,8 @@ import { button, color, fontFamily, fontSize, radius, space } from '../styles/to
 import { DOM, withDomClass } from '../dom-contract.js';
 import { useSession, useSessionSnapshot } from '../hooks.js';
 import type { ProjectSummary } from '../state/editor-session.js';
-import { IconArchive, IconCopy, IconExport, IconPlay, IconPlus, IconSearch } from './icons.js';
+import { Archive, Copy, Download, Play, Plus, Search } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
 /**
  * Project home (plan §3): game cards with create, open, and — in later stages — duplicate,
@@ -78,7 +79,7 @@ const styles = stylex.create({
     width: '8px',
     height: '8px',
     borderRadius: radius.pill,
-    backgroundColor: color.accent,
+    backgroundColor: color.primary,
   },
   homeSubtitle: muted,
   homeActions: {
@@ -134,7 +135,7 @@ const styles = stylex.create({
     paddingInline: space.md,
     borderWidth: '1px',
     borderStyle: 'solid',
-    borderColor: color.line,
+    borderColor: color.border,
     borderRadius: radius.lg,
     backgroundColor: color.panel,
     marginBlockEnd: space.lg,
@@ -167,19 +168,19 @@ const styles = stylex.create({
     borderRadius: radius.lg,
     borderWidth: '1px',
     borderStyle: 'solid',
-    borderColor: color.line,
+    borderColor: color.border,
     backgroundColor: color.panel,
     overflow: 'hidden',
     transition: 'border-color 120ms ease, background-color 120ms ease',
     ':hover': {
-      borderColor: color.stroke,
+      borderColor: color['border-strong'],
       backgroundColor: color['panel-2'],
     },
   },
   /** The hover a card raises for its own children. StyleX has no descendant selector, so the
    *  "show the actions" state is a named class the footer reads rather than a rule reaching in. */
   cardHovered: {
-    borderColor: color.stroke,
+    borderColor: color['border-strong'],
     backgroundColor: color['panel-2'],
   },
   cardThumb: {
@@ -189,7 +190,7 @@ const styles = stylex.create({
     backgroundColor: color.bg,
     borderBlockEndWidth: '1px',
     borderBlockEndStyle: 'solid',
-    borderBlockEndColor: color.line,
+    borderBlockEndColor: color.border,
     color: color.dim,
     overflow: 'hidden',
   },
@@ -310,7 +311,7 @@ const styles = stylex.create({
     paddingInline: space.md,
     borderWidth: '1px',
     borderStyle: 'solid',
-    borderColor: color.line,
+    borderColor: color.border,
     borderRadius: radius.md,
     backgroundColor: color.panel,
     fontSize: fontSize.sm,
@@ -329,7 +330,7 @@ const styles = stylex.create({
     gridColumn: '1 / -1',
     borderWidth: '1px',
     borderStyle: 'dashed',
-    borderColor: color.line,
+    borderColor: color.border,
     borderRadius: radius.lg,
   },
 });
@@ -398,7 +399,7 @@ export function ProjectHome(): JSX.Element {
           {snapshot.projects.length > 6 && (
             <span {...stylex.props(styles.searchWrap)}>
               <span {...stylex.props(styles.searchIcon)}>
-                <IconSearch size={12} />
+                <Search size={14} />
               </span>
               <input
                 {...stylex.props(styles.search)}
@@ -428,7 +429,7 @@ export function ProjectHome(): JSX.Element {
             }}
           />
           <button {...stylex.props(button.primary)} type="button" onClick={() => setCreating((value) => !value)}>
-            <IconPlus size={13} />
+            <Plus size={16} />
             New game
           </button>
         </div>
@@ -573,10 +574,10 @@ function ProjectCard({
    * buttons. Each carries an icon plus a title and an aria-label, so the icon is never the only
    * name the control has.
    */
-  const secondaryActions: Array<{ label: string; title: string; Icon: typeof IconCopy; run(): void }> = [
-    { label: 'Duplicate', title: 'Copy this project', Icon: IconCopy, run: onDuplicate },
-    { label: 'Export source', title: 'Download a source archive', Icon: IconExport, run: onExport },
-    { label: 'Archive', title: 'Move to the recoverable archive', Icon: IconArchive, run: onArchive },
+  const secondaryActions: Array<{ label: string; title: string; Icon: LucideIcon; run(): void }> = [
+    { label: 'Duplicate', title: 'Copy this project', Icon: Copy, run: onDuplicate },
+    { label: 'Export source', title: 'Download a source archive', Icon: Download, run: onExport },
+    { label: 'Archive', title: 'Move to the recoverable archive', Icon: Archive, run: onArchive },
   ];
 
   return (
@@ -600,7 +601,7 @@ function ProjectCard({
            * rendered in the platform's colour font, which put a full-colour cartoon in the middle
            * of a monochrome page and read as a missing asset rather than a deliberate blank.
            */
-          <IconPlay size={22} />
+          <Play size={28} />
         )}
       </div>
       <div {...stylex.props(styles.cardBody)}>

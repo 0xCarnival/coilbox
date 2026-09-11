@@ -3,291 +3,404 @@ import * as stylex from '@stylexjs/stylex';
 /**
  * The editor's design tokens.
  *
- * `stylex.defineVars` compiles to CSS custom properties, so these are the *same* custom properties
- * the plain stylesheet declares — `base.css` still reads `var(--muted)` and the browser resolves it
- * against the `:root` block StyleX emits. That is what lets the panels migrate to StyleX one at a
- * time instead of requiring a single all-or-nothing rewrite.
+ * ## Where these values come from
  *
- * Keys are written in kebab-case precisely so the compiled `--panel-2` matches the name the
- * stylesheet already used. Renaming them would silently break every `var()` reference in
- * `base.css`, so the spelling here is part of the contract with that file.
+ * This palette and scale are a port of the design system in
+ * [`pascalorg/editor`](https://github.com/pascalorg/editor) (MIT, Copyright (c) 2026 Pascal Group
+ * Inc.) — see `THIRD_PARTY_NOTICES.md`. That project is the reference for what this editor should
+ * look and feel like, so its values are adopted deliberately and wholesale rather than re-derived:
+ * the point of a port is to match, and "close enough" is how the previous attempt ended up reading
+ * as a generic dark theme.
  *
- * Nothing here is editor-specific except the *values*: the tokens live in the editor because the
- * runtime HUD and the exported game intentionally carry no styling dependency on the editor.
- * See `coilbox/no-stylex-outside-editor` in `oxlint.config.ts`.
+ * Their tokens are shadcn/ui's defaults on Tailwind v4, authored in `oklch`. StyleX's value
+ * handling rejects some modern colour functions outright (`color-mix()` fails the compiler with
+ * "Rule contains an unclosed function"), so every value here is the **sRGB hex equivalent** of
+ * their `oklch` triple. The `oklch` source is in the comment beside each one, which is what keeps
+ * the two comparable when their palette moves.
  *
- * ## The palette is deliberately near-monochrome
+ * The imported system is *not* generic. Three properties do most of the work:
  *
- * Every surface is a true neutral — no blue cast. The earlier palette tinted `bg`, `panel`, and
- * `line` blue and spent a saturated blue on the accent, which is what made the editor read as a
- * stock dark theme rather than a tool with a point of view. Here the *only* chromatic values are
- * the accent and the three status colours, so an amber pixel always means "this is live" and a
- * green pixel always means "this succeeded".
+ * 1. **The chrome is strictly neutral.** Every surface is zero-chroma grey. There is no accent hue
+ *    anywhere in the UI furniture — no blue focus ring, no amber active state. Emphasis comes from
+ *    lightness instead: `#fafafa` on `#171717` is 16:1, and a hovered row is simply lighter than a
+ *    resting one.
+ * 2. **Foreground text is near-white, not grey.** `#fafafa`, not a bluish `#e9eaec`. Inspector
+ *    values are the brightest thing on screen, which is what makes them scannable.
+ * 3. **Borders are translucent white, not opaque grey.** A `white/10%` border composites against
+ *    whatever surface it sits on, so one token reads correctly on the stage, on a panel, and on a
+ *    popover. An opaque grey border has to be re-picked per surface.
  *
- * Warmth lives in the accent rather than in the surfaces. A warm-tinted surface (brown-black)
- * reads as muddy at this size and fights the viewport, which is the one region that should look
- * like the game. Keeping the metal cool and the indicator warm is what makes the accent read.
+ * The one place a hue could appear is `primary`, and it does not: their default button is a
+ * near-white fill with dark text, not a coloured one.
  */
 
-/**
- * Surfaces, lines, text, and status colours.
- *
- * The surface ramp is a four-step neutral scale. Each step is a fixed lightness increment rather
- * than a hand-picked colour, so a new surface has an obvious next value instead of an inviting
- * guess. `panel` is the resting panel, `panel-2` is a panel header or the toolbar (one step
- * brighter, because it sits above content), and `elevated` is for things that float over the
- * editor — menus and popovers.
- *
- * `dim` is a third text tier. The old palette had only `text` and `muted`, which forced empty
- * states, timestamps, and disabled text to all claim the same weight as a real label.
- */
+/** Surfaces, lines, text, and status colours. */
 export const color = stylex.defineVars({
-  /** The app backdrop behind the panel gutter. Deliberately darker than any panel. */
-  bg: '#08090a',
-  /** The resting panel surface. */
-  panel: '#121316',
-  /** Panel headers and the toolbar: one step above content. */
-  'panel-2': '#17181c',
-  /** Menus and popovers, which must separate from the panel beneath them. */
-  elevated: '#1e2024',
-  /** Hairline borders and the grid gap that acts as a divider. */
-  line: '#26272c',
-  /** A border that has to be visible against `line`: hover, focus-within, drag targets. */
-  'line-strong': '#3a3c43',
+  /** The app backdrop and the 3D stage. `oklch(0.205 0 0)`. */
+  bg: '#171717',
+  /** Panels and popovers. Same value as `bg` in their dark theme. `oklch(0.205 0 0)`. */
+  panel: '#171717',
+  /** A raised surface: toolbar, panel header. One step up. `oklch(0.249 0 0)`. */
+  'panel-2': '#292929',
+  /** The hover/selected fill, and the resting fill of a field. `oklch(0.269 0 0)`. */
+  surface: '#333333',
+  /** A sunken fill for wells and inset rows. `oklch(0.145 0 0)`. */
+  sunken: '#0f0f0f',
+  /** A raised popover, one step above a panel. `oklch(0.235 0 0)`. */
+  elevated: '#272727',
 
-  text: '#e9eaec',
-  muted: '#a8aab1',
-  /**
-   * The quiet tier: metadata, timestamps, section labels, and icon strokes.
-   *
-   * Chosen by measuring, not by eye. The first attempt was `#6e7076`, which looked right on a panel
-   * and failed everything else — 3.58:1 on the toolbar surface, where the save indicator actually
-   * lives. `#8c8f96` is the darkest value that clears 4.5:1 against the *lightest* surface in the
-   * palette, so one token is safe everywhere and no call site has to reason about which background
-   * it will land on.
-   *
-   * The three text tiers are therefore `text` (values, 15:1), `muted` (labels, 7:1), and this
-   * (metadata and glyphs, 5.5:1). All three are legible; the difference between them is emphasis,
-   * never whether the text can be read.
-   */
-  dim: '#8c8f96',
+  /** Opaque hairline, for the places a translucent border cannot reach (canvas overlays). */
+  line: '#333333',
+  /** `white/10%` — the standard border on every card, panel, menu, and separator. */
+  border: 'rgba(255, 255, 255, 0.1)',
+  /** `white/15%` — the border of a control that has to read as an input. */
+  'border-input': 'rgba(255, 255, 255, 0.15)',
+  /** A border at hover, one step brighter. */
+  'border-strong': 'rgba(255, 255, 255, 0.2)',
 
+  /** Primary text and inspector values. `oklch(0.985 0 0)` — 16.4:1 on `bg`. */
+  text: '#fafafa',
+  /** Field labels and secondary text. `oklch(0.708 0 0)` — 7.3:1 on `bg`. */
+  muted: '#b4b4b4',
+  /** A third tier for hints and placeholders. `oklch(0.556 0 0)` — 4.4:1, non-essential text only. */
+  dim: '#8a8a8a',
 
-  /**
-   * The one accent: warm amber.
-   *
-   * Reserved for genuine state — the active tool, the selected row, focus rings, a live play
-   * session. It is never decorative, which is what lets a single hue carry "where am I" across the
-   * whole editor without a second colour being needed for emphasis.
-   */
-  accent: '#e0a458',
-  /** A darker amber for selected fills, where full accent behind text would glare. */
-  'accent-quiet': '#4a3a22',
-  /**
-   * Near-black, for text that sits *on* the accent. Hardcoded rather than reusing `bg`, because it
-   * is a contrast requirement of the accent, not a surface.
-   */
-  'accent-ink': '#1a1408',
+  /** The inverted fill: near-white background with dark text. `oklch(0.922 0 0)` on `oklch(0.205 0 0)`. */
+  primary: '#e8e8e8',
+  'primary-ink': '#171717',
 
-  danger: '#e06c5f',
-  warn: '#d9a441',
+  /** `white/5%` — the wash on a value cell that is being hovered. */
+  wash: 'rgba(255, 255, 255, 0.05)',
+  /** `white/10%` — a hovered row, or a pressed button. */
+  'wash-strong': 'rgba(255, 255, 255, 0.1)',
+
+  /** The focus ring. Neutral, like theirs. `oklch(0.556 0 0)`. */
+  ring: '#8a8a8a',
+
+  /** Status only. These never appear in ordinary chrome. */
+  danger: '#ff6467',
+  warn: '#e8b04b',
   ok: '#77b892',
-
-  /**
-   * Translucent white, for a hover or pressed wash over *any* surface.
-   *
-   * These are tokens rather than `color-mix(in srgb, ...)` at each call site for a concrete reason:
-   * a `color-mix()` string is an opaque literal to StyleX's type layer, and the same wash has to be
-   * expressible in both `stylex.create` and the plain `button` rule in `styles.css`. Naming the two
-   * steps means the element default and a component override cannot drift to different strengths.
-   *
-   * White over a neutral is a *lift*, which is what a hover should be. `stroke` is the hairline that
-   * appears on a hovered surface, one step brighter than `line`.
-   */
-  wash: 'rgba(255, 255, 255, 0.055)',
-  'wash-strong': 'rgba(255, 255, 255, 0.09)',
-  stroke: 'rgba(255, 255, 255, 0.12)',
 });
 
 /**
  * Spacing scale.
  *
- * These are the values the stylesheet already repeats by hand; naming them is what makes the
- * "one hardcoded hex or pixel count off the scale" class of drift visible in review.
- *
- * `md` moved 10px -> 12px and `lg` 16px -> 20px so the scale is a clean 4px ladder; the old values
- * put 10 next to 16 with nothing between them, which is why panel padding ended up hand-written as
- * 8/12/14/24 across four different files.
+ * A 2px ladder matching the Tailwind steps their components are written against (`px-3` is 12px,
+ * `py-1.5` is 6px, `gap-2` is 8px). The names are the editor's; the values are theirs.
  */
 export const space = stylex.defineVars({
   xxs: '2px',
   xs: '4px',
-  sm: '8px',
-  md: '12px',
-  lg: '20px',
+  sm: '6px',
+  md: '8px',
+  lg: '12px',
+  xl: '16px',
 });
 
-/** Corner radii. */
+/**
+ * Corner radii.
+ *
+ * Tailwind's scale, since their components use it: `rounded-sm` 4px, `rounded-md` 6px,
+ * `rounded-lg` 8px, `rounded-xl` 10px.
+ */
 export const radius = stylex.defineVars({
-  /** Checkboxes, tags, and the smallest inline chips. */
   sm: '4px',
-  /** Buttons, inputs, selects — everything the pointer lands on. */
   md: '6px',
-  /** Panels, cards, menus. */
-  lg: '10px',
+  lg: '8px',
+  xl: '10px',
   pill: '999px',
 });
 
 /**
  * Type scale.
  *
- * The editor is a dense tool, so the range is deliberately narrow — hierarchy comes from weight
- * and tracking, not from size. The roles:
- *
- * - `micro` (10px) is a section label. Uppercase and tracked, which is what lets it organise a
- *   panel *without* a rule or a filled band announcing it.
- * - `xs` (11px) is metadata: counts, timestamps, the save indicator.
- * - `sm` (12px) is the workhorse — field labels, tree rows, buttons, log lines.
- * - `md` (13px) is a value the user is reading or editing, and panel titles.
- * - `lg` (16px) is the project home heading.
+ * Their components are `text-xs` (12px), `text-sm` (14px), and `text-base` (16px). This ladder
+ * keeps those steps and adds `micro` for the tracked uppercase labels their panel headers and
+ * section titles use.
  */
 export const fontSize = stylex.defineVars({
   micro: '10px',
-  xs: '11px',
-  sm: '12px',
-  md: '13px',
+  xs: '12px',
+  sm: '13px',
+  md: '14px',
   lg: '16px',
+  xl: '18px',
 });
 
 /**
- * The editor's one font stack.
+ * The typeface.
  *
- * StyleX has no `font:` shorthand, so the stack is a token and the size/weight are set separately.
- * The stack gained `Inter` ahead of the system faces: it is preinstalled on macOS, which is where
- * the editor is developed, and it degrades to the same system stack everywhere else. No webfont is
- * loaded, so an export and an offline editor start identically.
+ * Their UI is set in **Barlow**, loaded as a Next.js local font. Barlow is SIL Open Font Licensed,
+ * so the family is safe to load, but this editor is local-first and an export must not depend on a
+ * network font — so the stack asks for Barlow first and falls through to the system UI faces when
+ * it is absent. Barlow ships on none of the target platforms, which means in practice this renders
+ * as the system stack until someone adds the font files to `public/`. The token is written the way
+ * it should end up so that becomes a one-file change.
  */
 export const fontFamily = stylex.defineVars({
-  sans: 'Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+  sans: 'Barlow, Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
   mono: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
 });
 
 /**
- * Shared control treatments.
+ * Control geometry.
  *
- * These were `.primary` and `.link` in `base.css`, written as `button.primary` / `button.link`.
- * A class-qualified element selector has specificity (0,1,1), which outranks one atomic class
- * (0,1,0) — so leaving them in the stylesheet would mean StyleX silently losing. They live here
- * instead, and a caller spreads the one definition rather than re-declaring the colours, which is
- * what keeps every "primary" button in the editor the same shade.
+ * Their sizes, as plain numbers rather than tokens, because they are used for both `height` and
+ * `width` (their `icon-sm` is a square) and a custom property per property would be six tokens
+ * describing one decision.
+ */
+export const control = {
+  /** `h-8` — the compact control: toolbar buttons, icon buttons, the scrub field. */
+  sm: '32px',
+  /** `h-9` — the default control: buttons and inputs in forms and menus. */
+  md: '36px',
+  /** `size-4` — the icon size inside a button. */
+  icon: 16,
+  /** `size-3.5` — a menu item's tick, a tree row's glyph. */
+  iconSm: 14,
+  /** The left icon rail in their layout. */
+  rail: '56px',
+} as const;
+
+/**
+ * Shared button treatments.
  *
- * `primary` is now an accent *fill* rather than a blue-tinted outline, because on a monochrome
- * chrome the one filled control in a region is the strongest possible signal of "this is the
- * action". That is why it is used sparingly — Play in the toolbar, and the new-game button on the
- * project home.
+ * Their `buttonVariants`, reduced to the four variants this editor actually uses. `primary` is the
+ * near-white fill — their "default" — and is the strongest signal available in a monochrome
+ * chrome, so it stays rare: Play, and creating a project.
+ *
+ * Every variant carries their focus treatment: a 3px ring at 50% opacity, on `:focus-visible` only.
  */
 export const button = stylex.create({
+  /** Near-white fill, dark text. Their `variant: default`. */
   primary: {
-    backgroundColor: color.accent,
-    color: color['accent-ink'],
+    backgroundColor: color.primary,
+    color: color['primary-ink'],
     borderWidth: 0,
     borderStyle: 'none',
-    fontWeight: 600,
+    fontWeight: 500,
     ':hover': {
-      backgroundColor: '#eeb268',
+      backgroundColor: '#dcdcdc',
     },
     ':active': {
-      backgroundColor: '#cf9448',
+      backgroundColor: '#c9c9c9',
     },
   },
-  link: {
+  /** A bordered, transparent control. Their `variant: outline`. */
+  outline: {
     backgroundColor: 'transparent',
     borderWidth: '1px',
     borderStyle: 'solid',
-    borderColor: 'transparent',
+    borderColor: color['border-input'],
+    color: color.text,
+    ':hover': {
+      backgroundColor: color.wash,
+      borderColor: color['border-strong'],
+    },
+  },
+  /** A filled control with no border. Their `variant: secondary`. */
+  secondary: {
+    backgroundColor: color.surface,
+    borderWidth: 0,
+    borderStyle: 'none',
+    color: color.text,
+    ':hover': {
+      backgroundColor: '#3d3d3d',
+    },
+  },
+  /** No chrome at rest, a wash on hover. Their `variant: ghost`, and the editor's workhorse. */
+  ghost: {
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    borderStyle: 'none',
     color: color.muted,
+    ':hover': {
+      backgroundColor: color.wash,
+      color: color.text,
+    },
+  },
+  /** A text-only control. Their `variant: link`. */
+  link: {
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    borderStyle: 'none',
+    color: color.muted,
+    paddingInline: 0,
     ':hover': {
       color: color.text,
     },
   },
   /**
-   * A control that reads as text until the pointer is near it — the project name in the toolbar,
-   * the row affordances in the hierarchy. The affordance appears on hover rather than the control
-   * carrying a permanent outline, which is what stops the chrome from looking like a form.
+   * The one geometry every variant shares: their `h-8` / `gap-1.5` / `rounded-md` / `text-sm`, plus
+   * the 3px focus ring. Composed at the call site beside a variant, since StyleX cannot spread one
+   * `stylex.create` style inside another.
    */
-  ghost: {
-    backgroundColor: 'transparent',
-    borderWidth: 0,
-    borderStyle: 'none',
-    color: color.text,
+  base: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: space.sm,
+    height: control.sm,
+    paddingInline: space.lg,
+    borderRadius: radius.md,
+    fontSize: fontSize.md,
+    fontWeight: 500,
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
+    cursor: 'pointer',
+    transitionProperty: 'background-color, border-color, color',
+    transitionDuration: '120ms',
+    ':focus-visible': {
+      outlineWidth: '3px',
+      outlineStyle: 'solid',
+      outlineColor: 'rgba(138, 138, 138, 0.5)',
+      outlineOffset: '0px',
+    },
+    ':disabled': {
+      pointerEvents: 'none',
+      opacity: 0.5,
+    },
+  },
+  /** A square icon-only control at the same height as `base`. */
+  iconBase: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: control.sm,
+    width: control.sm,
+    paddingInline: 0,
+    borderRadius: radius.md,
+    flexShrink: 0,
+    cursor: 'pointer',
+    transitionProperty: 'background-color, color',
+    transitionDuration: '120ms',
+    ':focus-visible': {
+      outlineWidth: '3px',
+      outlineStyle: 'solid',
+      outlineColor: 'rgba(138, 138, 138, 0.5)',
+      outlineOffset: '0px',
+    },
+    ':disabled': {
+      pointerEvents: 'none',
+      opacity: 0.5,
+    },
   },
 });
 
 /**
- * Repeated surface treatments, defined once so the panels cannot drift.
+ * Repeated surface treatments.
  *
- * A panel and a card are the same object seen at two scales: a rounded surface with a hairline on
- * the app backdrop. Both are spelled here rather than in each panel, so "what is a panel" has one
- * answer in the codebase.
+ * Their `rounded-md border bg-popover p-1 shadow-md` for a floating layer, and the equivalent for a
+ * menu row. Defined once so a dropdown, a select, and a popover cannot drift apart.
  */
 export const surface = stylex.create({
-  /** A region of the workspace: hierarchy, viewport, inspector, bottom panel. */
+  /**
+   * A workspace region: the hierarchy column, the inspector column, the bottom panel.
+   *
+   * Deliberately **not** rounded and **not** self-bordered. The three columns plus the bottom panel
+   * are laid out with no gap, so each region contributes only the edges it actually has — a single
+   * hairline between neighbours rather than two lines 1px apart. Which edges a given region owns is
+   * the caller's decision, because it depends on where the region sits in the grid.
+   */
   panel: {
     backgroundColor: color.panel,
-    borderRadius: radius.lg,
-    borderWidth: '1px',
-    borderStyle: 'solid',
-    borderColor: color.line,
     minHeight: 0,
     overflow: 'hidden',
     display: 'flex',
     flexDirection: 'column',
   },
-  /** A floating layer: the create menu, the component menu, an overflow menu. */
+  /** A horizontal hairline at the bottom of a region: the toolbar, a column, the bottom panel. */
+  edgeBottom: {
+    borderBlockEndWidth: '1px',
+    borderBlockEndStyle: 'solid',
+    borderBlockEndColor: color.border,
+  },
+  /** A vertical hairline on the trailing edge of the left column. */
+  edgeEnd: {
+    borderInlineEndWidth: '1px',
+    borderInlineEndStyle: 'solid',
+    borderInlineEndColor: color.border,
+  },
+  /** A vertical hairline on the leading edge of the inspector column. */
+  edgeStart: {
+    borderInlineStartWidth: '1px',
+    borderInlineStartStyle: 'solid',
+    borderInlineStartColor: color.border,
+  },
+  /**
+   * A floating layer: dropdown menu, select content, popover.
+   *
+   * Unlike a panel this *is* rounded, bordered on all sides, and carries a shadow — it floats over
+   * the workspace rather than dividing it, and the shadow is what says so.
+   */
   menu: {
     backgroundColor: color.elevated,
     borderWidth: '1px',
     borderStyle: 'solid',
-    borderColor: color.line,
-    borderRadius: radius.lg,
+    borderColor: color.border,
+    borderRadius: radius.md,
     padding: space.xs,
-    display: 'flex',
-    flexDirection: 'column',
-    minWidth: '180px',
-    boxShadow: '0 16px 40px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.4)',
+    minWidth: '128px',
+    overflowY: 'auto',
+    overflowX: 'hidden',
+    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.4)',
+    zIndex: 50,
   },
   /**
-   * One row of a floating menu, and the label band above a group of them.
-   *
-   * Both live here rather than in each menu because the create menu, the add-component menu, and
-   * the toolbar overflow all render the same row; three copies is how they end up three heights.
+   * A menu row: their `rounded-sm px-2 py-1.5 text-sm`, with the glyph muted and the label bright.
+   * Their `[&_svg]` descendant rules are not expressible in StyleX, so an icon inside a menu row is
+   * given its colour by the row and its size by the caller.
    */
   menuItem: {
     display: 'flex',
     alignItems: 'center',
-    gap: space.sm,
-    textAlign: 'left',
-    borderRadius: radius.md,
+    gap: space.md,
+    borderRadius: radius.sm,
     paddingBlock: space.sm,
-    paddingInline: space.sm,
+    paddingInline: space.md,
     color: color.text,
+    fontSize: fontSize.md,
+    textAlign: 'left',
+    cursor: 'default',
+    userSelect: 'none',
     ':hover': {
-      backgroundColor: color.wash,
+      backgroundColor: color.surface,
     },
   },
+  /** A group label inside a menu. */
   menuLabel: {
     paddingBlock: space.xs,
-    paddingInline: space.sm,
+    paddingInline: space.md,
+    fontSize: fontSize.micro,
+    fontWeight: 600,
+    letterSpacing: '0.09em',
+    textTransform: 'uppercase',
+    color: color.dim,
   },
-  /**
-   * The uppercase micro-label used for every section heading.
-   *
-   * One definition so the Inspector, the hierarchy group, and a menu band all agree on what a
-   * section heading looks like. The `letterSpacing` and `textTransform` are the whole trick: at 10px
-   * a label is unreadable in mixed case, and tracked uppercase reads as structure at a glance with
-   * no border and no filled band announcing it.
-   */
-  microLabel: {
+  /** The 1px divider their `Separator` renders. */
+  separator: {
+    height: '1px',
+    width: '100%',
+    flexShrink: 0,
+    backgroundColor: color.border,
+  },
+  separatorVertical: {
+    width: '1px',
+    height: '100%',
+    flexShrink: 0,
+    backgroundColor: color.border,
+  },
+});
+
+/**
+ * The tracked uppercase micro-label.
+ *
+ * Used for panel headers, section headings, and menu group labels so they all agree. At 10px, mixed
+ * case is unreadable; tracked uppercase reads as structure without needing a rule or a filled band.
+ */
+export const microLabel = stylex.create({
+  base: {
     fontSize: fontSize.micro,
     fontWeight: 600,
     letterSpacing: '0.09em',

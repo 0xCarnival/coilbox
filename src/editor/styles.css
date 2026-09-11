@@ -29,24 +29,32 @@
 :root {
   color-scheme: dark;
 
-  /* Design tokens. Mirrored from styles/tokens.stylex.ts — edit them there. */
-  --bg: #08090a;
-  --panel: #121316;
-  --panel-2: #17181c;
-  --elevated: #1e2024;
-  --line: #26272c;
-  --line-strong: #3a3c43;
-  --text: #e9eaec;
-  --muted: #a8aab1;
-  --dim: #8c8f96;
-  --accent: #e0a458;
-  --accent-quiet: #4a3a22;
-  --wash: rgba(255, 255, 255, 0.055);
-  --wash-strong: rgba(255, 255, 255, 0.09);
-  --stroke: rgba(255, 255, 255, 0.12);
-  --accent-ink: #1a1408;
-  --danger: #e06c5f;
-  --warn: #d9a441;
+  /**
+   * Design tokens, mirrored from `styles/tokens.stylex.ts` — edit them there.
+   *
+   * These are the reference editor's dark-theme values: strictly neutral greys, near-white
+   * foreground text, and translucent-white borders. See the token file for why each is what it is.
+   */
+  --bg: #171717;
+  --panel: #171717;
+  --panel-2: #292929;
+  --surface: #333333;
+  --sunken: #0f0f0f;
+  --elevated: #272727;
+  --line: #333333;
+  --border: rgba(255, 255, 255, 0.1);
+  --border-input: rgba(255, 255, 255, 0.15);
+  --border-strong: rgba(255, 255, 255, 0.2);
+  --text: #fafafa;
+  --muted: #b4b4b4;
+  --dim: #8a8a8a;
+  --primary: #e8e8e8;
+  --primary-ink: #171717;
+  --wash: rgba(255, 255, 255, 0.05);
+  --wash-strong: rgba(255, 255, 255, 0.1);
+  --ring: #8a8a8a;
+  --danger: #ff6467;
+  --warn: #e8b04b;
   --ok: #77b892;
 
   font-synthesis: none;
@@ -63,39 +71,67 @@ body,
   margin: 0;
 }
 
+/**
+ * Barlow first, system faces after it. The reference editor sets its UI in Barlow and ships it as a
+ * local font; this editor has not added the font files, so in practice this resolves to the system
+ * stack. The token and this rule are written for the intended end state.
+ */
 body {
   background: var(--bg);
   color: var(--text);
-  font: 12.5px/1.45 Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font: 14px/1.45 Barlow, Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
-/**
- * Selection is accent-tinted rather than the browser default, because the default blue is the one
- * remaining piece of chrome that would fight a monochrome palette.
- */
 ::selection {
-  background: var(--accent);
-  color: var(--accent-ink);
+  background: var(--primary);
+  color: var(--primary-ink);
+}
+
+/**
+ * The menu entrance, keyed off the transform origin Radix publishes for the open content. Scaling
+ * from that corner is what makes a dropdown read as growing out of its trigger rather than fading
+ * in above it.
+ */
+@keyframes coilbox-menu-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 /* ------------------------------------------------------------------ element defaults */
 
 /**
- * A resting button is *invisible*: no border, no fill, one step of muted text. The fill appears on
- * hover and the accent fill appears only on the active state, applied by the component. This is the
- * single largest reason the toolbar stops reading as a wall of boxes.
+ * These are the reference editor's control defaults, translated from its Tailwind classes into the
+ * one place plain CSS can set a default for every control: an element rule.
+ *
+ * The shapes are theirs. A control that exists is `h-8`, `rounded-md` (6px), `text-sm` (14px), and
+ * carries a 3px focus ring at half opacity. A control at rest that is *not* the primary action
+ * shows no fill and no border — that is the single largest reason their chrome stays quiet while
+ * still being obviously interactive, and it is what the previous version of this editor got wrong
+ * by outlining everything.
+ *
+ * A component that needs a different shape sets it with its own atomic class, which outranks these
+ * element rules; nothing here should need `!important` or a more specific selector.
  */
+
 button {
   background: transparent;
   color: var(--text);
   border: 0;
   border-radius: 6px;
-  padding: 4px 8px;
+  padding: 0 8px;
+  height: 32px;
   font: inherit;
-  font-size: 12px;
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
-  transition: background-color 90ms ease, color 90ms ease;
+  transition: background-color 100ms ease, border-color 100ms ease, color 100ms ease;
 }
 
 button:hover:not(:disabled) {
@@ -107,64 +143,64 @@ button:active:not(:disabled) {
 }
 
 button:disabled {
-  color: var(--dim);
+  opacity: 0.5;
   cursor: default;
 }
 
 /**
- * The accent is the focus ring, and it is the *only* place a resting control shows colour. Negative
- * offset keeps the ring inside the control so it cannot be clipped by a panel's `overflow: hidden`.
+ * One focus ring for the whole editor, and it is neutral rather than coloured. The reference's ring
+ * is `oklch(0.556 0 0)` at 50% — removing hue from the focus state is what lets the *content* be the
+ * only thing on screen with a colour.
  */
 :focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: -1px;
+  outline: 3px solid rgba(138, 138, 138, 0.5);
+  outline-offset: 0;
 }
 
 /**
- * A field is a fill, not a box: a slightly sunken surface with a hairline that only lights up when
- * the field has focus. The `:focus-within` colour is on the border rather than the outline so a
- * numeric field inside a vector row still reads as one control.
+ * A field is a filled box with a border, not an underline: `h-9`, `rounded-md`, `bg-input/30` over a
+ * `border-input` hairline. Their inspector gets its density from compact *scrub fields* rather than
+ * from shrinking every text box, so a real text input here can afford to be a real text input.
  */
 input,
 select,
 textarea {
-  background: color-mix(in srgb, var(--bg) 60%, transparent);
+  background: rgba(255, 255, 255, 0.045);
   color: var(--text);
-  border: 1px solid transparent;
+  border: 1px solid var(--border-input);
   border-radius: 6px;
-  padding: 3px 6px;
+  padding: 0 10px;
+  height: 32px;
   font: inherit;
-  font-size: 12px;
+  font-size: 14px;
   min-width: 0;
-  transition: border-color 90ms ease, background-color 90ms ease;
+  transition: border-color 100ms ease, box-shadow 100ms ease, background-color 100ms ease;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--dim);
 }
 
 input:hover:not(:disabled),
 select:hover:not(:disabled) {
-  border-color: var(--stroke);
+  border-color: var(--border-strong);
 }
 
 input:focus,
 select:focus,
 textarea:focus {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--bg) 85%, transparent);
+  border-color: var(--ring);
   /**
-   * The ring is spelled out rather than left to the universal `:focus-visible` rule above, because
-   * the UA stylesheet's own focus ring on a form control is `outline: auto` and does not inherit
-   * `outline-color`. Clearing `outline` alone left a 3px ring in the UA's colour — a white halo on
-   * a near-black panel, which is exactly the kind of default this redesign exists to remove.
+   * The ring is spelled out rather than left to the UA, whose own focus ring on a form control is
+   * `outline: auto` and does not inherit `outline-color` — clearing it alone leaves a 3px halo in
+   * the UA's colour. It is suppressed for pointer focus below: the caret already says which field
+   * is live, and an always-on ring inside a panel that clips overflow is noise.
    */
-  outline: 2px solid var(--accent);
-  outline-offset: -1px;
+  outline: 3px solid rgba(138, 138, 138, 0.5);
+  outline-offset: 0;
 }
 
-/**
- * A field keeps its accent border when focused by pointer but only draws the ring for keyboard
- * focus. Inputs are the one control where an always-on ring is noise: the caret already says which
- * field is live, and the rule above would otherwise put a ring inside every panel that clips
- * overflow.
- */
 input:focus:not(:focus-visible),
 select:focus:not(:focus-visible),
 textarea:focus:not(:focus-visible) {
@@ -173,11 +209,12 @@ textarea:focus:not(:focus-visible) {
 
 input:disabled,
 select:disabled {
-  color: var(--dim);
+  opacity: 0.5;
+  cursor: default;
 }
 
 /**
- * Numeric fields are read in columns, so they get tabular figures — a `1` and a `7` should occupy
+ * Numeric fields are read in columns, so they get tabular figures — a `1` and a `7` have to occupy
  * the same width or a vector row visibly jitters as it is scrubbed.
  */
 input[type='number'] {
@@ -185,49 +222,46 @@ input[type='number'] {
 }
 
 /**
- * Chrome's default checkbox is a bright system blue that would be the only cool pixel on screen.
- * `accent-color` re-tints the native control to the palette instead of replacing it with a
- * hand-built one.
+ * Chrome's default checkbox is a bright system blue, which would be the only cool pixel left on a
+ * neutral chrome. `accent-color` re-tints the native control instead of replacing it.
  */
 input[type='checkbox'],
 input[type='radio'] {
-  accent-color: var(--accent);
-  width: 13px;
-  height: 13px;
+  accent-color: var(--primary);
+  width: 14px;
+  height: 14px;
   padding: 0;
   background: transparent;
   border: 0;
   cursor: pointer;
 }
 
-/**
- * The native colour swatch is a 1px bordered rect with no padding by default, which makes it look
- * like a broken input next to the rest of the inspector.
- */
+/** The native colour swatch is a bordered rect with no padding by default; give it the control shape. */
 input[type='color'] {
-  width: 30px;
-  height: 22px;
+  width: 34px;
+  height: 24px;
   padding: 2px;
-  border-color: var(--line);
+  background: transparent;
   cursor: pointer;
 }
 
 select {
   cursor: pointer;
   appearance: none;
-  padding-inline-end: 20px;
+  padding-inline-end: 26px;
   background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%),
     linear-gradient(135deg, var(--muted) 50%, transparent 50%);
-  background-position: calc(100% - 11px) 50%, calc(100% - 7px) 50%;
-  background-size: 4px 4px, 4px 4px;
+  background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%;
+  background-size: 5px 5px, 5px 5px;
   background-repeat: no-repeat;
 }
 
 code {
   background: var(--wash);
-  padding: 1px 5px;
+  padding: 2px 5px;
   border-radius: 4px;
-  font-size: 11px;
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
 /* ------------------------------------------------------------------ utilities */

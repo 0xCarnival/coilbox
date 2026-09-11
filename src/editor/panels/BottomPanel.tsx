@@ -54,8 +54,8 @@ const styles = stylex.create({
     },
   },
   tabActive: {
-    backgroundColor: color['accent-quiet'],
-    color: color.accent,
+    backgroundColor: color.surface,
+    color: color.primary,
     fontWeight: 600,
   },
   toolbarSpacer: {
@@ -94,7 +94,7 @@ const styles = stylex.create({
   },
   /** `.scene-list li.active button` — again a descendant rule, moved onto the row itself. */
   sceneRowActive: {
-    color: color.accent,
+    color: color.primary,
   },
   tag: {
     color: color.dim,
