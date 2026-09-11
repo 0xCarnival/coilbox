@@ -247,7 +247,16 @@ async function main(): Promise<void> {
     const speedInput = page.locator('.section:has(.section-title:text-is("Character Mover")) .field:has(.field-label:text-is("Move speed")) input').first();
     await speedInput.fill('9');
     await speedInput.blur();
-    await page.waitForTimeout(250);
+    await page.waitForFunction(
+      () => {
+        const scene = window.__STUDIO__?.session.scene;
+        const player = scene?.entities.find((entity) => entity.id === 'player');
+        const behavior = player?.components.find((component) => component.type === 'behavior');
+        return behavior?.properties?.moveSpeed === 9;
+      },
+      undefined,
+      { timeout: 10_000 },
+    );
     const edited = await page.evaluate(() => {
       const session = window.__STUDIO__?.session;
       const player = session?.scene?.entities.find((entity) => entity.id === 'player');
@@ -340,7 +349,11 @@ async function main(): Promise<void> {
 
     // Reload from disk: the editor takes the external version and drops the local one.
     await page.click('.conflict button:has-text("Reload from disk")');
-    await page.waitForTimeout(600);
+    await page.waitForFunction(
+      () => window.__STUDIO__?.session.scene?.entities.find((entity) => entity.id === 'player')?.name === 'Player (renamed externally)',
+      undefined,
+      { timeout: 15_000 },
+    );
     const afterReload = await page.evaluate(() => {
       const session = window.__STUDIO__?.session;
       return session?.scene?.entities.find((entity) => entity.id === 'player')?.name ?? null;

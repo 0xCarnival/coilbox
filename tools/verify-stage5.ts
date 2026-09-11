@@ -12,6 +12,7 @@ import { Workspace } from '../server/workspace.js';
 import { testGame } from '../server/test-runner.js';
 import { buildGame } from '../server/build.js';
 import { lookAt } from '../src/editor/document/factory.js';
+import { waitForPlaySteps } from './verify-wait.js';
 
 /**
  * Stage 5 gate (plan §15, §16).
@@ -472,7 +473,7 @@ async function main(): Promise<void> {
     await narrow.goto(`${server.url}player.html?project=./games/collect-room/`, { waitUntil: 'load' });
     await narrow.waitForFunction(() => window.__PLAYER__ !== undefined, undefined, { timeout: 30_000 });
     await narrow.evaluate(() => window.__PLAYER__?.ready);
-    await narrow.waitForTimeout(1200);
+    await waitForPlaySteps(narrow, 60);
     const narrowResult = await narrow.evaluate(() => {
       const player = window.__PLAYER__;
       const pixels = player?.samplePixels() as {
@@ -518,6 +519,17 @@ async function main(): Promise<void> {
       const field = studio.locator('.section:has(.section-title:text-is("Transform")) .vector-field:has(.field-label:text-is("Position (m)")) input').first();
       await field.fill('1.25');
       await field.blur();
+      // Wait for the edit to reach the authored document rather than assuming a render tick: the
+      // command round-trip is asynchronous and a loaded machine takes longer over it.
+      await studio.waitForFunction(
+        (entityName: string) => {
+          const scene = window.__STUDIO__?.session.scene;
+          const entity = scene?.entities.find((candidate) => candidate.name === entityName);
+          return entity?.transform.position[0] === 1.25;
+        },
+        name,
+        { timeout: 10_000 },
+      );
       movedNames.push(name);
     }
     const movedDocument = await studio.evaluate(() => {
@@ -596,7 +608,7 @@ async function main(): Promise<void> {
     await studio.waitForFunction(() => document.querySelector('.save-indicator')?.getAttribute('data-save-state') === 'clean', undefined, { timeout: 20_000 });
     await studio.click('button:has-text("Play")');
     await studio.waitForSelector('.viewport-badge', { timeout: 20_000 });
-    await studio.waitForTimeout(1500);
+    await waitForPlaySteps(studio, 60, { source: 'editor' });
     const playStats = await studio.evaluate(() => {
       const viewport = window.__STUDIO__?.viewport?.();
       return (viewport?.playStats() ?? null) as { state: string; steps: number; behaviors: number } | null;
@@ -707,7 +719,7 @@ async function main(): Promise<void> {
       await page.mouse.click(20, 20).catch(() => undefined);
       gesture += '; clicked the page corner instead';
     }
-    await page.waitForTimeout(1500);
+    await waitForPlaySteps(page, 60);
     const state = await page.evaluate(() => {
       const player = window.__PLAYER__;
       if (!player) throw new Error('no player');

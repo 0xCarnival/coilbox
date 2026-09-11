@@ -1,8 +1,8 @@
 {
   "stage": 3,
-  "generatedAt": "2026-09-11T18:01:46.862Z",
+  "generatedAt": "2026-09-11T18:20:57.026Z",
   "node": "v24.18.0",
-  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage3-j9FcEh",
+  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage3-PkC0Yv",
   "steps": [
     {
       "name": "typecheck",
@@ -78,19 +78,19 @@
       "id": "collect-room-input",
       "title": "Keyboard input drives the character mover, and it stays on the floor",
       "passed": true,
-      "detail": "player moved 5.29 m from (0.0, -6.0) to (0.0, -0.7); y went -0.00 → 0.00",
+      "detail": "player moved 5.71 m from (0.0, -6.0) to (0.0, -0.3); y went -0.00 → -0.00",
       "observed": {
         "beforeWalk": {
           "x": 0,
-          "y": -1.5894570992713852e-8,
+          "y": -9.934105982267738e-9,
           "z": -6
         },
         "afterWalk": {
           "x": 0,
-          "y": 7.947288160892185e-9,
-          "z": -0.7083091735839844
+          "y": -9.934105094089318e-9,
+          "z": -0.2916548550128937
         },
-        "walked": 5.291690826416016,
+        "walked": 5.708345144987106,
         "grounded": true
       }
     },
@@ -98,7 +98,7 @@
       "id": "collect-room-wall-contact",
       "title": "A wall stops the character, and a diagonal push slides along it",
       "passed": true,
-      "detail": "walked into the wall at z=7.75: stopped at (0.00, 0.00, 7.40); 1.5 s later z=7.400 (moved 0.0000 m); walking forward and right slid 2.80 m along the wall to x=2.80 at z=7.400",
+      "detail": "walked into the wall at z=7.75: stopped at (0.00, 0.00, 7.40); 1.5 s later z=7.400 (moved 0.0000 m); walking forward and right slid 2.98 m along the wall to x=2.98 at z=7.400",
       "observed": {
         "atWall": {
           "x": 0,
@@ -107,16 +107,16 @@
         },
         "stillAtWall": {
           "x": 0,
-          "y": -3.9736383072863646e-9,
+          "y": -1.5894567440000174e-8,
           "z": 7.400000095367432
         },
         "slid": {
-          "x": 2.799133062362671,
-          "y": 7.947290825427444e-9,
+          "x": 2.975850820541382,
+          "y": -9.93410154137564e-9,
           "z": 7.400000095367432
         },
         "approachGap": 0,
-        "slideDistance": 2.799133062362671,
+        "slideDistance": 2.975850820541382,
         "pinned": true
       }
     },
@@ -156,7 +156,7 @@
       "detail": "player at (0.0, 0.00, -6.0) after restart",
       "observed": {
         "x": 0,
-        "y": 1.986822928401466e-9,
+        "y": 7.947287272713766e-9,
         "z": -6
       }
     },
@@ -217,14 +217,14 @@
       "id": "targets-physics",
       "title": "Clicking launches the ball and knocking targets down updates the score",
       "passed": true,
-      "detail": "5 targets knocked down, score 5, launches 8",
+      "detail": "5 targets knocked down, score 5, launches 5",
       "observed": {
         "knocked": 5,
         "boardState": {
           "score": 5,
           "targetsDown": 5,
-          "launches": 8,
-          "timeRemaining": 50.82,
+          "launches": 5,
+          "timeRemaining": 54.17,
           "won": true,
           "lost": false,
           "scoreTarget": 5,
@@ -258,18 +258,19 @@
       "id": "editor-tuning-affects-play",
       "title": "The edited tuning value changes how the game plays",
       "passed": true,
-      "detail": "with move speed 12 the player covered 9.49 m in 1.2 s (about 5 m at the default speed)",
+      "detail": "with move speed 12 the player covered 11.65 m over 72 simulated steps; at the default 5 m/s the same time allows 6.00 m",
       "observed": {
-        "studioWalked": 9.487653493881226,
+        "studioWalked": 11.646742343902588,
+        "defaultSpeedDistance": 6,
         "before": {
           "x": 0,
-          "y": 7.947287272713766e-9,
+          "y": -1.5894570992713852e-8,
           "z": -6
         },
         "after": {
           "x": 0,
-          "y": -9.934105982267738e-9,
-          "z": 3.4876534938812256
+          "y": -1.5894569216357013e-8,
+          "z": 5.646742343902588
         }
       }
     },

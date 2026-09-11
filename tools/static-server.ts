@@ -87,7 +87,15 @@ export async function startStaticServer(options: StaticServerOptions): Promise<S
   const requests: RequestLogEntry[] = [];
 
   const server: Server = createServer((request: IncomingMessage, response: ServerResponse) => {
-    void handle(request, response);
+    // A rejected handler must not become an unhandled rejection: that kills the whole verification
+    // process, which is exactly what happened when a proxied API went away mid-request.
+    handle(request, response).catch((error) => {
+      const message = error instanceof Error ? error.message : String(error);
+      if (!response.headersSent) {
+        response.writeHead(502, { 'content-type': 'text/plain; charset=utf-8' });
+      }
+      response.end(`static server could not serve ${request.url ?? '/'}: ${message}`);
+    });
   });
 
   async function handle(request: IncomingMessage, response: ServerResponse): Promise<void> {
@@ -203,11 +211,22 @@ async function forward(
     if (key !== 'host' && key !== 'content-length') headers[key] = value;
   }
   if (payload.length > 0) headers['content-length'] = String(payload.length);
-  const upstream = await fetch(new URL(url, target), {
-    method: request.method,
-    headers,
-    body: payload.length > 0 ? payload : undefined,
-  });
+  let upstream: Response;
+  try {
+    upstream = await fetch(new URL(url, target), {
+      method: request.method,
+      headers,
+      body: payload.length > 0 ? payload : undefined,
+    });
+  } catch (error) {
+    // The workspace service closing (or not being up yet) is an expected race in the gates: the
+    // editor and the player keep polling after the gate has finished with the API.
+    const message = error instanceof Error ? error.message : String(error);
+    response.writeHead(502, { 'content-type': 'text/plain; charset=utf-8' });
+    response.end(`the workspace service did not answer ${url}: ${message}`);
+    log(502, 0, 'text/plain');
+    return;
+  }
   const contentType = upstream.headers.get('content-type') ?? 'application/octet-stream';
 
   // Stream the body through instead of buffering it: an event stream never completes, so a

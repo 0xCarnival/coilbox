@@ -9,6 +9,7 @@ import { chromium, type Page } from '@playwright/test';
 import { startApiServer, type ApiServerHandle } from '../server/api.js';
 import { Workspace } from '../server/workspace.js';
 import { startStaticServer } from './static-server.js';
+import { waitForPlaySteps } from './verify-wait.js';
 
 /**
  * Stage 1 gate (plan §15).
@@ -222,7 +223,9 @@ async function main(): Promise<void> {
     const authoredBefore = await currentPosition(page);
     await page.click('button:has-text("Play")');
     await page.waitForSelector('.viewport-badge', { timeout: 15_000 });
-    await page.waitForTimeout(1600);
+    // Wait for simulated steps, not for the wall clock: a slow machine runs fewer fixed steps per
+    // second by design, and this check is about the world running at all.
+    await waitForPlaySteps(page, 60, { source: 'editor' });
 
     const playState = await page.evaluate(() => {
       const viewport = window.__STUDIO__?.viewport?.();

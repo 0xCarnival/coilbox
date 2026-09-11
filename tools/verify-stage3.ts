@@ -8,6 +8,7 @@ import { chromium, type Page } from '@playwright/test';
 import { startApiServer, type ApiServerHandle } from '../server/api.js';
 import { Workspace } from '../server/workspace.js';
 import { startStaticServer } from './static-server.js';
+import { playSteps, stepsForSeconds, waitForPlaySteps } from './verify-wait.js';
 
 /**
  * Stage 3 gate (plan §15).
@@ -145,10 +146,13 @@ async function main(): Promise<void> {
     await collect.click('.coilbox-hud .hud-overlay[data-hud-id="start-overlay"] button');
     await collect.waitForTimeout(400);
 
-    // Walk the player: hold a movement key and check the physics body actually moved.
+    // Walk the player: hold a movement key for a fixed amount of *simulated* time and check the
+    // physics body actually moved. Wall-clock waits would measure the machine, not the engine: a
+    // slow runner takes fewer fixed steps in the same second and the player walks less far.
     const beforeWalk = await readPlayer(collect);
+    const walkStartSteps = await playSteps(collect);
     await collect.keyboard.down('KeyW');
-    await collect.waitForTimeout(1200);
+    await waitForPlaySteps(collect, walkStartSteps + stepsForSeconds(1.2));
     await collect.keyboard.up('KeyW');
     const afterWalk = await readPlayer(collect);
     const walked = Math.hypot(afterWalk.x - beforeWalk.x, afterWalk.z - beforeWalk.z);
@@ -167,14 +171,17 @@ async function main(): Promise<void> {
     // inner face at z = 7.75 and the character capsule has a 0.35 m radius, so a mover that is not
     // blocked ends up beyond z = 8 and, if it is sinking, keeps creeping for the whole hold.
     await collect.keyboard.down('KeyW');
-    await collect.waitForTimeout(3000);
+    const wallStartSteps = await playSteps(collect);
+    await waitForPlaySteps(collect, wallStartSteps + stepsForSeconds(4)); // long enough to arrive
     const atWall = await readPlayer(collect);
-    await collect.waitForTimeout(1500);
+    const atWallSteps = await playSteps(collect);
+    await waitForPlaySteps(collect, atWallSteps + stepsForSeconds(1.5)); // pressed against it
     const stillAtWall = await readPlayer(collect);
     // Keep walking forward and add "right": the wall should pin the forward axis while the
     // character slides along it, which is what makes a room feel solid rather than sticky.
     await collect.keyboard.down('KeyD');
-    await collect.waitForTimeout(900);
+    const slideStartSteps = await playSteps(collect);
+    await waitForPlaySteps(collect, slideStartSteps + stepsForSeconds(0.9));
     const slid = await readPlayer(collect);
     await collect.keyboard.up('KeyD');
     await collect.keyboard.up('KeyW');
@@ -332,22 +339,28 @@ async function main(): Promise<void> {
     );
     await studio.click('button:has-text("Play")');
     await studio.waitForSelector('.viewport-badge', { timeout: 20_000 });
-    await studio.waitForTimeout(500);
+    await waitForPlaySteps(studio, 30, { source: 'editor' });
     await studio.click('.hud-host .hud-overlay[data-hud-id="start-overlay"] button');
     const studioBefore = await studioPlayerPosition(studio);
+    const tunedStartSteps = await playSteps(studio, 'editor');
     await studio.keyboard.down('KeyW');
-    await studio.waitForTimeout(1200);
+    // A fixed amount of simulated time, so the distance is the engine's business and not the
+    // runner's: at 12 m/s over 1.2 s of simulation the player owes about 14 m, and acceleration
+    // eats into that at the start.
+    await waitForPlaySteps(studio, tunedStartSteps + stepsForSeconds(1.2), { source: 'editor' });
     await studio.keyboard.up('KeyW');
     const studioAfter = await studioPlayerPosition(studio);
     const studioWalked = Math.hypot(studioAfter.x - studioBefore.x, studioAfter.z - studioBefore.z);
 
-    // The same distance at the default speed (5 m/s) would be ~5 m; at 12 m/s it must exceed it.
+    // Compare against what the *default* speed (5 m/s) could have covered in the same simulated
+    // time: anything clearly above that is the tuning taking effect.
+    const defaultSpeedDistance = 5 * (stepsForSeconds(1.2) / 60);
     record({
       id: 'editor-tuning-affects-play',
       title: 'The edited tuning value changes how the game plays',
-      passed: studioWalked > 6.5,
-      detail: `with move speed 12 the player covered ${studioWalked.toFixed(2)} m in 1.2 s (about 5 m at the default speed)`,
-      observed: { studioWalked, before: studioBefore, after: studioAfter },
+      passed: studioWalked > defaultSpeedDistance,
+      detail: `with move speed 12 the player covered ${studioWalked.toFixed(2)} m over ${stepsForSeconds(1.2)} simulated steps; at the default 5 m/s the same time allows ${defaultSpeedDistance.toFixed(2)} m`,
+      observed: { studioWalked, defaultSpeedDistance, before: studioBefore, after: studioAfter },
     });
 
     await studio.screenshot({ path: join(evidenceDir, 'studio-play-collect-room.png') });

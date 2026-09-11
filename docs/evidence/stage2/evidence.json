@@ -1,8 +1,8 @@
 {
   "stage": 2,
-  "generatedAt": "2026-09-11T18:00:55.493Z",
+  "generatedAt": "2026-09-11T18:20:10.014Z",
   "node": "v24.18.0",
-  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage2-8qpxtq",
+  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage2-F7cn5M",
   "steps": [
     {
       "name": "typecheck",
@@ -68,10 +68,10 @@
       "id": "clip-playback",
       "title": "The imported clip is discoverable and plays in the editor preview",
       "passed": true,
-      "detail": "clips offered: First clip, Hop; preview time advanced from 0.1105 to 0.6193000001907348",
+      "detail": "clips offered: First clip, Hop; preview time advanced from 0.12059999990463258 to 0.633199999809265",
       "observed": {
-        "before": 0.1105,
-        "after": 0.6193000001907348,
+        "before": 0.12059999990463258,
+        "after": 0.633199999809265,
         "clip": "Hop"
       }
     },
@@ -118,7 +118,7 @@
       "id": "drag-cancellation",
       "title": "A transform drag abandoned with Escape changes nothing and records nothing",
       "passed": true,
-      "detail": "grabbed=true; during the drag the projection moved to [-0.5,1,0] while the document stayed [0,1,0]; after Escape the projection is [0,1,0] and the undo label is still Rename Crate Awer to Crate A",
+      "detail": "grabbed=true; during the drag the projection moved to [0,1,-0.5] while the document stayed [0,1,0]; after Escape the projection is [0,1,0] and the undo label is still Rename Crate Awer to Crate A",
       "observed": {
         "beforeDrag": {
           "id": "box",
@@ -146,9 +146,9 @@
             0
           ],
           "projected": [
-            -0.5,
+            0,
             1,
-            0
+            -0.5
           ],
           "dragging": true,
           "undoLabel": "Rename Crate Awer to Crate A",
@@ -214,7 +214,7 @@
       "id": "play-animates",
       "title": "Play runs the runtime animation: clips advance inside the play world",
       "passed": true,
-      "detail": "Limb clip \"Wave\" advanced 0.083 -> 0.183 after 502 ms; 2 animated entities, 2 models loaded",
+      "detail": "Limb clip \"Wave\" advanced 0.083 -> 0.183 after 503 ms; 2 animated entities, 2 models loaded",
       "observed": {
         "ids": {
           "limbId": "box-2",
@@ -255,13 +255,13 @@
         },
         "stats": {
           "state": "running",
-          "frames": 7,
+          "frames": 8,
           "steps": 11,
-          "fps": 21.022557549020032,
-          "frameTimeMs": 47.56795160000002,
-          "physicsTimeMs": 0.07253584094480954,
-          "droppedTime": 0.1666733333333335,
-          "clampedTime": 0.25,
+          "fps": 22.516562152198354,
+          "frameTimeMs": 44.41175314600001,
+          "physicsTimeMs": 0.06784368570486253,
+          "droppedTime": 0.1667393333333333,
+          "clampedTime": 0.21660000000000013,
           "drawCalls": 6,
           "triangles": 1268,
           "geometries": 4,
@@ -289,7 +289,7 @@
           "inputListeners": 8,
           "audioActivated": true
         },
-        "waitedMs": 502
+        "waitedMs": 503
       }
     },
     {
