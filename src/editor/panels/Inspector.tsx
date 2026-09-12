@@ -21,6 +21,8 @@ import { ChevronRight, Plus, Trash2 } from 'lucide-react';
 import { ActionButton, ActionGroup, MetricField } from '../ui/Controls.js';
 import { useScrub } from '../ui/useScrub.js';
 import { FieldShell, ScrubLabel, Select } from '../ui/Field.js';
+import { toDisplay, toMetres, unitSuffix } from '../units.js';
+import { useUnitSystem } from '../units-context.js';
 import { Switch } from '../ui/Field.js';
 import { Button } from '../ui/Button.js';
 import {
@@ -798,6 +800,7 @@ function Field({
 }): JSX.Element {
   const session = useSession();
   const snapshot = useSessionSnapshot();
+  const units = useUnitSystem();
   const scene = session.scene;
 
   switch (field.kind) {
@@ -937,6 +940,15 @@ function Field({
        * position or an extent or a rotation, and the suffix is the only thing that says which.
        */
       if (field.unit !== undefined) {
+        /**
+         * A field whose value carries a unit.
+         *
+         * The stored number is metres and stays metres; what changes with the unit setting is the
+         * number on screen and the meaning of what is typed. The conversion happens here and nowhere
+         * else — `units.ts` is the only place in the editor that knows how many feet are in a metre.
+         */
+        const stored = isFiniteJsonNumber(value) ? value : null;
+        const shown = stored === null ? null : toDisplay(stored, units, 'length');
         return (
           <FieldShell
             hookProps={withDomClass(styles.field, DOM.field)}
@@ -944,13 +956,15 @@ function Field({
           >
             <MetricField
               label={field.label}
-              unit={field.unit}
-              value={isFiniteJsonNumber(value) ? value : null}
+              unit={unitSuffix(units, 'length')}
+              value={shown}
               step={field.step}
-              min={field.min}
-              max={field.max}
+              min={field.min === undefined ? undefined : toDisplay(field.min, units, 'length')}
+              max={field.max === undefined ? undefined : toDisplay(field.max, units, 'length')}
               disabled={disabled}
-              onChange={(next) => onChange(componentValue(field, clamp(next, field)))}
+              onChange={(next) =>
+                onChange(componentValue(field, clamp(toMetres(next, units, 'length'), field)))
+              }
             />
           </FieldShell>
         );

@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { JSX } from 'react';
 import * as stylex from '@stylexjs/stylex';
-import { ChevronDown, Grid3x3, Magnet, Monitor, Sun } from 'lucide-react';
+import { ChevronDown, Grid3x3, Magnet, Monitor, Ruler, Sun } from 'lucide-react';
 import { color, control, fontSize, radius, space } from '../styles/tokens.stylex.js';
 import type { SnapSettings } from '../viewport/viewport-controller.js';
 import type { ViewportDisplay, ViewportHandle } from '../panels/Viewport.js';
 import { SegmentedControl, type SegmentedOption } from './Controls.js';
 import { Switch } from './Field.js';
+import { SegmentedControl as _SegmentedControl } from './Controls.js';
+import type { UnitSystem } from '../units.js';
 import { IconButton } from './Button.js';
 
 /**
@@ -95,6 +97,11 @@ const styles = stylex.create({
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
   },
+  /** The unit switch is narrow: two short labels, and it shares a row with its name. */
+  unitSwitch: {
+    width: '116px',
+    flexShrink: 0,
+  },
   /** The projection switch is a full-width segmented control under its own caption. */
   field: {
     display: 'flex',
@@ -116,6 +123,11 @@ const VIEW_MODES = [
   { value: 'split', label: 'Split' },
 ] satisfies readonly SegmentedOption<ViewportDisplay['mode']>[];
 
+const UNIT_OPTIONS = [
+  { value: 'metric', label: 'm' },
+  { value: 'imperial', label: 'ft' },
+] satisfies readonly SegmentedOption<UnitSystem>[];
+
 const PROJECTIONS = [
   { value: 'perspective', label: 'Perspective' },
   { value: 'orthographic', label: 'Ortho' },
@@ -125,6 +137,9 @@ export interface DisplayPanelProps {
   viewport: React.RefObject<ViewportHandle | null>;
   snap: SnapSettings;
   onSnapChange(snap: SnapSettings): void;
+  /** The unit system lengths are shown in. The document stays in metres either way. */
+  units: UnitSystem;
+  onUnitsChange(units: UnitSystem): void;
   /** Shown collapsed to its header when false, so the stage is not permanently covered. */
   defaultOpen?: boolean;
 }
@@ -133,6 +148,8 @@ export function DisplayPanel({
   viewport,
   snap,
   onSnapChange,
+  units,
+  onUnitsChange,
   defaultOpen = true,
 }: DisplayPanelProps): JSX.Element {
   const [open, setOpen] = useState(defaultOpen);
@@ -232,6 +249,21 @@ export function DisplayPanel({
               checked={display.shadows}
               onCheckedChange={(shadows) => update({ shadows })}
             />
+          </div>
+
+          <div {...stylex.props(styles.row)}>
+            <span {...stylex.props(styles.rowGlyph)}>
+              <Ruler size={control.iconSm} />
+            </span>
+            <span {...stylex.props(styles.rowLabel)}>Units</span>
+            <span {...stylex.props(styles.unitSwitch)}>
+              <SegmentedControl<UnitSystem>
+                ariaLabel="Unit system"
+                value={units}
+                onChange={onUnitsChange}
+                options={UNIT_OPTIONS}
+              />
+            </span>
           </div>
 
           <div {...stylex.props(styles.row)}>

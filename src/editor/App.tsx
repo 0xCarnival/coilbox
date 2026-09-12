@@ -19,6 +19,8 @@ import { ResizeHandle } from './ui/ResizeHandle.js';
 import { HintCard } from './ui/HintCard.js';
 import { DisplayPanel } from './ui/DisplayPanel.js';
 import { CommandPalette } from './ui/CommandPalette.js';
+import { UnitProvider } from './units-context.js';
+import type { UnitSystem } from './units.js';
 import { Toasts } from './ui/Toasts.js';
 import { ToolDock } from './ui/ToolDock.js';
 
@@ -147,7 +149,23 @@ function isBottomTab(id: string): id is BottomTab {
   return id === 'assets' || id === 'scenes' || id === 'console';
 }
 
-/** Panel sizes from browser storage: this module wrote them, and every field is range-checked. */
+/**
+ * Panel sizes from browser storage: this module wrote them, and every field is range-checked.
+ *
+ * The unit system is stored beside it, and read through the same care: an unrecognised value falls
+ * back to metric rather than propagating a string the rest of the editor has no case for.
+ */
+const UNITS_KEY = 'coilbox.units.v1';
+
+function loadUnits(): UnitSystem {
+  try {
+    return globalThis.localStorage?.getItem(UNITS_KEY) === 'imperial' ? 'imperial' : 'metric';
+  } catch {
+    return 'metric';
+  }
+}
+
+
 function loadLayout(): Layout {
   try {
     const raw = globalThis.localStorage?.getItem(LAYOUT_KEY);
@@ -211,6 +229,13 @@ function StudioShell(): JSX.Element {
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [bottomTab, setBottomTab] = useState<BottomTab>('console');
   const [paletteOpen, setPaletteOpen] = useState(false);
+  /**
+   * The unit system lengths are shown in.
+   *
+   * Editor *preference*, not document data: it lives in browser storage beside the panel layout and
+   * never reaches a scene. The document is metres, always — see `units.ts`.
+   */
+  const [units, setUnits] = useState<UnitSystem>(() => loadUnits());
   const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
@@ -333,6 +358,7 @@ function StudioShell(): JSX.Element {
   const openProject = snapshot.project !== null;
 
   return (
+    <UnitProvider system={units}>
     <div {...withDomClass(styles.studio, DOM.studio)}>
       {!openProject ? (
         <ProjectHome />
@@ -408,6 +434,11 @@ function StudioShell(): JSX.Element {
                 viewport={viewportRef}
                 snap={snap}
                 onSnapChange={setSnap}
+                units={units}
+                onUnitsChange={(next) => {
+                  setUnits(next);
+                  globalThis.localStorage?.setItem(UNITS_KEY, next);
+                }}
               />
               <ToolDock
                 tool={tool}
@@ -463,6 +494,7 @@ function StudioShell(): JSX.Element {
         </>
       )}
     </div>
+    </UnitProvider>
   );
 }
 
