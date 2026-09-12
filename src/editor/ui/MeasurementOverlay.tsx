@@ -6,6 +6,7 @@ import { useSessionSnapshot } from '../hooks.js';
 import { format } from '../units.js';
 import { useUnitSystem } from '../units-context.js';
 import type { ViewportHandle } from '../panels/Viewport.js';
+import { DISPLAY_PANEL } from './DisplayPanel.js';
 
 /**
  * The measurement overlay.
@@ -39,12 +40,18 @@ const styles = stylex.create({
      */
     transform: 'translate(-50%, 0)',
     /**
-     * A column, not a row, and `max-content` wide.
+     * A column, not a row.
      *
-     * The row version clipped: an absolutely positioned box sizes to its containing block, so the
-     * camera readout rendered past the border instead of widening it. Stacking the lines gives the box
-     * a natural width from its longer one, and reads better — the dimensions are the measurement and
-     * the camera distance is context, so they are not peers.
+     * The row version clipped the camera readout past the border. Stacking the lines fixed that and
+     * reads better — the dimensions are the measurement and the camera distance is context, so they
+     * are not peers.
+     *
+     * **Still open:** the dimensions line can exceed the box and lose its last value, so a label for a
+     * wide object reads `16.00 m × 0.5` instead of `16.00 m × 0.5 m × 2 m`. `width: max-content`,
+     * `white-space: nowrap`, and `flex-shrink: 0` on both lines have all been tried and none of them
+     * fixed it, which means the cause is not where it looks. The next thing to check is whether the
+     * value is being clamped before the element has been measured, so the clamp is computed from a
+     * narrower box than the one finally rendered.
      */
     display: 'flex',
     flexDirection: 'column',
@@ -66,6 +73,7 @@ const styles = stylex.create({
   /** The dimensions, in mono: they are read as numbers and compared as numbers. */
   dims: {
     flexShrink: 0,
+    whiteSpace: 'nowrap',
     fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
     fontSize: fontSize.xs,
     fontVariantNumeric: 'tabular-nums',
@@ -73,22 +81,13 @@ const styles = stylex.create({
   },
   /** The camera distance, quieter than the dimensions: it is context, not the measurement. */
   distance: {
+    flexShrink: 0,
+    whiteSpace: 'nowrap',
     fontSize: fontSize.micro,
     color: color.dim,
     fontVariantNumeric: 'tabular-nums',
   },
 });
-
-/**
- * The y below which the label is meant to clear the display panel.
- *
- * A floor rather than a computed edge, because the panel's height depends on which rows are showing
- * and it is not trivial to measure from here. **This does not fully work yet**: a selection in the
- * stage's top-right still puts its label partly under the panel, because the clamp pulls the label
- * inside the *stage* and the panel floats over the stage's right-hand side. Closing it properly means
- * either giving the overlay the panel's measured box or moving the panel, and neither is done.
- */
-const DISPLAY_PANEL_CLEARANCE = 300;
 
 export interface MeasurementOverlayProps {
   viewport: React.RefObject<ViewportHandle | null>;
@@ -144,16 +143,22 @@ export function MeasurementOverlay({ viewport, visible }: MeasurementOverlayProp
        */
       const half = (labelRef.current?.offsetWidth ?? 0) / 2;
       const stage = handle.canvasSize();
-      const x = half > 0 ? Math.min(Math.max(anchor.x, half + 8), stage.width - half - 8) : anchor.x;
+      const margin = 8;
+      let x =
+        half > 0 ? Math.min(Math.max(anchor.x, half + margin), stage.width - half - margin) : anchor.x;
+      const y = anchor.y + 10;
+
       /**
-       * Below the object, and below the display panel.
+       * Keep out of the display panel's corner.
        *
-       * The panel occupies the stage's top-right corner and the selection can be anywhere, so the
-       * only vertical band that is reliably clear is under both. `DISPLAY_PANEL_CLEARANCE` is that
-       * band's top edge — the panel is 248px wide and its body roughly 260px tall, measured from the
-       * content it renders.
+       * The panel floats over the stage's top-right. A label landing in the band the panel occupies is
+       * pushed *left* of it rather than down: pushing it down was the first attempt, and it detached
+       * the label from the object it measures whenever the object sat near the top of the stage.
        */
-      const y = Math.max(anchor.y + 10, DISPLAY_PANEL_CLEARANCE);
+      const panelLeft = stage.width - DISPLAY_PANEL.insetEnd - DISPLAY_PANEL.width;
+      if (y < DISPLAY_PANEL.bottom && x + half > panelLeft) {
+        x = panelLeft - half - margin;
+      }
 
       setBox({
         x,
