@@ -1,4 +1,15 @@
 {
   "schemaVersion": 1,
-  "assets": []
+  "assets": [
+    {
+      "id": "spinning-crate",
+      "kind": "model",
+      "path": "assets/models/spinning-crate-87f0fc30.glb",
+      "hash": "sha256:87f0fc3044b65f7a537f3f04c609b51757c9ecdca4a1d670780bab1b694cce30",
+      "bytes": 3016,
+      "note": "",
+      "requires": [],
+      "meta": {}
+    }
+  ]
 }

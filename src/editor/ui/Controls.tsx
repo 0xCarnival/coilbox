@@ -102,19 +102,29 @@ export interface SegmentedOption<T extends string> {
  * `radiogroup` rather than a set of buttons: the arrow keys move between segments and only one is
  * ever selected, which is exactly the semantics a bare row of buttons fails to express.
  */
+/**
+ * The props, as one object rather than a destructured list.
+ *
+ * That shape is deliberate: TypeScript infers a generic from a single object parameter in one pass,
+ * where a destructured property list infers each property separately and can settle `T` on its
+ * constraint — `string` — leaving `onChange` incompatible with a caller's narrower union. Taking the
+ * object keeps `<SegmentedControl<AssetView> />` inferred from the `value` it is given.
+ */
+export interface SegmentedControlProps<T extends string> {
+  value: T;
+  onChange(value: T): void;
+  options: readonly SegmentedOption<T>[];
+  disabled?: boolean;
+  ariaLabel: string;
+}
+
 export function SegmentedControl<T extends string>({
   value,
   onChange,
   options,
   disabled = false,
   ariaLabel,
-}: {
-  value: T;
-  onChange(value: T): void;
-  options: readonly SegmentedOption<T>[];
-  disabled?: boolean;
-  ariaLabel: string;
-}): React.ReactElement {
+}: SegmentedControlProps<T>): React.ReactElement {
   return (
     <div
       {...stylex.props(segmentedStyles.root, disabled && segmentedStyles.rootDisabled)}

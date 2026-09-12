@@ -3,6 +3,7 @@ import type { JSX } from 'react';
 import * as stylex from '@stylexjs/stylex';
 import type { AssetEntry } from '@schema/index.js';
 import { button, color, fontFamily, fontSize, radius, space } from '../styles/tokens.stylex.js';
+import { PanelSection, SegmentedControl, type SegmentedOption } from '../ui/Controls.js';
 import { DOM, withDomClass } from '../dom-contract.js';
 import { useSession, useSessionSnapshot } from '../hooks.js';
 
@@ -13,6 +14,21 @@ import { useSession, useSessionSnapshot } from '../hooks.js';
  * supports, and removing an asset that a scene still uses is refused with the list of
  * scenes — losing a model silently is the failure mode this panel exists to prevent.
  */
+
+/**
+ * The asset kinds, in the order a person looks for them.
+ *
+ * Models first because they are what a scene is mostly made of, then the images a material uses,
+ * then audio.
+ */
+/** The two layouts the asset list offers. */
+type AssetView = 'grouped' | 'flat';
+
+const ASSET_GROUPS = [
+  { kind: 'model', title: 'Models' },
+  { kind: 'image', title: 'Images' },
+  { kind: 'audio', title: 'Audio' },
+] as const;
 
 const styles = stylex.create({
   browser: {
@@ -105,6 +121,27 @@ const styles = stylex.create({
     gap: space.xs,
     whiteSpace: 'nowrap',
   },
+  /** The layout switch sits at the trailing edge of the panel's toolbar. */
+  viewSwitch: {
+    width: '200px',
+    flexShrink: 0,
+  },
+  /** The stack of per-kind sections. The panel scrolls; this column does not. */
+  groups: {
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  /** The count beside a section's title. */
+  groupCount: {
+    marginInlineStart: 'auto',
+    paddingInline: space.sm,
+    borderRadius: radius.pill,
+    backgroundColor: color.surface,
+    fontSize: fontSize.micro,
+    fontWeight: 600,
+    fontVariantNumeric: 'tabular-nums',
+    color: color.muted,
+  },
 });
 
 export function AssetBrowser(): JSX.Element {
@@ -113,6 +150,15 @@ export function AssetBrowser(): JSX.Element {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [dragging, setDragging] = useState(false);
   const [busy, setBusy] = useState(false);
+  /**
+   * Grouped by kind, or one flat list.
+   *
+   * Grouping is the better default — the kind was already a column, which is the tell that it wanted
+   * to be a grouping — but a flat list is what you want when you are hunting one file by name and do
+   * not remember what kind it was. Both are cheap, so the panel offers the choice rather than
+   * guessing.
+   */
+  const [view, setView] = useState<AssetView>('grouped');
 
   const assets = snapshot.assets;
 
@@ -154,13 +200,28 @@ export function AssetBrowser(): JSX.Element {
         <span {...stylex.props(styles.muted)}>
           Drag files here. Supported: self-contained .glb models, PNG/JPEG/WebP images, MP3/OGG/WAV audio.
         </span>
+        {assets.length > 0 ? (
+          <span {...stylex.props(styles.viewSwitch)}>
+            <SegmentedControl<AssetView>
+              ariaLabel="Asset list layout"
+              value={view}
+              onChange={setView}
+              options={
+                [
+                  { value: 'grouped', label: 'By kind' },
+                  { value: 'flat', label: 'Flat' },
+                ] satisfies readonly SegmentedOption<AssetView>[]
+              }
+            />
+          </span>
+        ) : null}
       </div>
 
       {assets.length === 0 ? (
         <div {...withDomClass(styles.empty, DOM.panelEmpty)}>
           No assets yet. Import a .glb to place a model, or keep building with primitives.
         </div>
-      ) : (
+      ) : view === 'flat' ? (
         <table {...withDomClass(styles.table, DOM.assetTable)}>
           <thead>
             <tr>
@@ -184,6 +245,49 @@ export function AssetBrowser(): JSX.Element {
             ))}
           </tbody>
         </table>
+      ) : (
+        /**
+         * One collapsible section per asset kind, each with its count.
+         *
+         * A single flat table made the reader scan every row to find the audio files, and the kind
+         * was already a column — which is the tell that it wanted to be a grouping. Sections also
+         * give the panel a place to say "3 models" without a second header row.
+         *
+         * The `.asset-table` hook stays on each table rather than moving to a wrapper, because the
+         * browser gates count rows through it and a wrapper would count nothing.
+         */
+        <div {...stylex.props(styles.groups)}>
+          {ASSET_GROUPS.map(({ kind, title }) => {
+            const members = assets.filter((asset) => asset.kind === kind);
+            if (members.length === 0) return null;
+            return (
+              <PanelSection key={kind} title={title} aside={<span {...stylex.props(styles.groupCount)}>{members.length}</span>}>
+                <table {...withDomClass(styles.table, DOM.assetTable)}>
+                  <thead>
+                    <tr>
+                      <th {...stylex.props(styles.headCell)}>Id</th>
+                      <th {...stylex.props(styles.headCell)}>Size</th>
+                      <th {...stylex.props(styles.headCell)}>Used by</th>
+                      <th {...stylex.props(styles.headCell)}>Notes</th>
+                      <th {...stylex.props(styles.headCell)} />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {members.map((asset) => (
+                      <AssetRow
+                        key={asset.id}
+                        asset={asset}
+                        usage={snapshot.assetUsage[asset.id] ?? []}
+                        onDelete={() => void session.deleteAsset(asset.id)}
+                        onReplace={(file) => void session.replaceAsset(asset.id, file)}
+                      />
+                    ))}
+                  </tbody>
+                </table>
+              </PanelSection>
+            );
+          })}
+        </div>
       )}
     </div>
   );
