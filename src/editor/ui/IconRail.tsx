@@ -2,7 +2,7 @@ import { Fragment } from 'react';
 import type { JSX } from 'react';
 import * as stylex from '@stylexjs/stylex';
 import * as TooltipPrimitive from '@radix-ui/react-tooltip';
-import { railPanels, type RailPanel } from './rail-registry.js';
+import { railPanelsFor, type DeclaredPanel, type RailPanel } from './rail-registry.js';
 import { color, controlSize, radius, space } from '../styles/tokens.stylex.js';
 import { mergedClass } from './merged-class.js';
 
@@ -95,13 +95,20 @@ export interface IconRailProps {
   /** The panel whose contents are currently showing. */
   active: string;
   onSelect(id: string): void;
+  /**
+   * Panels the project declares, or null when it declares none.
+   *
+   * Passed in rather than read from the session here, so the rail stays a presentational component
+   * and the shell keeps the one place that reads project state.
+   */
+  declared: readonly DeclaredPanel[] | null;
 }
 
-export function IconRail({ active, onSelect }: IconRailProps): JSX.Element {
+export function IconRail({ active, onSelect, declared }: IconRailProps): JSX.Element {
   return (
     <TooltipPrimitive.Provider delayDuration={300}>
       <nav {...stylex.props(styles.rail)} aria-label="Editor panels">
-        {railPanels().map(({ id, label, Icon }: RailPanel, index: number) => {
+        {railPanelsFor(declared).map(({ id, label, Icon }: RailPanel, index: number) => {
           const isActive = id === active;
           return (
             <Fragment key={id}>

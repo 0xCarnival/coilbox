@@ -23,10 +23,17 @@ export interface ProjectDetail extends ProjectSummary {
   scenes: Array<{ id: string; name: string; path: string }>;
 }
 
-/** `scripts/registry.json` as the service returns it; the entries are unread JSON. */
+/**
+ * `scripts/registry.json` as the service returns it.
+ *
+ * The entries are unread JSON: the service hands the file over rather than interpreting it, and the
+ * editor parses what it needs. `panels` is optional so an existing project's document — which has
+ * only `behaviors` — stays valid without a migration.
+ */
 export interface RegistryDocument {
   schemaVersion: number;
   behaviors: JsonValue[];
+  panels?: JsonValue;
 }
 
 /** The error body the service sends with a failed request. */

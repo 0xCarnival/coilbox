@@ -368,7 +368,7 @@ function StudioShell(): JSX.Element {
             }}
           >
             <div {...stylex.props(styles.railHost)}>
-              <IconRail active={railPanel} onSelect={selectRailPanel} />
+              <IconRail active={railPanel} onSelect={selectRailPanel} declared={snapshot.panels} />
             </div>
             {/**
              * The hierarchy column collapses to zero rather than to a minimum. A panel shrunk to a
