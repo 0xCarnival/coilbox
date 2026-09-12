@@ -5,6 +5,7 @@ import { SelectionStore } from '../document/selection.js';
 import { WorkspaceClient, WorkspaceClientError, type ProjectDetail, type ProjectSummary } from '../api/client.js';
 import { ApiAssetResolver } from '../api/asset-resolver.js';
 import { BehaviorRegistry } from '@runtime/behaviors/registry.js';
+import { declaredPanels, type DeclaredPanel } from '../ui/rail-registry.js';
 import { BEHAVIOR_LIBRARY } from '@runtime/behaviors/library.js';
 import type { BehaviorEntry, BehaviorPropertyDescriptor, BehaviorPropertyType } from '@runtime/behaviors/types.js';
 import { isFiniteJsonNumber, isJsonBoolean, isJsonString, jsonField } from '../json-values.js';
@@ -141,6 +142,14 @@ export interface SessionSnapshot {
   modelClips: Record<string, string[]>;
   /** Behavior metadata declared by the project's scripts/registry.json. */
   behaviors: Array<{ id: string; name: string; description: string; properties: BehaviorPropertyDescriptor[] }>;
+  /**
+   * Editor panels the project declares.
+   *
+   * `null` means the project has not asked, which is different from asking for none: the rail shows
+   * everything by default, and only a project that names panels gets a restricted set. See
+   * `docs/extension-points.md`.
+   */
+  panels: readonly DeclaredPanel[] | null;
 }
 
 export class EditorSession {
@@ -150,6 +159,8 @@ export class EditorSession {
   readonly assetResolver = new ApiAssetResolver('');
   /** Metadata-only registry: it drives the inspector and validation, never execution. */
   private registry = new BehaviorRegistry();
+  /** Panels declared by the project's registry document, or null when it declares none. */
+  private panels: readonly DeclaredPanel[] | null = null;
 
   get behaviorRegistry(): BehaviorRegistry {
     return this.registry;
@@ -217,6 +228,7 @@ export class EditorSession {
       assetUsage: this.assetUsage,
       importing: this.importing,
       modelClips: this.modelClips,
+      panels: this.panels,
       behaviors: this.behaviorRegistry.list().map((entry) => ({
         id: entry.id,
         name: entry.name,
@@ -402,6 +414,12 @@ export class EditorSession {
       }
       this.registry = new BehaviorRegistry();
       this.registry.replaceMetadata(entries);
+      /**
+       * Panels ride in the same document as behaviors, because a project's editor configuration and
+       * its game logic are the same kind of thing: declarations a project owns, read from disk, with
+       * nothing trusted. Reading them here means one fetch serves both.
+       */
+      this.panels = declaredPanels(document_.panels);
 
       // The inspector renders the project's declarations; Play runs the compiled library. Say
       // so plainly when the two disagree instead of letting a behavior silently do nothing.

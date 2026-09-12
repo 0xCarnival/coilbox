@@ -3,8 +3,6 @@ import type { JSX } from 'react';
 import * as stylex from '@stylexjs/stylex';
 import { color, fontSize, radius, space } from '../styles/tokens.stylex.js';
 import { useSessionSnapshot } from '../hooks.js';
-import { format } from '../units.js';
-import { useUnitSystem } from '../units-context.js';
 import type { ViewportHandle } from '../panels/Viewport.js';
 
 /**
@@ -108,7 +106,6 @@ export interface MeasurementOverlayProps {
 
 export function MeasurementOverlay({ viewport, visible }: MeasurementOverlayProps): JSX.Element | null {
   const snapshot = useSessionSnapshot();
-  const units = useUnitSystem();
   const [box, setBox] = useState<{
     x: number;
     y: number;
@@ -186,11 +183,19 @@ export function MeasurementOverlay({ viewport, visible }: MeasurementOverlayProp
       role="status"
       aria-label="Selection dimensions"
     >
+      {/**
+       * Metres, always, and spelled out.
+       *
+       * There was a unit-system setting here that converted these — and every other length field —
+       * to feet on request. It is gone, because a game engine does not have one: Unity works in
+       * metres, Godot in metres, Unreal in centimetres, and each picks one because level design
+       * happens in a single system. The suffix stays because a bare number does not say what it
+       * measures.
+       */}
       <span {...stylex.props(styles.dims)}>
-        {format(width, units, 'length')} × {format(depth, units, 'length')} ×{' '}
-        {format(height, units, 'length')}
+        {width.toFixed(2)} m × {depth.toFixed(2)} m × {height.toFixed(2)} m
       </span>
-      <span {...stylex.props(styles.distance)}>cam {format(box.distance, units, 'length')}</span>
+      <span {...stylex.props(styles.distance)}>cam {box.distance.toFixed(2)} m</span>
     </div>
   );
 }

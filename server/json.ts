@@ -55,6 +55,16 @@ export function jsonNumber(value: JsonValue, key: string): number | undefined {
 }
 
 /** The array at `key` of a JSON object; `undefined` when the key is absent or holds anything else. */
+/**
+ * A named property of a parsed object, or undefined.
+ *
+ * The counterpart of the editor's `jsonField`: unread JSON is read by asking for the field you want
+ * rather than by narrowing the value's shape at each call site.
+ */
+export function jsonField(value: JsonValue, key: string): JsonValue | undefined {
+  return isJsonObject(value) ? value[key] : undefined;
+}
+
 export function jsonArray(value: JsonValue, key: string): JsonValue[] | undefined {
   if (!isJsonObject(value)) return undefined;
   const field = value[key];

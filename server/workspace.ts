@@ -15,7 +15,7 @@ import {
   type ValidationIssue,
 } from '@schema/index.js';
 import { assertProjectRelative, assertSafeSegment, resolveInside, UnsafePathError } from './paths.js';
-import { jsonArray, jsonNumber, jsonString, parseJson } from './json.js';
+import { jsonArray, jsonField, jsonNumber, jsonString, parseJson } from './json.js';
 
 /**
  * Project storage for the workspace service (plan §7, §13).
@@ -59,6 +59,13 @@ export interface ProjectDetail extends ProjectSummary {
 export interface BehaviorRegistryDocument {
   schemaVersion: number;
   behaviors: JsonValue[];
+  /**
+   * Editor panel declarations, passed through unread.
+   *
+   * Optional, and omitted entirely when the file has none, so a project written before panels existed
+   * produces exactly the response it always did.
+   */
+  panels?: JsonValue;
 }
 
 export class WorkspaceError extends Error {
@@ -231,7 +238,17 @@ export class Workspace {
     if (behaviors === undefined) {
       throw new WorkspaceError('invalid-registry', `${relativePath} does not contain a behaviors array`, 422);
     }
-    return { schemaVersion: jsonNumber(raw, 'schemaVersion') ?? 1, behaviors };
+    /**
+     * `panels` is passed through unread, like the behaviors.
+     *
+     * The service's job is to hand the file over, not to interpret it: deciding which panel ids are
+     * real is the editor's question, and it is the editor that knows the answer. Omitting the key
+     * when the file has none keeps the response byte-identical to what it was before panels existed.
+     */
+    const panels = jsonField(raw, 'panels');
+    return panels === undefined
+      ? { schemaVersion: jsonNumber(raw, 'schemaVersion') ?? 1, behaviors }
+      : { schemaVersion: jsonNumber(raw, 'schemaVersion') ?? 1, behaviors, panels };
   }
 
   async readAssetManifest(projectRoot: string, game: GameDocument): Promise<AssetManifest> {

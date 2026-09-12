@@ -18,11 +18,9 @@ import type { BehaviorPropertyDescriptor } from '@runtime/behaviors/types.js';
 import { componentsFor, type CreatableKind } from '../document/factory.js';
 import { isFiniteJsonNumber, isJsonString, jsonQuaternion, jsonVec3 } from '../json-values.js';
 import { ChevronRight, Plus, Trash2 } from 'lucide-react';
-import { ActionButton, ActionGroup, MetricField } from '../ui/Controls.js';
+import { ActionButton, ActionGroup } from '../ui/Controls.js';
 import { useScrub } from '../ui/useScrub.js';
 import { FieldShell, ScrubLabel, Select } from '../ui/Field.js';
-import { precisionFor, toDisplay, toMetres, unitSuffix } from '../units.js';
-import { useUnitSystem } from '../units-context.js';
 import { Switch } from '../ui/Field.js';
 import { Button } from '../ui/Button.js';
 import {
@@ -800,7 +798,6 @@ function Field({
 }): JSX.Element {
   const session = useSession();
   const snapshot = useSessionSnapshot();
-  const units = useUnitSystem();
   const scene = session.scene;
 
   switch (field.kind) {
@@ -939,46 +936,6 @@ function Field({
        * The unit is not decoration. A number in a 3D editor is meaningless without it — `18` is a
        * position or an extent or a rotation, and the suffix is the only thing that says which.
        */
-      if (field.unit !== undefined) {
-        /**
-         * A field whose value carries a unit.
-         *
-         * The stored number is metres and stays metres; what changes with the unit setting is the
-         * number on screen and the meaning of what is typed. The conversion happens here and nowhere
-         * else — `units.ts` is the only place in the editor that knows how many feet are in a metre.
-         */
-        const stored = isFiniteJsonNumber(value) ? value : null;
-        /**
-         * Rounded to the precision the unit system shows.
-         *
-         * `toDisplay` returns the exact conversion, which for imperial is a long float —
-         * 18 m shows as `59.055118110236215 ft`. The document keeps the exact metre value; this only
-         * stops that float reaching the input box.
-         */
-        const shown =
-          stored === null
-            ? null
-            : Number(toDisplay(stored, units, 'length').toFixed(precisionFor(units, 'length')));
-        return (
-          <FieldShell
-            hookProps={withDomClass(styles.field, DOM.field)}
-            label={<span {...withDomClass(styles.fieldLabel, DOM.fieldLabel)}>{field.label}</span>}
-          >
-            <MetricField
-              label={field.label}
-              unit={unitSuffix(units, 'length')}
-              value={shown}
-              step={stepFor(units)}
-              min={field.min === undefined ? undefined : toDisplay(field.min, units, 'length')}
-              max={field.max === undefined ? undefined : toDisplay(field.max, units, 'length')}
-              disabled={disabled}
-              onChange={(next) =>
-                onChange(componentValue(field, clamp(toMetres(next, units, 'length'), field)))
-              }
-            />
-          </FieldShell>
-        );
-      }
       /**
        * A scrub handle *and* a real number input.
        *
@@ -1041,17 +998,6 @@ function Field({
         </FieldShell>
       );
   }
-}
-
-/**
- * The increment a unit-bearing field steps by, in the unit currently shown.
- *
- * Imperial inches and metric centimetres: a step expressed in metres would be a different physical
- * distance in each system, and the browser uses this to decide how many decimals the spinner
- * produces.
- */
-function stepFor(units: 'metric' | 'imperial'): number {
-  return units === 'imperial' ? 0.1 : 0.01;
 }
 
 function componentValue(field: FieldDescriptor, value: number): JsonValue {

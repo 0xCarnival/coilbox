@@ -27,6 +27,34 @@ my-game/
 - Paths inside documents are **project-relative** with forward slashes, and may not escape the
   project folder.
 
+## `scripts/registry.json`
+
+Two optional top-level keys, both read from disk with nothing trusted:
+
+- **`behaviors`** — the registered behaviors this project uses, with the property descriptors the
+  inspector renders and the validator checks against. Executable behavior code lives in the runtime
+  bundle, never here: editing a scene must not execute a behavior constructor. See
+  [`engine-sdk.md`](engine-sdk.md).
+- **`panels`** — which editor panels the left rail shows, and in what order. Omit it and every panel
+  is shown, so an existing project is unaffected.
+
+```json
+{
+  "schemaVersion": 1,
+  "behaviors": [{ "id": "animation.play", "name": "Animation Playback", "properties": [] }],
+  "panels": [{ "id": "objects" }, { "id": "assets", "label": "Files" }, { "id": "console" }]
+}
+```
+
+A panel entry names a panel this build provides; `label` optionally overrides its name. An id the
+build does not have is skipped, and a `panels` array where *nothing* resolves falls back to showing
+every panel — an empty rail would leave no way to open anything, which matters more than honouring a
+declaration that cannot be satisfied.
+
+This is a configuration seam, not a plugin system: a declared panel selects among built-in surfaces
+and cannot introduce a new one. [`extension-points.md`](extension-points.md) sets out what a real
+plugin host would take and why it is not built.
+
 ## `game.json`
 
 ```json

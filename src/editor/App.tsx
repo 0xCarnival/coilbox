@@ -29,8 +29,6 @@ import { MeasurementOverlay } from './ui/MeasurementOverlay.js';
 const CommandPalette = lazy(() =>
   import('./ui/CommandPalette.js').then((module) => ({ default: module.CommandPalette })),
 );
-import { UnitProvider } from './units-context.js';
-import type { UnitSystem } from './units.js';
 import { Toasts } from './ui/Toasts.js';
 import { ToolDock } from './ui/ToolDock.js';
 
@@ -159,22 +157,6 @@ function isBottomTab(id: string): id is BottomTab {
   return id === 'assets' || id === 'scenes' || id === 'console';
 }
 
-/**
- * Panel sizes from browser storage: this module wrote them, and every field is range-checked.
- *
- * The unit system is stored beside it, and read through the same care: an unrecognised value falls
- * back to metric rather than propagating a string the rest of the editor has no case for.
- */
-const UNITS_KEY = 'coilbox.units.v1';
-
-function loadUnits(): UnitSystem {
-  try {
-    return globalThis.localStorage?.getItem(UNITS_KEY) === 'imperial' ? 'imperial' : 'metric';
-  } catch {
-    return 'metric';
-  }
-}
-
 
 function loadLayout(): Layout {
   try {
@@ -239,13 +221,6 @@ function StudioShell(): JSX.Element {
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [bottomTab, setBottomTab] = useState<BottomTab>('console');
   const [paletteOpen, setPaletteOpen] = useState(false);
-  /**
-   * The unit system lengths are shown in.
-   *
-   * Editor *preference*, not document data: it lives in browser storage beside the panel layout and
-   * never reaches a scene. The document is metres, always — see `units.ts`.
-   */
-  const [units, setUnits] = useState<UnitSystem>(() => loadUnits());
   /** Whether the dimension overlay is drawn. An editor preference, like the unit system. */
   const [measurements, setMeasurements] = useState(true);
   const [exporting, setExporting] = useState(false);
@@ -370,7 +345,6 @@ function StudioShell(): JSX.Element {
   const openProject = snapshot.project !== null;
 
   return (
-    <UnitProvider system={units}>
     <div {...withDomClass(styles.studio, DOM.studio)}>
       {!openProject ? (
         <ProjectHome />
@@ -394,7 +368,7 @@ function StudioShell(): JSX.Element {
             }}
           >
             <div {...stylex.props(styles.railHost)}>
-              <IconRail active={railPanel} onSelect={selectRailPanel} />
+              <IconRail active={railPanel} onSelect={selectRailPanel} declared={snapshot.panels} />
             </div>
             {/**
              * The hierarchy column collapses to zero rather than to a minimum. A panel shrunk to a
@@ -446,11 +420,6 @@ function StudioShell(): JSX.Element {
                 viewport={viewportRef}
                 snap={snap}
                 onSnapChange={setSnap}
-                units={units}
-                onUnitsChange={(next) => {
-                  setUnits(next);
-                  globalThis.localStorage?.setItem(UNITS_KEY, next);
-                }}
                 measurements={measurements}
                 onMeasurementsChange={setMeasurements}
               />
@@ -511,7 +480,6 @@ function StudioShell(): JSX.Element {
         </>
       )}
     </div>
-    </UnitProvider>
   );
 }
 
