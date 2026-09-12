@@ -46,6 +46,7 @@
     "verify": "tsx tools/verify-all.ts"
   },
   "dependencies": {
+    "@fontsource/barlow": "^5.3.0",
     "@radix-ui/react-dialog": "^1.1.23",
     "@radix-ui/react-dropdown-menu": "2.1.24",
     "@radix-ui/react-popover": "^1.1.23",

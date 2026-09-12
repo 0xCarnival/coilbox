@@ -68,6 +68,22 @@ SOFTWARE.
 
 ---
 
+## Barlow
+
+**Source:** <https://github.com/jpt/barlow> (packaged as
+[`@fontsource/barlow`](https://github.com/fontsource/fontsource))
+**Licence:** SIL Open Font License 1.1
+
+The editor's interface typeface, self-hosted rather than fetched from Google Fonts. Only the 400 and
+500 weights and only the `latin` and `latin-ext` subsets are imported, in `src/editor/main.tsx`;
+every additional weight or subset is a file in the build. `src/editor/styles.css` asks for Barlow
+first and falls back to the system UI stack, so a failure to load degrades rather than breaks.
+
+The import lives in the editor's entry point and not the runtime's, because an exported game ships
+the player and the HUD, neither of which has a styling dependency on the editor.
+
+---
+
 ## lucide
 
 **Source:** <https://github.com/lucide-icons/lucide>
