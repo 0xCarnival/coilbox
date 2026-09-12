@@ -21,7 +21,7 @@ import { ChevronRight, Plus, Trash2 } from 'lucide-react';
 import { ActionButton, ActionGroup, MetricField } from '../ui/Controls.js';
 import { useScrub } from '../ui/useScrub.js';
 import { FieldShell, ScrubLabel, Select } from '../ui/Field.js';
-import { toDisplay, toMetres, unitSuffix } from '../units.js';
+import { precisionFor, toDisplay, toMetres, unitSuffix } from '../units.js';
 import { useUnitSystem } from '../units-context.js';
 import { Switch } from '../ui/Field.js';
 import { Button } from '../ui/Button.js';
@@ -948,7 +948,17 @@ function Field({
          * else — `units.ts` is the only place in the editor that knows how many feet are in a metre.
          */
         const stored = isFiniteJsonNumber(value) ? value : null;
-        const shown = stored === null ? null : toDisplay(stored, units, 'length');
+        /**
+         * Rounded to the precision the unit system shows.
+         *
+         * `toDisplay` returns the exact conversion, which for imperial is a long float —
+         * 18 m shows as `59.055118110236215 ft`. The document keeps the exact metre value; this only
+         * stops that float reaching the input box.
+         */
+        const shown =
+          stored === null
+            ? null
+            : Number(toDisplay(stored, units, 'length').toFixed(precisionFor(units, 'length')));
         return (
           <FieldShell
             hookProps={withDomClass(styles.field, DOM.field)}
@@ -958,7 +968,7 @@ function Field({
               label={field.label}
               unit={unitSuffix(units, 'length')}
               value={shown}
-              step={field.step}
+              step={stepFor(units)}
               min={field.min === undefined ? undefined : toDisplay(field.min, units, 'length')}
               max={field.max === undefined ? undefined : toDisplay(field.max, units, 'length')}
               disabled={disabled}
@@ -1031,6 +1041,17 @@ function Field({
         </FieldShell>
       );
   }
+}
+
+/**
+ * The increment a unit-bearing field steps by, in the unit currently shown.
+ *
+ * Imperial inches and metric centimetres: a step expressed in metres would be a different physical
+ * distance in each system, and the browser uses this to decide how many decimals the spinner
+ * produces.
+ */
+function stepFor(units: 'metric' | 'imperial'): number {
+  return units === 'imperial' ? 0.1 : 0.01;
 }
 
 function componentValue(field: FieldDescriptor, value: number): JsonValue {
