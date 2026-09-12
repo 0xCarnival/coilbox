@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { JSX } from 'react';
 import * as stylex from '@stylexjs/stylex';
 import type { JsonValue } from '@schema/index.js';
@@ -19,7 +19,16 @@ import { ResizeHandle } from './ui/ResizeHandle.js';
 import { HintCard } from './ui/HintCard.js';
 import { DisplayPanel } from './ui/DisplayPanel.js';
 import { MeasurementOverlay } from './ui/MeasurementOverlay.js';
-import { CommandPalette } from './ui/CommandPalette.js';
+/**
+ * The command palette is loaded on demand.
+ *
+ * It is the only consumer of Radix's Dialog and it opens on a keystroke, so bundling it with the
+ * shell means every session pays for a modal most never open. `lazy` splits it into its own chunk,
+ * which the browser fetches the first time someone presses the shortcut.
+ */
+const CommandPalette = lazy(() =>
+  import('./ui/CommandPalette.js').then((module) => ({ default: module.CommandPalette })),
+);
 import { UnitProvider } from './units-context.js';
 import type { UnitSystem } from './units.js';
 import { Toasts } from './ui/Toasts.js';
@@ -471,6 +480,7 @@ function StudioShell(): JSX.Element {
            * repeating the line the user is already looking at is noise, not a notification.
            */}
           <Toasts enabled={bottomTab !== 'console'} />
+          <Suspense fallback={null}>
           <CommandPalette
             open={paletteOpen}
             onOpenChange={setPaletteOpen}
@@ -485,6 +495,7 @@ function StudioShell(): JSX.Element {
             }}
             onExport={() => void exportGame()}
           />
+          </Suspense>
           <footer {...withDomClass(styles.statusbar, DOM.statusbar)}>
             <span>{status || 'Ready'}</span>
             <span {...withDomClass(styles.statusbarSpacer, DOM.toolbarSpacer)} />
