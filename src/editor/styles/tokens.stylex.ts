@@ -131,12 +131,13 @@ export const fontSize = stylex.defineVars({
 /**
  * The typeface.
  *
- * Their UI is set in **Barlow**, loaded as a Next.js local font. Barlow is SIL Open Font Licensed,
- * so the family is safe to load, but this editor is local-first and an export must not depend on a
- * network font — so the stack asks for Barlow first and falls through to the system UI faces when
- * it is absent. Barlow ships on none of the target platforms, which means in practice this renders
- * as the system stack until someone adds the font files to `public/`. The token is written the way
- * it should end up so that becomes a one-file change.
+ * Their UI is set in **Barlow**, and so is this one now. The reference fetches it from Google Fonts;
+ * this editor is local-first and an export must not depend on a network font, so the 400 and 500
+ * weights are self-hosted from `@fontsource/barlow` (OFL-1.1) and imported in `src/editor/main.tsx`.
+ * Vite fingerprints them into the build, and a check confirms the page makes no external request.
+ *
+ * The stack still names the system UI faces after Barlow. That is not decoration: it is what makes a
+ * font that fails to load a degradation rather than a broken layout.
  */
 export const fontFamily = stylex.defineVars({
   sans: 'Barlow, Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
