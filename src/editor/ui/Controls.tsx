@@ -23,12 +23,20 @@ import { color, control, controlSize, fontSize, radius, space } from '../styles/
 
 /* ------------------------------------------------------------------ segmented control */
 
-const segmented = stylex.create({
+/**
+ * The segmented track's styles, exported.
+ *
+ * A tab strip and a segmented control are the same object with different ARIA: one switches what a
+ * panel shows, the other picks a value, and their accessibility contracts are genuinely different —
+ * `role="tab"` with `aria-selected` versus `role="radio"` with `aria-checked`. Sharing the *styling*
+ * while keeping the roles honest is what stops the editor having two visually similar but subtly
+ * different switchers, which is the failure this whole port exists to correct.
+ */
+export const segmentedStyles = stylex.create({
   root: {
     display: 'flex',
     alignItems: 'center',
     height: controlSize.md,
-    width: '100%',
     padding: '3px',
     borderRadius: radius.lg,
     borderWidth: '1px',
@@ -39,7 +47,6 @@ const segmented = stylex.create({
   rootDisabled: {
     opacity: 0.6,
   },
-  /** Each segment fills an equal share, so the control's thumb cannot jump as labels change. */
   segment: {
     display: 'flex',
     alignItems: 'center',
@@ -64,19 +71,7 @@ const segmented = stylex.create({
       backgroundColor: color.wash,
       color: color.text,
     },
-    ':disabled': {
-      cursor: 'default',
-      ':hover': {
-        backgroundColor: 'transparent',
-        color: color.muted,
-      },
-    },
   },
-  /**
-   * The selected segment: a raised fill plus a hairline ring. Their `bg-[#3e3e3e] shadow-sm
-   * ring-1 ring-border/50` — the ring is what makes the thumb read as a physical inset rather than
-   * a tinted label.
-   */
   segmentSelected: {
     backgroundColor: color.surface,
     color: color.text,
@@ -86,7 +81,6 @@ const segmented = stylex.create({
       color: color.text,
     },
   },
-  /** A count beside a segment's label, e.g. the number of zones. */
   badge: {
     color: color.dim,
     fontVariantNumeric: 'tabular-nums',
@@ -123,7 +117,7 @@ export function SegmentedControl<T extends string>({
 }): React.ReactElement {
   return (
     <div
-      {...stylex.props(segmented.root, disabled && segmented.rootDisabled)}
+      {...stylex.props(segmentedStyles.root, disabled && segmentedStyles.rootDisabled)}
       role="radiogroup"
       aria-label={ariaLabel}
     >
@@ -132,7 +126,7 @@ export function SegmentedControl<T extends string>({
         return (
           <button
             key={option.value}
-            {...stylex.props(segmented.segment, isSelected && segmented.segmentSelected)}
+            {...stylex.props(segmentedStyles.segment, isSelected && segmentedStyles.segmentSelected)}
             type="button"
             role="radio"
             aria-checked={isSelected}
@@ -141,7 +135,7 @@ export function SegmentedControl<T extends string>({
           >
             {option.label}
             {option.count !== undefined ? (
-              <span {...stylex.props(segmented.badge)}>{option.count}</span>
+              <span {...stylex.props(segmentedStyles.badge)}>{option.count}</span>
             ) : null}
           </button>
         );

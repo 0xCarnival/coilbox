@@ -36,12 +36,25 @@ const styles = stylex.create({
   tabs: {
     display: 'flex',
     alignItems: 'center',
-    gap: space.xxs,
+    gap: space.md,
     height: '40px',
     paddingInline: space.md,
     borderBlockEndWidth: '1px',
     borderBlockEndStyle: 'solid',
     borderBlockEndColor: color.border,
+    flexShrink: 0,
+  },
+  /** The tab track: the segmented control's shell, holding tabs rather than radios. */
+  tabTrack: {
+    display: 'flex',
+    alignItems: 'center',
+    height: '28px',
+    padding: '3px',
+    borderRadius: radius.lg,
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: color['panel-2'],
     flexShrink: 0,
   },
   /** The trailing action cluster, separated from the tabs by a rule. */
@@ -72,32 +85,51 @@ const styles = stylex.create({
     },
   },
   /**
-   * `.tabs button[role='tab'].active` was a descendant selector on the parent. The button knows
-   * its own selected state, so the style moved onto the button and the selector disappears.
-   *
-   * The active tab is an accent-tinted fill rather than a full accent border, so the strip has one
-   * loud element (the selected tab) instead of two (the tab and its outline).
+   * `.tabs button[role='tab'].active` was a descendant selector on the parent. The button knows its
+   * own selected state, so the style moved onto the button and the selector disappears.
    */
   tabButton: {
-    height: '26px',
-    paddingInline: space.md,
+    display: 'flex',
+    alignItems: 'center',
+    height: '100%',
+    paddingInline: space.lg,
     borderRadius: radius.md,
-    fontSize: fontSize.sm,
+    fontSize: fontSize.xs,
     fontWeight: 500,
     color: color.muted,
     backgroundColor: 'transparent',
     borderWidth: 0,
     borderStyle: 'none',
     cursor: 'pointer',
+    whiteSpace: 'nowrap',
+    transitionProperty: 'background-color, color, box-shadow',
+    transitionDuration: '150ms',
     ':hover': {
       color: color.text,
       backgroundColor: color.wash,
     },
   },
-  /** The active tab is the reference's `bg-accent text-foreground`: a filled chip, nothing more. */
+  /**
+   * The selected tab is the segmented control's selected segment, ring and all.
+   *
+   * A fill alone was ambiguous beside the trailing commands, which also fill on hover; the inset
+   * ring is what distinguishes "this one is selected" from "this one is under the cursor".
+   */
   tabActive: {
     backgroundColor: color.surface,
     color: color.text,
+    boxShadow: `inset 0 0 0 1px ${color.border}`,
+  },
+  /** A count on a tab: the console's unread errors. */
+  tabBadge: {
+    marginInlineStart: space.sm,
+    paddingInline: '5px',
+    borderRadius: radius.pill,
+    backgroundColor: color.panel,
+    fontSize: fontSize.micro,
+    fontWeight: 600,
+    fontVariantNumeric: 'tabular-nums',
+    color: color.muted,
   },
   toolbarSpacer: {
     flex: 1,
@@ -220,8 +252,9 @@ export function BottomPanel({
 
   return (
     <section {...stylex.props(styles.bottomPanel)}>
-      <div {...withDomClass(styles.tabs, DOM.tabs)} role="tablist">
-        {BOTTOM_TABS.map((candidate) => (
+      <div {...withDomClass(styles.tabs, DOM.tabs)}>
+        <div {...stylex.props(styles.tabTrack)} role="tablist" aria-label="Panel">
+          {BOTTOM_TABS.map((candidate) => (
           <button
             key={candidate}
             {...withDomClass(
@@ -239,9 +272,18 @@ export function BottomPanel({
               if (candidate === 'assets') void session.refreshAssets();
             }}
           >
-            {candidate === 'assets' ? 'Assets' : candidate === 'scenes' ? 'Scenes' : `Console${errors > 0 ? ` (${errors})` : ''}`}
-          </button>
-        ))}
+              {candidate === 'assets' ? 'Assets' : candidate === 'scenes' ? 'Scenes' : 'Console'}
+              {/**
+               * The error count rides as a badge rather than inside the label: it is a state of the
+               * console, not part of its name, and a check reading the tab by text would otherwise
+               * have to know how many errors happened to be present.
+               */}
+              {candidate === 'console' && errors > 0 ? (
+                <span {...stylex.props(styles.tabBadge)}>{errors}</span>
+              ) : null}
+            </button>
+          ))}
+        </div>
         <span {...withDomClass(styles.toolbarSpacer, DOM.toolbarSpacer)} />
         {snapshot.conflict && (
           <span {...withDomClass(styles.conflict, DOM.conflict)} role="alert">
