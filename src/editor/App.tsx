@@ -18,6 +18,7 @@ import { IconRail } from './ui/IconRail.js';
 import { ResizeHandle } from './ui/ResizeHandle.js';
 import { SelectionToolbar } from './ui/SelectionToolbar.js';
 import { Toasts } from './ui/Toasts.js';
+import { ToolDock } from './ui/ToolDock.js';
 
 /**
  * Editor shell: one fixed, resizable layout instead of a window manager (plan §3).
@@ -383,10 +384,13 @@ function StudioShell(): JSX.Element {
                * inspector footer. The viewport owns the focus action, so the bar is mounted beside
                * it rather than inside the inspector.
                */}
-              <SelectionToolbar
+              <SelectionToolbar visible={!editorLocked} hint="Actions in the dock below" />
+              <ToolDock
                 tool={tool}
                 onToolChange={setTool}
                 onFocus={() => viewportRef.current?.focusSelection()}
+                snap={snap}
+                onSnapChange={setSnap}
                 visible={!editorLocked}
               />
             </div>

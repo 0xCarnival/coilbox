@@ -1,11 +1,9 @@
-import { useState } from 'react';
+
 import type { JSX } from 'react';
 import * as stylex from '@stylexjs/stylex';
-import { Copy, Focus, Move, Trash2 } from 'lucide-react';
-import { createEntityId, subtreeOf } from '../document/commands.js';
+import { Box } from 'lucide-react';
 import { color, control, fontSize, radius, space } from '../styles/tokens.stylex.js';
 import { useSession, useSessionSnapshot } from '../hooks.js';
-import { Button, IconButton } from './Button.js';
 
 /**
  * The floating action bar for the current selection.
@@ -44,7 +42,7 @@ const styles = stylex.create({
   /** The object's name, so the bar says what it acts on without a second lookup. */
   title: {
     maxWidth: '200px',
-    paddingInline: space.md,
+    paddingInline: space.sm,
     fontSize: fontSize.sm,
     fontWeight: 500,
     color: color.text,
@@ -52,94 +50,56 @@ const styles = stylex.create({
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
   },
-  divider: {
-    width: '1px',
-    alignSelf: 'stretch',
-    marginBlock: space.xs,
-    backgroundColor: color.border,
-    flexShrink: 0,
+  /** The kind glyph, so the badge says what sort of object is selected, not only its name. */
+  glyph: {
+    display: 'flex',
+    alignItems: 'center',
+    paddingInlineStart: space.md,
+    color: color.dim,
+  },
+  /** The reminder of where the verbs now live. Quiet: it is read once and then known. */
+  hint: {
+    paddingInlineStart: space.md,
+    paddingInlineEnd: space.md,
+    fontSize: fontSize.xs,
+    color: color.dim,
+    whiteSpace: 'nowrap',
   },
 });
 
 export interface SelectionToolbarProps {
-  /** The current transform tool, so its button can show as active. */
-  tool: 'translate' | 'rotate' | 'scale';
-  onToolChange(tool: 'translate' | 'rotate' | 'scale'): void;
-  /** Centres the view on the selection. */
-  onFocus(): void;
   /** True while authoring; the bar hides in Play mode. */
   visible: boolean;
+  /** The dock's verbs act on this selection; this bar says what it is. */
+  hint: string;
 }
 
-export function SelectionToolbar({
-  tool,
-  onToolChange,
-  onFocus,
-  visible,
-}: SelectionToolbarProps): JSX.Element | null {
-  const session = useSession();
+/**
+ * The selection's identity badge, over the stage.
+ *
+ * It began as a full action bar with Duplicate, Delete, and Focus. Those verbs now live in the tool
+ * dock, which is where the reference puts them, and two surfaces offering the same four actions is
+ * worse than either alone. What is left is the part the dock cannot say: *which object* the next
+ * action will apply to.
+ */
+export function SelectionToolbar({ visible, hint }: SelectionToolbarProps): JSX.Element | null {
   const snapshot = useSessionSnapshot();
-  const [busy, setBusy] = useState(false);
+  const session = useSession();
   const primary = snapshot.primarySelection;
   const scene = session.scene;
   const entity = primary && scene ? scene.entities.find((candidate) => candidate.id === primary) : undefined;
 
-  if (!visible || !entity || !scene) return null;
-
-  /**
-   * Duplicate the selection's whole subtree.
-   *
-   * A child must be re-parented to its *copy*, not to the original's parent — copying an entity and
-   * leaving its children behind is the version of this that looks right until someone groups
-   * something. The id map is built in two passes for exactly that reason: every new id exists before
-   * any parent reference is rewritten.
-   */
-  const duplicate = () => {
-    setBusy(true);
-    const used = scene.entities.map((candidate) => candidate.id);
-    const subtree = subtreeOf(scene, entity.id);
-    const idMap = new Map<string, string>();
-    for (const member of subtree) {
-      idMap.set(member.id, createEntityId(`${member.name}-copy`, [...used, ...idMap.values()]));
-    }
-    const copies = subtree.map((member) => ({
-      ...structuredClone(member),
-      id: idMap.get(member.id)!,
-      name: member.id === entity.id ? `${member.name} copy` : member.name,
-      parentId: member.parentId && idMap.has(member.parentId) ? idMap.get(member.parentId)! : member.parentId,
-    }));
-    session.execute({ kind: 'insertEntities', entities: copies, label: `Duplicate ${entity.name}` });
-    session.select(idMap.get(entity.id)!);
-    setBusy(false);
-  };
+  if (!visible || !entity) return null;
 
   return (
     <div {...stylex.props(styles.bar)} role="toolbar" aria-label="Selection actions">
+      <span {...stylex.props(styles.glyph)}>
+        <Box size={control.iconSm} />
+      </span>
       <span {...stylex.props(styles.title)} title={entity.name}>
         {entity.name}
       </span>
-      <span {...stylex.props(styles.divider)} />
-      <IconButton
-        label="Move (W)"
-        variant={tool === 'translate' ? 'secondary' : 'ghost'}
-        aria-pressed={tool === 'translate'}
-        onClick={() => onToolChange('translate')}
-      >
-        <Move size={control.icon} />
-      </IconButton>
-      <Button onClick={onFocus} title="Centre the view on this object (F)">
-        <Focus size={control.icon} />
-        Focus
-      </Button>
-      <IconButton label="Duplicate" disabled={busy} onClick={duplicate}>
-        <Copy size={control.icon} />
-      </IconButton>
-      <IconButton
-        label="Delete"
-        onClick={() => session.execute({ kind: 'deleteEntities', entityIds: [entity.id] })}
-      >
-        <Trash2 size={control.icon} />
-      </IconButton>
+      <span {...stylex.props(styles.hint)}>{hint}</span>
     </div>
   );
 }
