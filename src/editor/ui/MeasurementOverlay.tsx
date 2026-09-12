@@ -6,7 +6,6 @@ import { useSessionSnapshot } from '../hooks.js';
 import { format } from '../units.js';
 import { useUnitSystem } from '../units-context.js';
 import type { ViewportHandle } from '../panels/Viewport.js';
-import { DISPLAY_PANEL } from './DisplayPanel.js';
 
 /**
  * The measurement overlay.
@@ -68,7 +67,19 @@ const styles = stylex.create({
     backdropFilter: 'blur(6px)',
     whiteSpace: 'nowrap',
     pointerEvents: 'none',
-    zIndex: 20,
+    /**
+     * Above the display panel, and below the toasts.
+     *
+     * This was 20, under the panel's 30, and that was the actual bug: the label rendered its full
+     * text and the panel's translucent surface painted over the right end of it. Reading that as a
+     * sizing problem sent three attempts at `max-content`, `nowrap`, and `flex-shrink` after a cause
+     * that was never there — the label's own box was always wide enough, and only a measurement
+     * against the *panel* could have shown it.
+     *
+     * The measurement wins the overlap because it is transient and it describes the thing the user
+     * just clicked; the panel is permanent and its values are readable a moment later.
+     */
+    zIndex: 40,
   },
   /** The dimensions, in mono: they are read as numbers and compared as numbers. */
   dims: {
@@ -144,21 +155,9 @@ export function MeasurementOverlay({ viewport, visible }: MeasurementOverlayProp
       const half = (labelRef.current?.offsetWidth ?? 0) / 2;
       const stage = handle.canvasSize();
       const margin = 8;
-      let x =
+      const x =
         half > 0 ? Math.min(Math.max(anchor.x, half + margin), stage.width - half - margin) : anchor.x;
       const y = anchor.y + 10;
-
-      /**
-       * Keep out of the display panel's corner.
-       *
-       * The panel floats over the stage's top-right. A label landing in the band the panel occupies is
-       * pushed *left* of it rather than down: pushing it down was the first attempt, and it detached
-       * the label from the object it measures whenever the object sat near the top of the stage.
-       */
-      const panelLeft = stage.width - DISPLAY_PANEL.insetEnd - DISPLAY_PANEL.width;
-      if (y < DISPLAY_PANEL.bottom && x + half > panelLeft) {
-        x = panelLeft - half - margin;
-      }
 
       setBox({
         x,
