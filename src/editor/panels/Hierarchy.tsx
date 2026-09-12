@@ -182,8 +182,10 @@ const styles = stylex.create({
    * The empty slot that keeps a childless row's icon aligned with its parent's. Without it the
    * whole tree shifts one indent left on every leaf.
    */
+  /** The empty slot that keeps a leaf aligned with its parent's chevron. */
   treeDisclosureEmpty: {
-    width: '12px',
+    width: '16px',
+    height: '16px',
     flexShrink: 0,
   },
   /**
@@ -214,13 +216,30 @@ const styles = stylex.create({
    * glyph is the honest version of that, and it stops the tree from promising an interaction it
    * does not have.
    */
+  /**
+   * The disclosure: a real button that opens and closes its branch.
+   *
+   * The earlier version drew a bullet for "has children" and promised an interaction it did not
+   * have. A chevron that turns is the honest control, and collapsing a long scene is the thing a
+   * tree is for.
+   */
   treeDisclosure: {
     display: 'grid',
     placeItems: 'center',
-    width: control.iconSm,
-    height: control.iconSm,
+    width: '16px',
+    height: '16px',
+    padding: 0,
+    borderRadius: radius.sm,
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    borderStyle: 'none',
     color: color.dim,
     flexShrink: 0,
+    cursor: 'pointer',
+    ':hover': {
+      backgroundColor: color['wash-strong'],
+      color: color.text,
+    },
   },
   treeIconSelected: {
     color: color.text,
@@ -304,6 +323,14 @@ export function Hierarchy({ locked }: { locked: boolean }): JSX.Element {
   const [search, setSearch] = useState('');
   const [renaming, setRenaming] = useState<string | null>(null);
   const [hovered, setHovered] = useState<string | null>(null);
+  /**
+   * Parents whose children are hidden.
+   *
+   * Tracked as the *collapsed* set rather than the expanded one so the default is open: a scene the
+   * user has not touched shows everything, and only the branches they closed are remembered. The
+   * opposite default would greet every project with a column of shut rows.
+   */
+  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
   const scene = snapshot.project && session.scene ? session.scene : null;
 
   const rows = useMemo<TreeRow[]>(() => {
@@ -323,12 +350,17 @@ export function Hierarchy({ locked }: { locked: boolean }): JSX.Element {
       for (const entity of byParent.get(parentId) ?? []) {
         const childrenMatch = needle.length > 0 && subtreeOf(scene, entity.id).some((child) => child.id !== entity.id && matches(child));
         if (matches(entity) || childrenMatch) result.push({ entity, depth });
+        /**
+         * A search overrides the collapse state: hiding a match inside a closed branch would make
+         * the search look like it found nothing, which is the one thing a search must not do.
+         */
+        if (needle.length === 0 && collapsed.has(entity.id)) continue;
         visit(entity.id, depth + 1);
       }
     };
     visit(null, 0);
     return result;
-  }, [scene, search]);
+  }, [scene, search, collapsed]);
 
   /**
    * Which entities are a parent of something.
@@ -446,9 +478,33 @@ export function Hierarchy({ locked }: { locked: boolean }): JSX.Element {
                * Everything before the name is a fixed-width slot, which is what keeps one
                * alignment line down the tree however deep a node sits.
                */}
-              <span {...stylex.props(styles.treeDisclosure)} aria-hidden="true">
-                {hasChildren.has(entity.id) ? <ChevronRight size={control.iconSm} /> : null}
-              </span>
+              {hasChildren.has(entity.id) ? (
+                <button
+                  {...stylex.props(styles.treeDisclosure)}
+                  type="button"
+                  aria-label={collapsed.has(entity.id) ? `Expand ${entity.name}` : `Collapse ${entity.name}`}
+                  aria-expanded={!collapsed.has(entity.id)}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setCollapsed((current) => {
+                      const next = new Set(current);
+                      if (next.has(entity.id)) next.delete(entity.id);
+                      else next.add(entity.id);
+                      return next;
+                    });
+                  }}
+                >
+                  <ChevronRight
+                    size={control.iconSm}
+                    style={{
+                      transform: collapsed.has(entity.id) ? 'none' : 'rotate(90deg)',
+                      transition: 'transform 120ms ease',
+                    }}
+                  />
+                </button>
+              ) : (
+                <span {...stylex.props(styles.treeDisclosureEmpty)} aria-hidden="true" />
+              )}
               <span {...stylex.props(styles.treeIcon, isSelected && styles.treeIconSelected)}>
                 <EntityIcon size={control.iconSm} />
               </span>
