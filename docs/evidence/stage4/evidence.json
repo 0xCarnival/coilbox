@@ -1,9 +1,9 @@
 {
   "stage": 4,
-  "generatedAt": "2026-09-12T11:03:16.561Z",
+  "generatedAt": "2026-09-12T11:43:34.077Z",
   "node": "v24.18.0",
   "agentGame": "gem-rush",
-  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage4-XGiK4A",
+  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage4-SF8MgD",
   "steps": [
     {
       "name": "typecheck",
@@ -255,7 +255,7 @@
       "id": "archive-restore",
       "title": "Archiving is recoverable: the project comes back intact",
       "passed": true,
-      "detail": "archived as gem-rush-copy-2026-09-12t11-03-09-156z, restored as gem-rush-copy (1 scene(s))"
+      "detail": "archived as gem-rush-copy-2026-09-12t11-43-26-184z, restored as gem-rush-copy (1 scene(s))"
     },
     {
       "id": "demo-games-still-pass",

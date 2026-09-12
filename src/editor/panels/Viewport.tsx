@@ -117,6 +117,18 @@ const styles = stylex.create({
 
 export type PlayState = 'stopped' | 'running' | 'paused';
 
+/**
+ * The editor view's display settings, as the panel reads them back.
+ *
+ * A plain record rather than component state: the values live in Three objects, and this is the
+ * snapshot shape the panel compares against.
+ */
+export interface ViewportDisplay {
+  projection: 'perspective' | 'orthographic';
+  grid: boolean;
+  shadows: boolean;
+}
+
 export interface ViewportHandle {
   play(): Promise<void>;
   pause(): void;
@@ -126,6 +138,15 @@ export interface ViewportHandle {
   setTool(tool: TransformTool): void;
   setSnap(snap: SnapSettings): void;
   setColliderOutlines(visible: boolean): void;
+  /**
+   * The editor view's display settings.
+   *
+   * They live on the viewport rather than in React state because each one mutates a Three object —
+   * a camera, a grid helper, the renderer's shadow map — and a re-render would not touch any of
+   * them. The panel reads the current value back from here so the two cannot disagree.
+   */
+  display(): ViewportDisplay;
+  setDisplay(next: Partial<ViewportDisplay>): void;
   /** World position of an entity in the editor projection, for checks and debugging. */
   project(entityId: string): [number, number, number] | null;
   /** Whether a transform drag is in progress in the editor viewport. */
@@ -359,6 +380,21 @@ export function Viewport({ handleRef, tool, snap, onPlayStateChange, onStatus }:
       setTool: (next: TransformTool) => viewportRef.current?.setTool(next),
       setSnap: (next: SnapSettings) => viewportRef.current?.setSnap(next),
       setColliderOutlines: (visible: boolean) => viewportRef.current?.setColliderOutlinesVisible(visible),
+      display: () =>
+        viewportRef.current
+          ? {
+              projection: viewportRef.current.projection(),
+              grid: viewportRef.current.gridVisible(),
+              shadows: viewportRef.current.shadowsVisible(),
+            }
+          : { projection: 'perspective', grid: true, shadows: true },
+      setDisplay: (next: Partial<ViewportDisplay>) => {
+        const viewport = viewportRef.current;
+        if (!viewport) return;
+        if (next.projection !== undefined) viewport.setProjection(next.projection);
+        if (next.grid !== undefined) viewport.setGridVisible(next.grid);
+        if (next.shadows !== undefined) viewport.setShadowsVisible(next.shadows);
+      },
       project: (entityId: string) => {
         const position = viewportRef.current?.entityWorldPosition(entityId);
         return position ? [position.x, position.y, position.z] : null;

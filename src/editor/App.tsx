@@ -17,6 +17,7 @@ import { isFiniteJsonNumber, isJsonString, jsonField } from './json-values.js';
 import { IconRail } from './ui/IconRail.js';
 import { ResizeHandle } from './ui/ResizeHandle.js';
 import { HintCard } from './ui/HintCard.js';
+import { DisplayPanel } from './ui/DisplayPanel.js';
 import { Toasts } from './ui/Toasts.js';
 import { ToolDock } from './ui/ToolDock.js';
 
@@ -390,6 +391,11 @@ function StudioShell(): JSX.Element {
                * carries both facts.
                */}
               <HintCard tool={tool} visible={!editorLocked} />
+              <DisplayPanel
+                viewport={viewportRef}
+                snap={snap}
+                onSnapChange={setSnap}
+              />
               <ToolDock
                 tool={tool}
                 onToolChange={setTool}

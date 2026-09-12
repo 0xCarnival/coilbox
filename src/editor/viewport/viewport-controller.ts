@@ -79,16 +79,79 @@ interface EntityProjection {
 
 const EDITOR_ONLY = 'editorOnly';
 
+/**
+ * The editor's default field of view, and the world height an orthographic view shows.
+ *
+ * The orthographic frustum is derived from a *height* rather than a width so that switching
+ * projection keeps the visible vertical extent: the view zooms by the same amount in both, and the
+ * framing does not jump when the projection changes.
+ */
+const FIELD_OF_VIEW = 55;
+const ORTHO_HEIGHT = 12;
+
+/** Build a camera in the requested projection, at the editor's default framing. */
+function createCamera(projection: ProjectionKind): EditorCamera {
+  if (projection === 'orthographic') {
+    const halfHeight = ORTHO_HEIGHT / 2;
+    const camera = new THREE.OrthographicCamera(-halfHeight, halfHeight, halfHeight, -halfHeight, 0.05, 2000);
+    camera.position.set(7, 5.5, 9);
+    return camera;
+  }
+  return new THREE.PerspectiveCamera(FIELD_OF_VIEW, 1, 0.05, 2000);
+}
+
+/**
+ * Fit a camera to the canvas.
+ *
+ * The two projections need different work: perspective takes an aspect ratio, orthographic takes a
+ * rebuilt frustum. Both end in `updateProjectionMatrix`, and both are needed on every resize.
+ */
+function fitCamera(camera: EditorCamera, width: number, height: number): void {
+  if (camera instanceof THREE.OrthographicCamera) {
+    const halfHeight = ORTHO_HEIGHT / 2;
+    const aspect = width / height;
+    camera.left = -halfHeight * aspect;
+    camera.right = halfHeight * aspect;
+    camera.top = halfHeight;
+    camera.bottom = -halfHeight;
+  } else {
+    camera.aspect = width / height;
+  }
+  camera.updateProjectionMatrix();
+}
+
+/**
+ * The editor camera, in either projection.
+ *
+ * Both are `THREE.Camera`s, which is all the raycaster, the renderer, and `OrbitControls` need. What
+ * they do *not* share is `fov` — an orthographic camera has none — so anything that reasons about
+ * the field of view has to branch rather than reach for the property. This union is what makes that
+ * branch a compile error to forget instead of a silent `undefined`.
+ */
+export type EditorCamera = THREE.PerspectiveCamera | THREE.OrthographicCamera;
+
+/** Which projection the editor view is using. */
+export type ProjectionKind = 'perspective' | 'orthographic';
+
 export class EditorViewport {
   readonly scene = new THREE.Scene();
-  readonly camera: THREE.PerspectiveCamera;
+  /**
+   * The active camera.
+   *
+   * Mutable because switching projection replaces it: `OrbitControls` and `TransformControls` each
+   * capture the camera they were constructed with, so a swap has to rebuild them rather than assign
+   * a new one and hope. See `setProjection`.
+   */
+  camera: EditorCamera;
 
   private readonly canvas: HTMLCanvasElement;
   private readonly container: HTMLElement;
   private readonly callbacks: ViewportCallbacks;
   private readonly renderer: THREE.WebGLRenderer;
-  private readonly orbit: OrbitControls;
-  private readonly transform: TransformControls;
+  private orbit: OrbitControls;
+  private transform: TransformControls;
+  /** The projection currently in use, so a resize knows which camera to refit. */
+  private project: ProjectionKind = 'perspective';
   private readonly raycaster = new THREE.Raycaster();
   private readonly pointer = new THREE.Vector2();
   private readonly root = new THREE.Group();
@@ -125,7 +188,7 @@ export class EditorViewport {
 
     this.scene.background = new THREE.Color('#141519');
 
-    this.camera = new THREE.PerspectiveCamera(55, 1, 0.05, 2000);
+    this.camera = createCamera('perspective');
     this.camera.position.set(7, 5.5, 9);
 
     this.orbit = new OrbitControls(this.camera, this.canvas);
@@ -486,14 +549,26 @@ export class EditorViewport {
 
   setSelection(entityIds: readonly string[]): void {
     this.selection = [...entityIds];
+    this.attachTransform();
+    this.updateSelectionHelper();
+  }
+
+  /**
+   * Bind the transform controls to the current selection.
+   *
+   * Split out because a projection switch rebuilds `TransformControls`, and the rebuilt one starts
+   * detached — without re-running this, changing projection would silently drop the gizmo from the
+   * selected object.
+   */
+  private attachTransform(): void {
     if (this.selection.length === 1) {
       const object = this.projections.get(this.selection[0]!)?.object;
-      if (object) this.transform.attach(object);
-      else this.transform.detach();
-    } else {
-      this.transform.detach();
+      if (object) {
+        this.transform.attach(object);
+        return;
+      }
     }
-    this.updateSelectionHelper();
+    this.transform.detach();
   }
 
   private updateSelectionHelper(): void {
@@ -540,7 +615,17 @@ export class EditorViewport {
       return;
     }
     const sphere = box.getBoundingSphere(new THREE.Sphere());
-    const distance = Math.max(2.5, sphere.radius / Math.tan((this.camera.fov * Math.PI) / 360) + 1.5);
+    /**
+     * How far back to stand so the sphere fits.
+     *
+     * A perspective camera needs trigonometry — the distance at which its field of view spans the
+     * sphere — and an orthographic one does not, because its visible height is fixed regardless of
+     * distance. Both branches exist because `fov` is the one property the two do not share.
+     */
+    const distance =
+      this.camera instanceof THREE.OrthographicCamera
+        ? Math.max(2.5, sphere.radius * 2.4)
+        : Math.max(2.5, sphere.radius / Math.tan((this.camera.fov * Math.PI) / 360) + 1.5);
     const direction = new THREE.Vector3().subVectors(this.camera.position, this.orbit.target).normalize();
     this.orbit.target.copy(sphere.center);
     this.camera.position.copy(sphere.center).addScaledVector(direction, distance * 1.4);
@@ -669,8 +754,96 @@ export class EditorViewport {
     const height = this.container.clientHeight || this.canvas.clientHeight;
     if (width <= 0 || height <= 0) return;
     this.renderer.setSize(width, height, false);
-    this.camera.aspect = width / height;
-    this.camera.updateProjectionMatrix();
+    fitCamera(this.camera, width, height);
+  }
+
+  /**
+   * Switch the editor view between perspective and orthographic.
+   *
+   * `OrbitControls` and `TransformControls` each capture the camera at construction, so replacing the
+   * camera means rebuilding both. The orbit target and the camera's position are carried across, so
+   * the view does not jump — only the projection changes, which is the whole point of the switch.
+   */
+  setProjection(next: ProjectionKind): void {
+    if (next === this.project) return;
+    const target = this.orbit.target.clone();
+    const position = this.camera.position.clone();
+
+    const helper = this.transform.getHelper();
+    this.transform.detach();
+    this.transform.removeEventListener('dragging-changed', this.handleDraggingChanged);
+    this.transform.removeEventListener('mouseUp', this.handleTransformCommit);
+    this.scene.remove(helper);
+    this.transform.dispose();
+    this.orbit.dispose();
+
+    this.project = next;
+    this.camera = createCamera(next);
+    this.camera.position.copy(position);
+
+    this.orbit = new OrbitControls(this.camera, this.canvas);
+    this.orbit.enableDamping = true;
+    this.orbit.dampingFactor = 0.08;
+    this.orbit.target.copy(target);
+    this.orbit.screenSpacePanning = true;
+    this.orbit.mouseButtons = {
+      LEFT: THREE.MOUSE.ROTATE,
+      MIDDLE: THREE.MOUSE.DOLLY,
+      RIGHT: THREE.MOUSE.PAN,
+    };
+
+    this.transform = new TransformControls(this.camera, this.canvas);
+    this.transform.setSize(0.9);
+    this.transform.addEventListener('dragging-changed', this.handleDraggingChanged);
+    this.transform.addEventListener('mouseUp', this.handleTransformCommit);
+    const nextHelper = this.transform.getHelper();
+    nextHelper.userData[EDITOR_ONLY] = true;
+    this.scene.add(nextHelper);
+    this.attachTransform();
+
+    this.resize();
+    this.renderNow();
+  }
+
+  /** The projection in use, for the display panel's switch. */
+  projection(): ProjectionKind {
+    return this.project;
+  }
+
+  /** Show or hide the ground grid. */
+  setGridVisible(visible: boolean): void {
+    this.grid.visible = visible;
+    this.renderNow();
+  }
+
+  gridVisible(): boolean {
+    return this.grid.visible;
+  }
+
+  /** Show or hide the helpers that draw cast shadows in the editor. */
+  setShadowsVisible(visible: boolean): void {
+    this.renderer.shadowMap.enabled = visible;
+    // Shadow maps are baked into materials, so every one of them has to be recompiled for the
+    // change to take effect; without this the renderer keeps the maps it already built.
+    for (const projection of this.projections.values()) {
+      projection.object.traverse((child) => {
+        /**
+         * `isMesh` is Three's own discriminant — the library sets it on every mesh subclass and
+         * branches on it internally — so this narrows without an assertion about what the traversal
+         * happened to visit.
+         */
+        if (!(child instanceof THREE.Mesh)) return;
+        const material = child.material;
+        // A mesh may carry one material or an array of them, and both need the same flag.
+        if (Array.isArray(material)) for (const entry of material) entry.needsUpdate = true;
+        else if (material) material.needsUpdate = true;
+      });
+    }
+    this.renderNow();
+  }
+
+  shadowsVisible(): boolean {
+    return this.renderer.shadowMap.enabled;
   }
 
   renderNow(): void {
