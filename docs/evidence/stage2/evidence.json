@@ -1,8 +1,8 @@
 {
   "stage": 2,
-  "generatedAt": "2026-09-12T13:47:40.286Z",
+  "generatedAt": "2026-09-12T14:04:22.748Z",
   "node": "v24.18.0",
-  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage2-TirOhs",
+  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage2-cpCecZ",
   "steps": [
     {
       "name": "typecheck",
@@ -68,10 +68,10 @@
       "id": "clip-playback",
       "title": "The imported clip is discoverable and plays in the editor preview",
       "passed": true,
-      "detail": "clips offered: Hop; preview time advanced from 0.044 to 0.6150999999046325",
+      "detail": "clips offered: Hop; preview time advanced from 0.041 to 0.6312000002861022",
       "observed": {
-        "before": 0.044,
-        "after": 0.6150999999046325,
+        "before": 0.041,
+        "after": 0.6312000002861022,
         "clip": "Hop"
       }
     },
@@ -214,7 +214,7 @@
       "id": "play-animates",
       "title": "Play runs the runtime animation: clips advance inside the play world",
       "passed": true,
-      "detail": "Limb clip \"Wave\" advanced 0.050 -> 0.100 after 252 ms; 2 animated entities, 2 models loaded",
+      "detail": "Limb clip \"Wave\" advanced 0.083 -> 0.100 after 252 ms; 2 animated entities, 2 models loaded",
       "observed": {
         "ids": {
           "limbId": "box-2",
@@ -228,7 +228,7 @@
           "playing": true,
           "loop": true,
           "speed": 1,
-          "time": 0.05,
+          "time": 0.08333333333333333,
           "duration": 1
         },
         "second": {
@@ -257,9 +257,9 @@
           "state": "running",
           "frames": 6,
           "steps": 6,
-          "fps": 36.25690605230886,
-          "frameTimeMs": 27.580952399999934,
-          "physicsTimeMs": 0.09427586640501023,
+          "fps": 25.96146170547844,
+          "frameTimeMs": 38.51863239999996,
+          "physicsTimeMs": 0.10386368541812899,
           "droppedTime": 0,
           "clampedTime": 0,
           "drawCalls": 6,

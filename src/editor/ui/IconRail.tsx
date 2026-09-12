@@ -2,7 +2,7 @@ import { Fragment } from 'react';
 import type { JSX } from 'react';
 import * as stylex from '@stylexjs/stylex';
 import * as TooltipPrimitive from '@radix-ui/react-tooltip';
-import { Boxes, FolderTree, ListTree, ScrollText } from 'lucide-react';
+import { railPanels, type RailPanel } from './rail-registry.js';
 import { color, controlSize, radius, space } from '../styles/tokens.stylex.js';
 import { mergedClass } from './merged-class.js';
 
@@ -21,20 +21,6 @@ import { mergedClass } from './merged-class.js';
  * `title` attribute — it is keyboard reachable, it does not wait a second to appear, and it is not
  * suppressed by the platform.
  */
-
-export interface RailPanel {
-  id: string;
-  label: string;
-  Icon: typeof ListTree;
-}
-
-/** The panels this editor has. The reference's set is larger; these are the ones that exist here. */
-export const RAIL_PANELS: readonly RailPanel[] = [
-  { id: 'objects', label: 'Scene objects', Icon: ListTree },
-  { id: 'assets', label: 'Assets', Icon: Boxes },
-  { id: 'scenes', label: 'Scenes', Icon: FolderTree },
-  { id: 'console', label: 'Console', Icon: ScrollText },
-];
 
 const styles = stylex.create({
   rail: {
@@ -115,7 +101,7 @@ export function IconRail({ active, onSelect }: IconRailProps): JSX.Element {
   return (
     <TooltipPrimitive.Provider delayDuration={300}>
       <nav {...stylex.props(styles.rail)} aria-label="Editor panels">
-        {RAIL_PANELS.map(({ id, label, Icon }, index) => {
+        {railPanels().map(({ id, label, Icon }: RailPanel, index: number) => {
           const isActive = id === active;
           return (
             <Fragment key={id}>
