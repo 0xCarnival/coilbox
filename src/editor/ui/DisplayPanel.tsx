@@ -28,6 +28,28 @@ import { IconButton } from './Button.js';
  * already editor state, owned by the shell, so it is passed in and out.
  */
 
+/**
+ * The panel's footprint, exported for the one overlay that has to avoid it.
+ *
+ * The measurement label floats over the same canvas and would otherwise sit under this panel when the
+ * selection is in the stage's top-right. Two options existed: measure the panel's box at runtime and
+ * hand it to the overlay, or state the geometry once and let the overlay read it. The second is
+ * cheaper and cannot go stale silently — these are the same numbers the styles below use, so a change
+ * to one is a change to both.
+ */
+export const DISPLAY_PANEL = {
+  /** `insetBlockStart: space.md` plus the header's height. */
+  top: 48,
+  width: 230,
+  /**
+   * Measured in the running editor with every row showing: 222px from the stage's top edge. Rounded
+   * up, because a label one pixel under the panel is a label nobody reads.
+   */
+  bottom: 236,
+  /** Matches `insetInlineEnd: space.md`; the overlay needs it to find the panel's left edge. */
+  insetEnd: 8,
+} as const;
+
 const styles = stylex.create({
   panel: {
     position: 'absolute',

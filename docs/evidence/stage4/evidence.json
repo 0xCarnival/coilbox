@@ -1,9 +1,9 @@
 {
   "stage": 4,
-  "generatedAt": "2026-09-12T15:17:01.132Z",
+  "generatedAt": "2026-09-12T16:08:39.395Z",
   "node": "v24.18.0",
   "agentGame": "gem-rush",
-  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage4-fHm35V",
+  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage4-yPp9yO",
   "steps": [
     {
       "name": "typecheck",
@@ -72,7 +72,7 @@
         "ok   no-errors: clean console",
         "ok   hud-or-canvas: the game canvas is present",
         "",
-        "9/9 checks passed in 4.2s",
+        "9/9 checks passed in 4.5s",
         "[plugin rolldown:vite-resolve] Module \"node:path\" has been externalized for browser compatibility, imported by \"<repo>/node_modules/.pnpm/box3d.js@0.1.1/node_modules/box3d.js/dist/box3d.mjs\". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.",
         "[plugin rolldown:vite-resolve] Module \"node:fs\" has been externalized for browser compatibility, imported by \"<repo>/node_modules/.pnpm/box3d.js@0.1.1/node_modules/box3d.js/dist/box3d.mjs\". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.",
         "[plugin rolldown:vite-resolve] Module \"node:url\" has been externalized for browser compatibility, imported by \"<repo>/node_modules/.pnpm/box3d.js@0.1.1/node_modules/box3d.js/dist/box3d.mjs\". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.",
@@ -255,7 +255,7 @@
       "id": "archive-restore",
       "title": "Archiving is recoverable: the project comes back intact",
       "passed": true,
-      "detail": "archived as gem-rush-copy-2026-09-12t15-16-53-383z, restored as gem-rush-copy (1 scene(s))"
+      "detail": "archived as gem-rush-copy-2026-09-12t16-08-31-876z, restored as gem-rush-copy (1 scene(s))"
     },
     {
       "id": "demo-games-still-pass",

@@ -80,6 +80,50 @@ interface EntityProjection {
 const EDITOR_ONLY = 'editorOnly';
 
 /**
+ * The editor's own colours in the 3D layer.
+ *
+ * The DOM port left these behind: the CSS tokens became strictly neutral while the scene
+ * background, the grid, the editor fill light, the selection box, and the collider outlines were
+ * still the old blue-cast palette, which made the viewport the one place the editor still showed a
+ * hue it had retired.
+ *
+ * They are literals rather than tokens because these are `THREE.Color` and `THREE.GridHelper`
+ * arguments, not CSS the token layer can reach.
+ *
+ * ## What is deliberately *not* neutral here
+ *
+ * The transform gizmo. `TransformControls` draws its own red/green/blue axes and offers no way to
+ * restyle them, and those colours are a convention every 3D tool shares — an X axis that is not red
+ * is a worse problem than a chromatic pixel. Given that, the useful move is the opposite of forcing
+ * it: neutralise everything else so the gizmo is the only thing in the viewport permitted a hue,
+ * and it reads as the tool rather than as one more coloured element.
+ */
+const SCENE = {
+  /** Above the panel, so the viewport reads as a lifted surface rather than a hole in the shell. */
+  background: '#1c1c1c',
+  /** Two steps: major grid lines are visible, minor ones are a texture rather than a ruling. */
+  gridMajor: '#3d3d3d',
+  gridMinor: '#2a2a2a',
+  /**
+   * The fill that keeps an unlit document authorable.
+   *
+   * Pure grey. A tinted fill would be a lie about the document: these lights are editor-only and
+   * Play mode uses the document's own, so anything they add is colour the author did not choose and
+   * will not see in the game.
+   */
+  fillSky: '#b4b4b4',
+  fillGround: '#3a3a3a',
+  /** The key light is white for the same reason: it is light, not paint. */
+  fillKey: '#ffffff',
+  /** The selection box, at the brightest neutral available so it reads against any document. */
+  selection: '#f0f0f0',
+  /** Collider wireframes: visible as an overlay, quiet enough not to compete with the geometry. */
+  collider: '#9a9a9a',
+  /** A sensor collider. Distinguished by opacity rather than hue — see the call site. */
+  colliderSensor: '#6e6e6e',
+} as const;
+
+/**
  * The editor's default field of view, and the world height an orthographic view shows.
  *
  * The orthographic frustum is derived from a *height* rather than a width so that switching
@@ -233,7 +277,7 @@ export class EditorViewport {
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
 
-    this.scene.background = new THREE.Color('#141519');
+    this.scene.background = new THREE.Color(SCENE.background);
 
     this.camera = createCamera('perspective');
     this.camera.position.set(7, 5.5, 9);
@@ -265,15 +309,15 @@ export class EditorViewport {
       RIGHT: THREE.MOUSE.PAN,
     };
 
-    this.grid = new THREE.GridHelper(60, 60, 0x3a4256, 0x272d3a);
+    this.grid = new THREE.GridHelper(60, 60, new THREE.Color(SCENE.gridMajor), new THREE.Color(SCENE.gridMinor));
     this.grid.userData[EDITOR_ONLY] = true;
     this.helpers.add(this.grid);
 
     // Editor-only fill light so an unlit document is still authorable. Play mode uses the
     // document's own lights through the runtime, so this never affects gameplay.
-    const editorAmbient = new THREE.HemisphereLight(0x9fb4d8, 0x2a2f3a, 0.55);
+    const editorAmbient = new THREE.HemisphereLight(SCENE.fillSky, SCENE.fillGround, 0.55);
     editorAmbient.userData[EDITOR_ONLY] = true;
-    const editorKey = new THREE.DirectionalLight(0xffffff, 0.85);
+    const editorKey = new THREE.DirectionalLight(SCENE.fillKey, 0.85);
     editorKey.position.set(6, 10, 6);
     editorKey.userData[EDITOR_ONLY] = true;
     this.helpers.add(editorAmbient, editorKey);
@@ -288,7 +332,7 @@ export class EditorViewport {
     helper.userData[EDITOR_ONLY] = true;
     this.scene.add(helper);
 
-    this.boxHelper = new THREE.BoxHelper(new THREE.Object3D(), 0x5b9dff);
+    this.boxHelper = new THREE.BoxHelper(new THREE.Object3D(), new THREE.Color(SCENE.selection));
     this.boxHelper.visible = false;
     this.boxHelper.userData[EDITOR_ONLY] = true;
     this.scene.add(this.boxHelper);
@@ -378,7 +422,7 @@ export class EditorViewport {
       projection.object.renderOrder = entity.order;
     }
     this.scene.background = new THREE.Color(
-      scene.environment.background.type === 'color' ? scene.environment.background.color : '#141519',
+      scene.environment.background.type === 'color' ? scene.environment.background.color : SCENE.background,
     );
     this.updateSelectionHelper();
   }
@@ -469,7 +513,20 @@ export class EditorViewport {
         case 'collider': {
           const outline = new THREE.Mesh(
             new THREE.BoxGeometry(component.size[0], component.size[1], component.size[2]),
-            new THREE.MeshBasicMaterial({ color: component.isSensor ? 0x54d1a0 : 0x5b9dff, wireframe: true, transparent: true, opacity: 0.32 }),
+            /**
+             * A sensor is told apart from a solid collider by *opacity*, not by hue.
+             *
+             * Colour would have said "different kind of thing" in a palette whose whole premise is
+             * that hue means nothing; a paler wire is the same statement in the language the rest of
+             * the viewport speaks, and it maps onto what a sensor is — a boundary that does not stop
+             * anything.
+             */
+            new THREE.MeshBasicMaterial({
+              color: new THREE.Color(component.isSensor ? SCENE.colliderSensor : SCENE.collider),
+              wireframe: true,
+              transparent: true,
+              opacity: component.isSensor ? 0.22 : 0.38,
+            }),
           );
           outline.position.set(component.offset[0], component.offset[1], component.offset[2]);
           outline.userData[EDITOR_ONLY] = true;
@@ -483,7 +540,7 @@ export class EditorViewport {
           // object is still selectable and its absence is visible.
           const marker = new THREE.Mesh(
             new THREE.BoxGeometry(0.6, 0.6, 0.6),
-            new THREE.MeshBasicMaterial({ color: 0x5b9dff, wireframe: true, transparent: true, opacity: 0.6 }),
+            new THREE.MeshBasicMaterial({ color: new THREE.Color(SCENE.collider), wireframe: true, transparent: true, opacity: 0.6 }),
           );
           marker.userData[EDITOR_ONLY] = true;
           marker.name = 'model-loading';
