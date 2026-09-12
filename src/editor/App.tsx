@@ -1,19 +1,38 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { JSX } from 'react';
 import * as stylex from '@stylexjs/stylex';
 import type { JsonValue } from '@schema/index.js';
-import { color, space } from './styles/tokens.stylex.js';
+import { color, controlSize, fontSize, radius, space, surface } from './styles/tokens.stylex.js';
 import { DOM, withDomClass } from './dom-contract.js';
 import { SessionProvider, isTextEntryTarget, useSession, useSessionSnapshot } from './hooks.js';
 import { EditorSession } from './state/editor-session.js';
 import { ProjectHome } from './panels/ProjectHome.js';
 import { Hierarchy } from './panels/Hierarchy.js';
 import { Inspector } from './panels/Inspector.js';
-import { Toolbar } from './panels/Toolbar.js';
-import { BottomPanel } from './panels/BottomPanel.js';
+import { Toolbar, SaveIndicator } from './panels/Toolbar.js';
+import { BottomPanel, type BottomTab } from './panels/BottomPanel.js';
 import { Viewport, type PlayState, type ViewportHandle } from './panels/Viewport.js';
 import type { SnapSettings, TransformTool } from './viewport/viewport-controller.js';
 import { isFiniteJsonNumber, isJsonString, jsonField } from './json-values.js';
+import { IconRail } from './ui/IconRail.js';
+import { ResizeHandle } from './ui/ResizeHandle.js';
+import { HintCard } from './ui/HintCard.js';
+import { DisplayPanel } from './ui/DisplayPanel.js';
+import { MeasurementOverlay } from './ui/MeasurementOverlay.js';
+/**
+ * The command palette is loaded on demand.
+ *
+ * It is the only consumer of Radix's Dialog and it opens on a keystroke, so bundling it with the
+ * shell means every session pays for a modal most never open. `lazy` splits it into its own chunk,
+ * which the browser fetches the first time someone presses the shortcut.
+ */
+const CommandPalette = lazy(() =>
+  import('./ui/CommandPalette.js').then((module) => ({ default: module.CommandPalette })),
+);
+import { UnitProvider } from './units-context.js';
+import type { UnitSystem } from './units.js';
+import { Toasts } from './ui/Toasts.js';
+import { ToolDock } from './ui/ToolDock.js';
 
 /**
  * Editor shell: one fixed, resizable layout instead of a window manager (plan §3).
@@ -22,7 +41,13 @@ import { isFiniteJsonNumber, isJsonString, jsonField } from './json-values.js';
  * never the authoritative project store.
  */
 
-const LAYOUT_KEY = 'coilbox.layout.v1';
+/**
+ * The key is versioned because a stored layout outlives the design that chose its defaults: the
+ * bottom panel's default shrank with the new density, and anyone who had already opened the editor
+ * would otherwise keep the old, taller console forever. Bumping the version is what makes a new
+ * default actually reach an existing install.
+ */
+const LAYOUT_KEY = 'coilbox.layout.v5';
 
 interface Layout {
   left: number;
@@ -30,70 +55,127 @@ interface Layout {
   bottom: number;
 }
 
-const DEFAULT_LAYOUT: Layout = { left: 260, right: 320, bottom: 150 };
+const DEFAULT_LAYOUT: Layout = { left: 300, right: 320, bottom: 132 };
 
 /**
  * Shell chrome.
  *
+ * The layout is the reference editor's: a **flush** workspace of bordered columns meeting at hard
+ * 1px edges, not a set of rounded cards on a gutter. The previous version's insets and radii were
+ * an invention of this editor's, and they are what made the workspace read as four unrelated boxes
+ * — the reference's panels are a single continuous surface divided by hairlines, so the eye reads
+ * the stage as the content and the panels as its frame.
+ *
  * `.studio-body` keeps its grid template inline because the tracks come from the stored layout at
- * runtime; everything else here is static. `.left-panel`/`.right-panel` were one rule, so they stay
- * one style applied to two elements rather than two styles that could drift apart.
+ * runtime; everything else here is static. Panels spread `surface.panel`, so "what is a panel" has
+ * one definition.
  */
 const styles = stylex.create({
   studio: {
     display: 'flex',
     flexDirection: 'column',
     height: '100%',
+    backgroundColor: color.bg,
   },
   studioBody: {
     flex: 1,
     display: 'grid',
     minHeight: 0,
-    gap: '1px',
-    backgroundColor: color.line,
-  },
-  sidePanel: {
-    backgroundColor: color.panel,
-    minHeight: 0,
-    overflow: 'hidden',
-    display: 'flex',
-    flexDirection: 'column',
+    backgroundColor: color.bg,
   },
   centerPanel: {
-    backgroundColor: '#101319',
     minHeight: 0,
+    minWidth: 0,
     position: 'relative',
-  },
-  bottomHost: {
-    gridColumn: '1 / -1',
-    backgroundColor: color.panel,
-    minHeight: 0,
+    backgroundColor: color.bg,
     overflow: 'hidden',
   },
+  bottomHost: {
+    gridColumn: '2 / -1',
+    minHeight: 0,
+    minWidth: 0,
+  },
+  /** The left column anchors the resize handle to its leading edge. */
+  leftColumn: {
+    position: 'relative',
+    minHeight: 0,
+  },
+  /** The rail spans both rows, so it is a full-height spine down the left edge. */
+  railHost: {
+    gridRow: '1 / -1',
+    display: 'flex',
+    minHeight: 0,
+  },
+  /**
+   * The status bar: 28px of quiet text at the bottom of the window, separated by a hairline. Their
+   * editor has no status bar at all, so this keeps the previous placement but drops to their
+   * `text-xs` on `muted` rather than the near-invisible tier it was using.
+   */
   statusbar: {
     display: 'flex',
     alignItems: 'center',
-    gap: '14px',
-    paddingBlock: space.xs,
-    paddingInline: space.md,
-    backgroundColor: color['panel-2'],
+    gap: space.lg,
+    height: '28px',
+    paddingInline: space.lg,
+    backgroundColor: color.bg,
     borderBlockStartWidth: '1px',
     borderBlockStartStyle: 'solid',
-    borderBlockStartColor: color.line,
+    borderBlockStartColor: color.border,
     color: color.muted,
+    fontSize: fontSize.xs,
     fontVariantNumeric: 'tabular-nums',
+    flexShrink: 0,
   },
   statusbarSpacer: {
     flex: 1,
   },
+  /**
+   * The live play state. A small filled dot and a word: the one place the status bar is allowed to
+   * be brighter than its neighbours, so a running simulation is visible at a glance.
+   */
   playState: {
-    color: color.ok,
-    textTransform: 'uppercase',
-    letterSpacing: '0.06em',
+    display: 'flex',
+    alignItems: 'center',
+    gap: space.sm,
+    color: color.text,
+    fontWeight: 500,
+  },
+  playDot: {
+    width: '6px',
+    height: '6px',
+    borderRadius: radius.pill,
+    backgroundColor: color.ok,
   },
 });
 
-/** Panel sizes from browser storage: this module wrote them, and every field is range-checked. */
+/**
+ * Whether a rail panel id names a bottom tab.
+ *
+ * A type predicate rather than a cast: the rail's ids are strings, the bottom panel's tabs are a
+ * union, and the narrowing has to be a runtime check rather than an assertion about a value that
+ * arrived from a click handler.
+ */
+function isBottomTab(id: string): id is BottomTab {
+  return id === 'assets' || id === 'scenes' || id === 'console';
+}
+
+/**
+ * Panel sizes from browser storage: this module wrote them, and every field is range-checked.
+ *
+ * The unit system is stored beside it, and read through the same care: an unrecognised value falls
+ * back to metric rather than propagating a string the rest of the editor has no case for.
+ */
+const UNITS_KEY = 'coilbox.units.v1';
+
+function loadUnits(): UnitSystem {
+  try {
+    return globalThis.localStorage?.getItem(UNITS_KEY) === 'imperial' ? 'imperial' : 'metric';
+  } catch {
+    return 'metric';
+  }
+}
+
+
 function loadLayout(): Layout {
   try {
     const raw = globalThis.localStorage?.getItem(LAYOUT_KEY);
@@ -145,7 +227,27 @@ function StudioShell(): JSX.Element {
   const [tool, setTool] = useState<TransformTool>('translate');
   const [snap, setSnap] = useState<SnapSettings>({ enabled: false, translate: 0.5, rotateDegrees: 15, scale: 0.25 });
   const [status, setStatus] = useState<string>('');
-  const [layout] = useState<Layout>(() => loadLayout());
+  const [layout, setLayout] = useState<Layout>(() => loadLayout());
+  /**
+   * The rail drives two things at once: which panel column is showing, and which bottom tab.
+   *
+   * `objects` is the hierarchy column; the other three are tabs in the bottom panel. Collapsing is
+   * tracked separately from the width so that reopening restores the width the user had, rather
+   * than snapping back to the default.
+   */
+  const [railPanel, setRailPanel] = useState('objects');
+  const [leftCollapsed, setLeftCollapsed] = useState(false);
+  const [bottomTab, setBottomTab] = useState<BottomTab>('console');
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  /**
+   * The unit system lengths are shown in.
+   *
+   * Editor *preference*, not document data: it lives in browser storage beside the panel layout and
+   * never reaches a scene. The document is metres, always — see `units.ts`.
+   */
+  const [units, setUnits] = useState<UnitSystem>(() => loadUnits());
+  /** Whether the dimension overlay is drawn. An editor preference, like the unit system. */
+  const [measurements, setMeasurements] = useState(true);
   const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
@@ -167,8 +269,19 @@ function StudioShell(): JSX.Element {
   // and Play mode never trigger them.
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (editorLocked || isTextEntryTarget(event.target)) return;
       const meta = event.metaKey || event.ctrlKey;
+      /**
+       * The palette opens from anywhere, including from inside a text field.
+       *
+       * That is why it is checked before the text-entry guard below: a palette that refuses to open
+       * while the search box has focus is a palette you cannot reach at the moment you most want it.
+       */
+      if (meta && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        setPaletteOpen((open) => !open);
+        return;
+      }
+      if (editorLocked || isTextEntryTarget(event.target)) return;
       if (meta && event.key.toLowerCase() === 'z') {
         event.preventDefault();
         if (event.shiftKey) session.redo();
@@ -207,6 +320,21 @@ function StudioShell(): JSX.Element {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [editorLocked, session]);
 
+  /**
+   * A rail click selects a panel. Selecting the hierarchy toggles its column; selecting one of the
+   * project panels also brings the bottom panel to the matching tab, so the icon and the visible
+   * content can never disagree.
+   */
+  const selectRailPanel = useCallback((id: string) => {
+    setRailPanel(id);
+    if (id === 'objects') {
+      setLeftCollapsed((collapsed) => !collapsed);
+      return;
+    }
+    setLeftCollapsed(false);
+    if (isBottomTab(id)) setBottomTab(id);
+  }, []);
+
   const exportGame = useCallback(async () => {
     if (!snapshot.project) return;
     setExporting(true);
@@ -242,6 +370,7 @@ function StudioShell(): JSX.Element {
   const openProject = snapshot.project !== null;
 
   return (
+    <UnitProvider system={units}>
     <div {...withDomClass(styles.studio, DOM.studio)}>
       {!openProject ? (
         <ProjectHome />
@@ -259,11 +388,38 @@ function StudioShell(): JSX.Element {
           />
           <div
             {...withDomClass(styles.studioBody, DOM.studioBody)}
-            style={{ gridTemplateColumns: `${layout.left}px 1fr ${layout.right}px`, gridTemplateRows: `1fr ${layout.bottom}px` }}
+            style={{
+              gridTemplateColumns: `${controlSize.rail} ${leftCollapsed ? 0 : layout.left}px 1fr ${layout.right}px`,
+              gridTemplateRows: `1fr ${layout.bottom}px`,
+            }}
           >
-            <div {...stylex.props(styles.sidePanel)}>
-              <Hierarchy locked={editorLocked} />
+            <div {...stylex.props(styles.railHost)}>
+              <IconRail active={railPanel} onSelect={selectRailPanel} />
             </div>
+            {/**
+             * The hierarchy column collapses to zero rather than to a minimum. A panel shrunk to a
+             * sliver is worse than no panel: the rail stays, so the way back is always visible.
+             */}
+            {!leftCollapsed && (
+              <div {...stylex.props(styles.leftColumn, surface.panel, surface.edgeEnd, surface.edgeBottom)}>
+                <Hierarchy locked={editorLocked} />
+                {/**
+                 * The resize handle is absolutely positioned into the boundary between the rail and
+                 * the column rather than given a grid track. A track would add its width to the
+                 * layout; this overlays the seam that is already there, so the handle is draggable
+                 * without the workspace gaining a permanent 7px of nothing.
+                 */}
+                <ResizeHandle
+                  label="Resize the scene panel"
+                  width={layout.left}
+                  min={220}
+                  max={520}
+                  collapseBelow={200}
+                  onCollapse={() => setLeftCollapsed(true)}
+                  onResize={(next) => setLayout((current) => ({ ...current, left: next }))}
+                />
+              </div>
+            )}
             <div {...stylex.props(styles.centerPanel)}>
               <Viewport
                 handleRef={viewportRef}
@@ -275,26 +431,87 @@ function StudioShell(): JSX.Element {
                   session.log('warning', message);
                 }}
               />
+              {/**
+               * The selection's own verbs, floating over the stage rather than living in the
+               * inspector footer. The viewport owns the focus action, so the bar is mounted beside
+               * it rather than inside the inspector.
+               */}
+              {/**
+               * One card, not two. The badge above the stage named the selection and the hint card
+               * explains it; two floating overlays over one canvas is one too many, and the card
+               * carries both facts.
+               */}
+              <HintCard tool={tool} visible={!editorLocked} />
+              <DisplayPanel
+                viewport={viewportRef}
+                snap={snap}
+                onSnapChange={setSnap}
+                units={units}
+                onUnitsChange={(next) => {
+                  setUnits(next);
+                  globalThis.localStorage?.setItem(UNITS_KEY, next);
+                }}
+                measurements={measurements}
+                onMeasurementsChange={setMeasurements}
+              />
+              <MeasurementOverlay viewport={viewportRef} visible={!editorLocked && measurements} />
+              <ToolDock
+                tool={tool}
+                onToolChange={setTool}
+                onFocus={() => viewportRef.current?.focusSelection()}
+                snap={snap}
+                onSnapChange={setSnap}
+                visible={!editorLocked}
+              />
             </div>
-            <div {...stylex.props(styles.sidePanel)}>
+            <div {...stylex.props(surface.panel, surface.edgeStart, surface.edgeBottom)}>
               <Inspector locked={editorLocked} />
             </div>
-            <div {...stylex.props(styles.bottomHost)}>
-              <BottomPanel onReloadScene={() => void session.reloadScene()} />
+            <div {...stylex.props(styles.bottomHost, surface.panel, surface.edgeBottom)}>
+              <BottomPanel
+                onReloadScene={() => void session.reloadScene()}
+                tab={bottomTab}
+                onTabChange={setBottomTab}
+              />
             </div>
           </div>
+          {/**
+           * Toasts float over the workspace and are suppressed while the console tab is showing:
+           * repeating the line the user is already looking at is noise, not a notification.
+           */}
+          <Toasts enabled={bottomTab !== 'console'} />
+          <Suspense fallback={null}>
+          <CommandPalette
+            open={paletteOpen}
+            onOpenChange={setPaletteOpen}
+            onToolChange={setTool}
+            onFocusSelection={() => viewportRef.current?.focusSelection()}
+            playback={{
+              play: () => void viewportRef.current?.play(),
+              pause: () => viewportRef.current?.pause(),
+              step: () => viewportRef.current?.step(),
+              stop: () => viewportRef.current?.stop(),
+              state: playState,
+            }}
+            onExport={() => void exportGame()}
+          />
+          </Suspense>
           <footer {...withDomClass(styles.statusbar, DOM.statusbar)}>
             <span>{status || 'Ready'}</span>
             <span {...withDomClass(styles.statusbarSpacer, DOM.toolbarSpacer)} />
             <span>{snapshot.sceneId ? `scene ${snapshot.sceneId}` : 'no scene'}</span>
-            <span>{snapshot.dirty ? 'unsaved changes' : 'saved'}</span>
+            <SaveIndicator state={snapshot.saveState} lastSavedAt={snapshot.lastSavedAt} />
             {playState !== 'stopped' && (
-              <span {...stylex.props(styles.playState)}>{playState}</span>
+              <span {...stylex.props(styles.playState)}>
+                <span {...stylex.props(styles.playDot)} />
+                {playState}
+              </span>
             )}
           </footer>
         </>
       )}
     </div>
+    </UnitProvider>
   );
 }
 

@@ -115,7 +115,13 @@ async function main(): Promise<void> {
     });
 
     // --- create a project through the UI -------------------------------------
-    await page.click('button:has-text("+ New game")');
+    /**
+     * Selectors name the control's label, never the decoration in front of it. The create buttons
+     * carry an icon now, and the old "+ New game" selector was really asserting the glyph: it broke
+     * on a change that left the button's meaning untouched. Matching the label keeps a gate pinned
+     * to behaviour instead of to a character.
+     */
+    await page.click('button:has-text("New game")');
     await page.fill('input[placeholder="collect-room"]', 'stage1-room');
     await page.fill('input[placeholder="Collect Room"]', 'Stage 1 Room');
     await page.click('button[type="submit"]:has-text("Create")');
@@ -181,7 +187,12 @@ async function main(): Promise<void> {
     });
 
     // --- save ----------------------------------------------------------------
-    await page.click('button:has-text("Save")');
+    /**
+     * The toolbar's Save, undo/redo, Step, Stop, and Export are icon-only, matching the reference
+     * editor, so they are selected by accessible name rather than by visible text. `aria-label` is
+     * the button's name, which is exactly what a person using a screen reader hears.
+     */
+    await page.click('button[aria-label="Save"]');
     await page.waitForFunction(
       () => document.querySelector('.save-indicator')?.getAttribute('data-save-state') === 'clean',
       undefined,
@@ -262,7 +273,7 @@ async function main(): Promise<void> {
     const pausedSteps = await stepCount();
     await page.waitForTimeout(400);
     const stillPausedSteps = await stepCount();
-    await page.click('button:has-text("Step")');
+    await page.click('button[aria-label="Step one frame"]');
     await page.waitForTimeout(300);
     const steppedSteps = await stepCount();
     await page.waitForTimeout(400);
@@ -279,7 +290,7 @@ async function main(): Promise<void> {
       observed: { pausedSteps, stillPausedSteps, steppedSteps, afterStepSteps },
     });
 
-    await page.click('button:has-text("Stop")');
+    await page.click('button[aria-label="Stop and discard the simulation"]');
     await page.waitForSelector('.viewport-badge', { state: 'detached', timeout: 10_000 });
     await page.waitForTimeout(300);
 
@@ -293,7 +304,7 @@ async function main(): Promise<void> {
     });
 
     // --- export ---------------------------------------------------------------
-    await page.click('button:has-text("Export Game")');
+    await page.click('button[aria-label="Export Game"]');
     await page.waitForFunction(
       () => (document.querySelector('.statusbar span')?.textContent ?? '').includes('Exported to'),
       undefined,
@@ -304,7 +315,7 @@ async function main(): Promise<void> {
     const exportedGame = await readFile(join(exportDir, 'project', 'game.json'), 'utf8').catch(() => null);
     record({
       id: 'export-produces-build',
-      title: 'Export Game produces a standalone player plus the project documents',
+      title: 'Export produces a standalone player plus the project documents',
       passed: existsSync(exportIndex) && exportedGame !== null,
       detail: existsSync(exportIndex)
         ? `index.html and project documents present in ${exportDir}`

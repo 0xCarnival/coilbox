@@ -1,139 +1,183 @@
 import { useEffect, useRef, useState } from 'react';
 import type { JSX } from 'react';
 import * as stylex from '@stylexjs/stylex';
-import { button, color, radius, space } from '../styles/tokens.stylex.js';
+import {
+  ArrowLeft,
+  ChevronDown,
+  Download,
+  MoreHorizontal,
+  Pause,
+  Play,
+  Plus,
+  Redo2,
+  Save,
+  Square,
+  StepForward,
+  Undo2,
+} from 'lucide-react';
+import { color, control, fontSize, radius, space } from '../styles/tokens.stylex.js';
 import { DOM, DOM_STATE, withDomClass } from '../dom-contract.js';
 import { useSession, useSessionSnapshot } from '../hooks.js';
 import type { TransformTool } from '../viewport/viewport-controller.js';
 import type { PlayState, ViewportHandle } from './Viewport.js';
 import type { SnapSettings } from '../viewport/viewport-controller.js';
 import { createEntity, CREATABLE_KINDS, CREATABLE_LABELS, type CreatableKind } from '../document/factory.js';
+import { Button, IconButton } from '../ui/Button.js';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from '../ui/Menu.js';
 
 /**
- * Top toolbar (plan §3): project and scene name, Save, undo/redo, transform tools, snap,
- * Play/Pause/Step/Stop, and Export Game.
+ * Top toolbar (plan §3).
  *
- * It also holds the creation menu and reflects the save state, which only ever reads
- * "Saved" after the workspace service acknowledges a write.
+ * ## Structure, from the reference editor
+ *
+ * One 48px band with a hairline under it: document identity on the left, the tool cluster in the
+ * middle, the primary action on the right. The reference has no grouped sub-bars and no status text
+ * inside the control row, and its controls are icon-only wherever the glyph is unambiguous.
+ *
+ * Three changes do most of the work here:
+ *
+ * - **Icon-only transport, undo/redo, and export.** The reference leans on `lucide-react` glyphs
+ *   with a tooltip instead of labels, which is what lets one row carry this many actions without
+ *   becoming a wall of text. Each keeps an accessible name through `IconButton`.
+ * - **Menus are real menus.** Create and the overflow are Radix dropdowns, so they close on Escape,
+ *   on an outside click, and on selection. The previous hand-rolled popover stayed open until its
+ *   own trigger was pressed a second time.
+ * - **No status text in the row.** The save state lives in the status bar; a report sitting between
+ *   two buttons reads as a third button.
  */
 
 const TRANSFORM_TOOLS: TransformTool[] = ['translate', 'rotate', 'scale'];
 
-/**
- * Toolbar chrome.
- *
- * `toolbar` and the transform-tool buttons deliberately do not carry a colour of their own where
- * `base.css` already styles the bare `button` element: the element rule and an atomic class would
- * fight over the same property, and the atomic class would win by specificity — silently changing
- * every button's padding. Overrides are limited to what the original classes actually declared.
- */
+const TOOL_LABELS: Record<TransformTool, string> = {
+  translate: 'Move',
+  rotate: 'Rotate',
+  scale: 'Scale',
+};
+
+const TOOL_KEYS: Record<TransformTool, string> = {
+  translate: 'W',
+  rotate: 'E',
+  scale: 'R',
+};
+
 const styles = stylex.create({
   toolbar: {
     display: 'flex',
     alignItems: 'center',
     gap: space.md,
-    paddingBlock: space.sm,
-    paddingInline: space.md,
-    backgroundColor: color['panel-2'],
+    height: '48px',
+    paddingInline: space.lg,
+    backgroundColor: color.bg,
     borderBlockEndWidth: '1px',
     borderBlockEndStyle: 'solid',
-    borderBlockEndColor: color.line,
-    flexWrap: 'wrap',
+    borderBlockEndColor: color.border,
+    flexShrink: 0,
   },
   group: {
     display: 'flex',
     alignItems: 'center',
-    gap: space.sm,
+    gap: space.xs,
+    minWidth: 0,
   },
   spacer: {
     flex: 1,
   },
+  /** A vertical rule between clusters, inset from the row's edges so it reads as a divider. */
+  divider: {
+    width: '1px',
+    alignSelf: 'stretch',
+    marginBlock: space.md,
+    marginInline: space.xs,
+    backgroundColor: color.border,
+    flexShrink: 0,
+  },
 
-  projectName: {
+  /**
+   * The document name is the one piece of text in the row that is not a control label: it is what
+   * you are editing. It stays a button because clicking it renames, but it reads as a title.
+   */
+  docName: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: space.xs,
+    height: control.sm,
+    paddingInline: space.md,
+    borderRadius: radius.md,
+    color: color.text,
+    fontSize: fontSize.md,
     fontWeight: 600,
+    maxWidth: '240px',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
     backgroundColor: 'transparent',
-    borderWidth: '1px',
-    borderStyle: 'solid',
-    borderColor: 'transparent',
-    /**
-     * The original class asked for `padding: 4px 6px`, but `button` in `base.css` declared
-     * `padding: 4px 9px` at higher specificity and always won in practice. This keeps the rendered
-     * result identical rather than the intent; changing it would be a redesign, not a migration.
-     */
-    paddingBlock: space.xs,
-    paddingInline: '9px',
+    borderWidth: 0,
+    borderStyle: 'none',
+    cursor: 'pointer',
     ':hover': {
-      borderColor: color.line,
+      backgroundColor: color.wash,
     },
   },
+  /** The scene name is a quieter, secondary identity beside the project. */
   sceneName: {
-    display: 'flex',
-    /**
-     * `.scene-name input { width: 150px }` targeted an element that is not a `stylex` class, so the
-     * width moves onto the wrapper and the input is told to fill it.
-     */
     width: '150px',
+    height: control.sm,
+    fontSize: fontSize.xs,
+    color: color.muted,
+    backgroundColor: 'transparent',
+    borderColor: 'transparent',
+    ':hover': {
+      borderColor: color.border,
+    },
   },
-  sceneNameInput: {
-    width: '100%',
-  },
-  /** `.active` for the transform tools: the toolbar's own selected treatment. */
+
+  /** The active tool: a filled neutral chip, the same treatment the reference's tab bar uses. */
   toolActive: {
-    backgroundColor: '#24314a',
-    borderColor: color.accent,
+    backgroundColor: color.surface,
+    color: color.text,
+  },
+  toolButton: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: space.xs,
+    height: control.sm,
+    paddingInline: space.md,
+    borderRadius: radius.md,
+    color: color.muted,
+    fontSize: fontSize.xs,
+    fontWeight: 500,
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    borderStyle: 'none',
+    cursor: 'pointer',
+    ':hover': {
+      color: color.text,
+      backgroundColor: color.wash,
+    },
   },
   snapToggle: {
     display: 'flex',
     alignItems: 'center',
-    gap: space.xs,
+    gap: space.sm,
+    height: control.sm,
+    paddingInline: space.md,
+    borderRadius: radius.md,
     color: color.muted,
-  },
-  createMenu: {
-    position: 'relative',
-  },
-  menu: {
-    position: 'absolute',
-    zIndex: 20,
-    top: 'calc(100% + 4px)',
-    left: 0,
-    backgroundColor: color['panel-2'],
-    borderWidth: '1px',
-    borderStyle: 'solid',
-    borderColor: color.line,
-    borderRadius: radius.lg,
-    padding: space.xs,
-    display: 'flex',
-    flexDirection: 'column',
-    minWidth: '170px',
-    boxShadow: '0 12px 28px rgba(0, 0, 0, 0.45)',
-  },
-  /** `.menu button` — the menu owns its buttons' chrome, so this is an intentional button override. */
-  menuButton: {
-    backgroundColor: 'transparent',
-    borderWidth: 0,
-    borderStyle: 'none',
-    textAlign: 'left',
-    borderRadius: radius.sm,
-    paddingInline: space.sm,
+    fontSize: fontSize.xs,
+    cursor: 'pointer',
     ':hover': {
-      backgroundColor: '#212838',
+      color: color.text,
+      backgroundColor: color.wash,
     },
   },
-  saveIndicator: {
-    color: color.muted,
-    minWidth: '108px',
-  },
-  saveDirty: {
-    color: color.warn,
-  },
-  saveError: {
-    color: color.danger,
-  },
-  saveFlash: {
-    color: color.ok,
-  },
-  saveSaving: {
-    color: color.muted,
+  playButton: {
+    paddingInline: space.lg,
   },
 });
 
@@ -160,19 +204,18 @@ export function Toolbar({
 }: ToolbarProps): JSX.Element {
   const session = useSession();
   const snapshot = useSessionSnapshot();
-  const [createOpen, setCreateOpen] = useState(false);
   const [sceneNameDraft, setSceneNameDraft] = useState<string | null>(null);
   const editorLocked = playState !== 'stopped';
   const scene = session.scene;
 
   return (
     <header {...stylex.props(styles.toolbar)}>
-      <div {...withDomClass(styles.group, DOM.toolbarGroup)}>
-        <button {...stylex.props(button.link)} type="button" onClick={() => session.closeProject()} title="Back to projects">
-          ◀ Projects
-        </button>
+      <div {...withDomClass(styles.group, DOM.toolbarGroup)} aria-label="Project">
+        <IconButton label="Back to projects" onClick={() => session.closeProject()}>
+          <ArrowLeft size={control.icon} />
+        </IconButton>
         <button
-          {...stylex.props(styles.projectName)}
+          {...stylex.props(styles.docName)}
           type="button"
           title="Rename this project (the folder and id stay the same)"
           onClick={() => {
@@ -182,54 +225,59 @@ export function Toolbar({
           }}
         >
           {snapshot.project?.name ?? 'No project'}
+          <ChevronDown size={control.iconSm} />
         </button>
-        <span {...stylex.props(styles.sceneName)}>
-          <input
-            {...stylex.props(styles.sceneNameInput)}
-            value={sceneNameDraft ?? scene?.name ?? ''}
-            disabled={editorLocked || !scene}
-            aria-label="Scene name"
-            onChange={(event) => setSceneNameDraft(event.target.value)}
-            onBlur={() => {
-              if (sceneNameDraft !== null && scene && sceneNameDraft !== scene.name) {
-                session.execute({ kind: 'setSceneName', name: sceneNameDraft });
-              }
-              setSceneNameDraft(null);
-            }}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') event.currentTarget.blur();
-              if (event.key === 'Escape') setSceneNameDraft(null);
-            }}
-          />
-        </span>
+        <span {...stylex.props(styles.divider)} />
+        <input
+          {...stylex.props(styles.sceneName)}
+          value={sceneNameDraft ?? scene?.name ?? ''}
+          disabled={editorLocked || !scene}
+          aria-label="Scene name"
+          onChange={(event) => setSceneNameDraft(event.target.value)}
+          onBlur={() => {
+            if (sceneNameDraft !== null && scene && sceneNameDraft !== scene.name) {
+              session.execute({ kind: 'setSceneName', name: sceneNameDraft });
+            }
+            setSceneNameDraft(null);
+          }}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') event.currentTarget.blur();
+            if (event.key === 'Escape') setSceneNameDraft(null);
+          }}
+        />
       </div>
 
-      <div {...withDomClass(styles.group, DOM.toolbarGroup)}>
-        <button type="button" onClick={() => void session.save()} disabled={!snapshot.dirty || editorLocked}>
-          Save
-        </button>
-        <SaveIndicator state={snapshot.saveState} lastSavedAt={snapshot.lastSavedAt} />
+      <span {...stylex.props(styles.divider)} />
+
+      <div {...withDomClass(styles.group, DOM.toolbarGroup)} aria-label="Document">
+        <IconButton label="Save" disabled={!snapshot.dirty || editorLocked} onClick={() => void session.save()}>
+          <Save size={control.icon} />
+        </IconButton>
+        <IconButton label="Undo" disabled={!snapshot.canUndo || editorLocked} onClick={() => session.undo()}>
+          <Undo2 size={control.icon} />
+        </IconButton>
+        <IconButton label="Redo" disabled={!snapshot.canRedo || editorLocked} onClick={() => session.redo()}>
+          <Redo2 size={control.icon} />
+        </IconButton>
       </div>
 
-      <div {...withDomClass(styles.group, DOM.toolbarGroup)}>
-        <button type="button" title="Undo" disabled={!snapshot.canUndo || editorLocked} onClick={() => session.undo()}>
-          ↶
-        </button>
-        <button type="button" title="Redo" disabled={!snapshot.canRedo || editorLocked} onClick={() => session.redo()}>
-          ↷
-        </button>
-      </div>
+      <span {...stylex.props(styles.divider)} />
 
       <div {...withDomClass(styles.group, DOM.toolbarGroup)} role="group" aria-label="Transform tool">
         {TRANSFORM_TOOLS.map((candidate) => (
           <button
             key={candidate}
-            {...withDomClass(tool === candidate && styles.toolActive, tool === candidate && DOM_STATE.active)}
+            {...withDomClass(
+              styles.toolButton,
+              tool === candidate && styles.toolActive,
+              tool === candidate && DOM_STATE.active,
+            )}
             type="button"
-            title={`${candidate} (${candidate === 'translate' ? 'W' : candidate === 'rotate' ? 'E' : 'R'})`}
+            title={`${TOOL_LABELS[candidate]} (${TOOL_KEYS[candidate]})`}
+            aria-pressed={tool === candidate}
             onClick={() => onToolChange(candidate)}
           >
-            {candidate === 'translate' ? 'Move' : candidate === 'rotate' ? 'Rotate' : 'Scale'}
+            {TOOL_LABELS[candidate]}
           </button>
         ))}
         <label {...withDomClass(styles.snapToggle, DOM.snapToggle)} title="Snap transforms to the grid">
@@ -242,78 +290,96 @@ export function Toolbar({
         </label>
       </div>
 
+      <span {...stylex.props(styles.divider)} />
+
       <div {...withDomClass(styles.group, DOM.toolbarGroup)}>
-        <div {...stylex.props(styles.createMenu)}>
-          <button type="button" disabled={editorLocked || !scene} onClick={() => setCreateOpen((open) => !open)}>
-            + Create
-          </button>
-          {createOpen && (
-            <div {...withDomClass(styles.menu, DOM.menu)}>
-              {CREATABLE_KINDS.map((kind: CreatableKind) => (
-                <button
-                  key={kind}
-                  {...stylex.props(styles.menuButton)}
-                  type="button"
-                  onClick={() => {
-                    setCreateOpen(false);
-                    if (!scene) return;
-                    const used = scene.entities.map((candidate) => candidate.id);
-                    const siblings = scene.entities.filter((candidate) => candidate.parentId === null);
-                    const entity = createEntity(kind, {
-                      usedIds: used,
-                      order: siblings.length,
-                      position: [0, kind === 'plane' ? 0 : 1, 0],
-                    });
-                    if (session.execute({ kind: 'insertEntities', entities: [entity] })) session.select(entity.id);
-                  }}
-                >
-                  {CREATABLE_LABELS[kind]}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button disabled={editorLocked || !scene}>
+              <Plus size={control.icon} />
+              Create
+              <ChevronDown size={control.iconSm} />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent wide align="start" hooks={[DOM.menu]}>
+            <DropdownMenuLabel>Add to scene</DropdownMenuLabel>
+            {CREATABLE_KINDS.map((kind: CreatableKind) => (
+              <DropdownMenuItem
+                key={kind}
+                onSelect={() => {
+                  if (!scene) return;
+                  const used = scene.entities.map((candidate) => candidate.id);
+                  const siblings = scene.entities.filter((candidate) => candidate.parentId === null);
+                  const entity = createEntity(kind, {
+                    usedIds: used,
+                    order: siblings.length,
+                    position: [0, kind === 'plane' ? 0 : 1, 0],
+                  });
+                  if (session.execute({ kind: 'insertEntities', entities: [entity] })) session.select(entity.id);
+                }}
+              >
+                {CREATABLE_LABELS[kind]}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <span {...withDomClass(styles.spacer, DOM.toolbarSpacer)} />
 
       <div {...withDomClass(styles.group, DOM.toolbarGroup)} role="group" aria-label="Playback">
         {playState === 'stopped' ? (
-          <button {...stylex.props(button.primary)} type="button" onClick={() => void viewport.current?.play()}>
-            ▶ Play
-          </button>
+          <Button variant="primary" onClick={() => void viewport.current?.play()}>
+            <Play size={control.icon} />
+            Play
+          </Button>
         ) : (
-          <button type="button" onClick={() => viewport.current?.pause()}>
-            {playState === 'paused' ? '▶ Resume' : '⏸ Pause'}
-          </button>
+          <Button variant="primary" onClick={() => viewport.current?.pause()}>
+            {playState === 'paused' ? <Play size={control.icon} /> : <Pause size={control.icon} />}
+            {playState === 'paused' ? 'Resume' : 'Pause'}
+          </Button>
         )}
-        <button type="button" disabled={playState !== 'paused'} onClick={() => viewport.current?.step()}>
-          Step
-        </button>
-        <button type="button" disabled={playState === 'stopped'} onClick={() => viewport.current?.stop()}>
-          ■ Stop
-        </button>
-      </div>
-
-      <div {...withDomClass(styles.group, DOM.toolbarGroup)}>
-        <button
-          type="button"
-          title="Store the current view as this project's thumbnail"
-          disabled={editorLocked}
-          onClick={() => {
-            const dataUrl = viewport.current?.captureThumbnail();
-            if (!dataUrl) return;
-            void session.setThumbnail(dataUrlToBytes(dataUrl));
-          }}
+        <IconButton
+          label="Step one frame"
+          disabled={playState !== 'paused'}
+          onClick={() => viewport.current?.step()}
         >
-          Set thumbnail
-        </button>
+          <StepForward size={control.icon} />
+        </IconButton>
+        <IconButton
+          label="Stop and discard the simulation"
+          disabled={playState === 'stopped'}
+          onClick={() => viewport.current?.stop()}
+        >
+          <Square size={control.icon} />
+        </IconButton>
       </div>
 
+      <span {...stylex.props(styles.divider)} />
+
       <div {...withDomClass(styles.group, DOM.toolbarGroup)}>
-        <button type="button" disabled={editorLocked || exporting} onClick={onExport}>
-          {exporting ? 'Exporting…' : 'Export Game'}
-        </button>
+        <IconButton label="Export Game" disabled={editorLocked || exporting} onClick={onExport}>
+          <Download size={control.icon} />
+        </IconButton>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <IconButton label="More actions">
+              <MoreHorizontal size={control.icon} />
+            </IconButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" hooks={[DOM.menu]}>
+            <DropdownMenuItem
+              disabled={editorLocked}
+              onSelect={() => {
+                const dataUrl = viewport.current?.captureThumbnail();
+                if (!dataUrl) return;
+                void session.setThumbnail(dataUrlToBytes(dataUrl));
+              }}
+            >
+              Set thumbnail
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </header>
   );
@@ -328,7 +394,33 @@ function dataUrlToBytes(dataUrl: string): Uint8Array {
   return bytes;
 }
 
-function SaveIndicator({ state, lastSavedAt }: { state: string; lastSavedAt: string | null }): JSX.Element {
+const saveStyles = stylex.create({
+  indicator: {
+    color: color.muted,
+    fontSize: fontSize.xs,
+    fontVariantNumeric: 'tabular-nums',
+  },
+  dirty: {
+    color: color.warn,
+  },
+  error: {
+    color: color.danger,
+  },
+  saving: {
+    color: color.muted,
+  },
+  flash: {
+    color: color.ok,
+  },
+});
+
+/**
+ * The save state, rendered by the shell in the status bar.
+ *
+ * It reports rather than acts, which is why it is not a button: the previous arrangement put
+ * "Saved" immediately after Save in the toolbar, where it read as a second, disabled Save.
+ */
+export function SaveIndicator({ state, lastSavedAt }: { state: string; lastSavedAt: string | null }): JSX.Element {
   const [flash, setFlash] = useState(false);
   const previous = useRef(state);
   useEffect(() => {
@@ -354,11 +446,11 @@ function SaveIndicator({ state, lastSavedAt }: { state: string; lastSavedAt: str
   return (
     <span
       {...withDomClass(
-        styles.saveIndicator,
-        state === 'dirty' && styles.saveDirty,
-        state === 'error' && styles.saveError,
-        state === 'saving' && styles.saveSaving,
-        flash && styles.saveFlash,
+        saveStyles.indicator,
+        state === 'dirty' && saveStyles.dirty,
+        state === 'error' && saveStyles.error,
+        state === 'saving' && saveStyles.saving,
+        flash && saveStyles.flash,
         DOM.saveIndicator,
         // The state word rides along as a class as well as an attribute: `data-save-state` is what the
         // gates read, and `.save-indicator.dirty` is what a person reads in devtools. The flash class

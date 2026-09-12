@@ -4,8 +4,12 @@
  * This file is deliberately small. Component styling lives in `*.tsx` as `stylex.create` calls, so
  * what remains here is only what StyleX cannot express:
  *
- * 1. **Element defaults** — `body`, `button`, `input`, `select`, `code`. A StyleX style is applied by
- *    class, so it cannot set a default for every button in the editor without every button opting in.
+ * 1. **Element defaults** — `body`, `button`, `input`, `select`, `code`, plus `::selection` and the
+ *    reduced-motion switch. A StyleX style is applied by class, so it cannot set a default for every
+ *    button in the editor without every button opting in. The control defaults here are what keep
+ *    the chrome calm: a button has no border and no fill until it is hovered or active, and a text
+ *    field has no box at all until it is hovered or focused. Anything that draws a permanent
+ *    rectangle around itself has to say so deliberately, in a component.
  * 2. **The design tokens** — the `:root` custom properties below are emitted by
  *    `styles/tokens.stylex.ts` via `stylex.defineVars`, and are duplicated here so plain CSS can read
  *    them too. They are the same names and values; the token file is the place to change them.
@@ -25,17 +29,33 @@
 :root {
   color-scheme: dark;
 
-  /* Design tokens. Mirrored from styles/tokens.stylex.ts — edit them there. */
-  --bg: #0d0f14;
-  --panel: #141821;
-  --panel-2: #171c26;
-  --line: #242a36;
-  --text: #e6e9ef;
-  --muted: #8b93a3;
-  --accent: #5b9dff;
-  --danger: #ff6b6b;
-  --warn: #f0b45c;
-  --ok: #54d1a0;
+  /**
+   * Design tokens, mirrored from `styles/tokens.stylex.ts` — edit them there.
+   *
+   * These are the reference editor's dark-theme values: strictly neutral greys, near-white
+   * foreground text, and translucent-white borders. See the token file for why each is what it is.
+   */
+  --bg: #171717;
+  --panel: #171717;
+  --panel-2: #292929;
+  --surface: #333333;
+  --sunken: #0f0f0f;
+  --elevated: #272727;
+  --line: #333333;
+  --border: rgba(255, 255, 255, 0.1);
+  --border-input: rgba(255, 255, 255, 0.15);
+  --border-strong: rgba(255, 255, 255, 0.2);
+  --text: #fafafa;
+  --muted: #b4b4b4;
+  --dim: #8a8a8a;
+  --primary: #e8e8e8;
+  --primary-ink: #171717;
+  --wash: rgba(255, 255, 255, 0.05);
+  --wash-strong: rgba(255, 255, 255, 0.1);
+  --ring: #8a8a8a;
+  --danger: #ff6467;
+  --warn: #e8b04b;
+  --ok: #77b892;
 
   font-synthesis: none;
 }
@@ -51,55 +71,252 @@ body,
   margin: 0;
 }
 
+/**
+ * Barlow first, system faces after it. The reference editor sets its UI in Barlow and ships it as a
+ * local font; this editor has not added the font files, so in practice this resolves to the system
+ * stack. The token and this rule are written for the intended end state.
+ */
 body {
   background: var(--bg);
   color: var(--text);
-  font: 12.5px/1.45 ui-sans-serif, -apple-system, 'Segoe UI', sans-serif;
+  font: 14px/1.45 Barlow, Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--primary);
+  color: var(--primary-ink);
+}
+
+/**
+ * The menu entrance, keyed off the transform origin Radix publishes for the open content. Scaling
+ * from that corner is what makes a dropdown read as growing out of its trigger rather than fading
+ * in above it.
+ */
+/**
+ * A toast rises and fades in. It comes from the bottom edge because that is where it sits, and the
+ * motion is what tells the eye something arrived without a sound.
+ */
+@keyframes coilbox-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes coilbox-menu-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 /* ------------------------------------------------------------------ element defaults */
 
+/**
+ * These are the reference editor's control defaults, translated from its Tailwind classes into the
+ * one place plain CSS can set a default for every control: an element rule.
+ *
+ * The shapes are theirs. A control that exists is `h-8`, `rounded-md` (6px), `text-sm` (14px), and
+ * carries a 3px focus ring at half opacity. A control at rest that is *not* the primary action
+ * shows no fill and no border — that is the single largest reason their chrome stays quiet while
+ * still being obviously interactive, and it is what the previous version of this editor got wrong
+ * by outlining everything.
+ *
+ * A component that needs a different shape sets it with its own atomic class, which outranks these
+ * element rules; nothing here should need `!important` or a more specific selector.
+ */
+
 button {
-  background: #1d2230;
+  background: transparent;
   color: var(--text);
-  border: 1px solid var(--line);
+  border: 0;
   border-radius: 6px;
-  padding: 4px 9px;
+  padding: 0 8px;
+  height: 32px;
   font: inherit;
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
+  transition: background-color 100ms ease, border-color 100ms ease, color 100ms ease;
 }
 
 button:hover:not(:disabled) {
-  border-color: var(--accent);
+  background: var(--wash);
+}
+
+button:active:not(:disabled) {
+  background: var(--wash-strong);
 }
 
 button:disabled {
-  opacity: 0.42;
+  opacity: 0.5;
   cursor: default;
 }
 
+/**
+ * One focus ring for the whole editor, and it is neutral rather than coloured. The reference's ring
+ * is `oklch(0.556 0 0)` at 50% — removing hue from the focus state is what lets the *content* be the
+ * only thing on screen with a colour.
+ */
+:focus-visible {
+  outline: 3px solid rgba(138, 138, 138, 0.5);
+  outline-offset: 0;
+}
+
+/**
+ * A field is a filled box with a border, not an underline: `h-9`, `rounded-md`, `bg-input/30` over a
+ * `border-input` hairline. Their inspector gets its density from compact *scrub fields* rather than
+ * from shrinking every text box, so a real text input here can afford to be a real text input.
+ */
 input,
-select {
-  background: #10141c;
+select,
+textarea {
+  background: rgba(255, 255, 255, 0.045);
   color: var(--text);
-  border: 1px solid var(--line);
-  border-radius: 5px;
-  padding: 3px 6px;
+  border: 1px solid var(--border-input);
+  border-radius: 6px;
+  padding: 0 10px;
+  height: 32px;
   font: inherit;
+  font-size: 14px;
   min-width: 0;
+  transition: border-color 100ms ease, box-shadow 100ms ease, background-color 100ms ease;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--dim);
+}
+
+input:hover:not(:disabled),
+select:hover:not(:disabled) {
+  border-color: var(--border-strong);
 }
 
 input:focus,
 select:focus,
-button:focus-visible {
-  outline: 1px solid var(--accent);
+textarea:focus {
+  border-color: var(--ring);
+  /**
+   * The ring is spelled out rather than left to the UA, whose own focus ring on a form control is
+   * `outline: auto` and does not inherit `outline-color` — clearing it alone leaves a 3px halo in
+   * the UA's colour. It is suppressed for pointer focus below: the caret already says which field
+   * is live, and an always-on ring inside a panel that clips overflow is noise.
+   */
+  outline: 3px solid rgba(138, 138, 138, 0.5);
   outline-offset: 0;
 }
 
+input:focus:not(:focus-visible),
+select:focus:not(:focus-visible),
+textarea:focus:not(:focus-visible) {
+  outline: none;
+}
+
+input:disabled,
+select:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/**
+ * Numeric fields are read in columns, so they get tabular figures — a `1` and a `7` have to occupy
+ * the same width or a vector row visibly jitters as it is scrubbed.
+ */
+input[type='number'] {
+  font-variant-numeric: tabular-nums;
+}
+
+/**
+ * Chrome's default checkbox is a bright system blue, which would be the only cool pixel left on a
+ * neutral chrome. `accent-color` re-tints the native control instead of replacing it.
+ */
+input[type='checkbox'],
+input[type='radio'] {
+  accent-color: var(--primary);
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+/** The native colour swatch is a bordered rect with no padding by default; give it the control shape. */
+input[type='color'] {
+  width: 34px;
+  height: 24px;
+  padding: 2px;
+  background: transparent;
+  cursor: pointer;
+}
+
+select {
+  cursor: pointer;
+  appearance: none;
+  padding-inline-end: 26px;
+  background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+    linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+}
+
 code {
-  background: #171b24;
-  padding: 1px 5px;
+  background: var(--wash);
+  padding: 2px 5px;
   border-radius: 4px;
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+/* ------------------------------------------------------------------ utilities */
+
+/**
+ * The standard visually-hidden treatment.
+ *
+ * This is in the stylesheet rather than a `stylex.create` style because it is a behaviour, not a
+ * design decision: the transport buttons are icon-only, and the accessible name for each one has to
+ * keep existing as real text. It also keeps "Step" and "Stop" present as text for a test selector,
+ * which is what lets an icon replace the word without the control losing its name.
+ */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ------------------------------------------------------------------ motion */
+
+/**
+ * Every transition in the editor is a hover or focus affordance, so none of them are load-bearing.
+ * The switch is global rather than per-component because a component that forgot it would be the
+ * one that animates for a user who asked it not to.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* ------------------------------------------------------------------ runtime HUD seam */

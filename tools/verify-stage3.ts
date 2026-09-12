@@ -331,7 +331,7 @@ async function main(): Promise<void> {
     });
 
     // Save, play the edited game, and confirm the new speed changes the outcome.
-    await studio.click('button:has-text("Save")');
+    await studio.click('button[aria-label="Save"]');
     await studio.waitForFunction(
       () => document.querySelector('.save-indicator')?.getAttribute('data-save-state') === 'clean',
       undefined,
@@ -364,7 +364,7 @@ async function main(): Promise<void> {
     });
 
     await studio.screenshot({ path: join(evidenceDir, 'studio-play-collect-room.png') });
-    await studio.click('button:has-text("Stop")');
+    await studio.click('button[aria-label="Stop and discard the simulation"]');
     await studio.waitForSelector('.viewport-badge', { state: 'detached', timeout: 15_000 });
 
     record({

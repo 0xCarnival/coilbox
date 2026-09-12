@@ -3,7 +3,7 @@ import type { JSX } from 'react';
 import * as stylex from '@stylexjs/stylex';
 import type { AssetEntry, Component, ComponentType, Entity, JsonValue, Quat, Vec3 } from '@schema/index.js';
 import { COMPONENT_TYPES, COMPONENT_LABELS, IDENTITY_QUAT, ZERO_VEC3 } from '@schema/index.js';
-import { color, fontSize, radius, space } from '../styles/tokens.stylex.js';
+import { color, control, fontFamily, fontSize, space } from '../styles/tokens.stylex.js';
 import { DOM, withDomClass } from '../dom-contract.js';
 import { useSession, useSessionSnapshot } from '../hooks.js';
 import {
@@ -17,6 +17,20 @@ import {
 import type { BehaviorPropertyDescriptor } from '@runtime/behaviors/types.js';
 import { componentsFor, type CreatableKind } from '../document/factory.js';
 import { isFiniteJsonNumber, isJsonString, jsonQuaternion, jsonVec3 } from '../json-values.js';
+import { ChevronRight, Plus, Trash2 } from 'lucide-react';
+import { ActionButton, ActionGroup, MetricField } from '../ui/Controls.js';
+import { useScrub } from '../ui/useScrub.js';
+import { FieldShell, ScrubLabel, Select } from '../ui/Field.js';
+import { precisionFor, toDisplay, toMetres, unitSuffix } from '../units.js';
+import { useUnitSystem } from '../units-context.js';
+import { Switch } from '../ui/Field.js';
+import { Button } from '../ui/Button.js';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../ui/Menu.js';
 
 /**
  * Inspector (plan §3): only the selected object's applicable properties, with readable
@@ -38,74 +52,202 @@ import { isFiniteJsonNumber, isJsonString, jsonQuaternion, jsonVec3 } from '../j
  * StyleX's atomic classes coexist on the same element instead of one replacing the other.
  */
 const styles = stylex.create({
+  /**
+   * The panel scrolls as one column, and its padding lives here rather than on each section so
+   * every row in the inspector starts on the same vertical line.
+   */
   inspector: {
     overflow: 'auto',
     height: '100%',
-    paddingBottom: '20px',
+    paddingBlockEnd: space.lg,
+    paddingInline: space.sm,
     position: 'relative',
   },
+  /**
+   * The object's name is the panel's title, so it is the one text field in the inspector that does
+   * not look like a field until it is hovered. `name-field` is a gate hook, so it keeps its class.
+   */
   inspectorTitle: {
     display: 'flex',
     alignItems: 'center',
-    gap: '8px',
-    padding: '8px',
-    borderBlockEndWidth: '1px',
-    borderBlockEndStyle: 'solid',
-    borderBlockEndColor: color.line,
+    gap: space.sm,
+    paddingBlock: space.md,
+    paddingInline: space.xs,
   },
   nameField: {
     flex: 1,
     fontWeight: 600,
+    fontSize: fontSize.md,
+    backgroundColor: 'transparent',
+    borderColor: 'transparent',
+    paddingInline: space.xs,
   },
   enabledToggle: {
     display: 'flex',
     alignItems: 'center',
     gap: space.xs,
     color: color.muted,
+    fontSize: fontSize.xs,
     whiteSpace: 'nowrap',
-  },
-  section: {
-    borderBlockEndWidth: '1px',
-    borderBlockEndStyle: 'solid',
-    borderBlockEndColor: color.line,
+    cursor: 'pointer',
   },
   /**
-   * `.section-header` declared the whole chrome of the button it sits on — background, border,
-   * radius, and padding included — so all of it is translated rather than left to the element rule.
+   * A section is separated from the next by a hairline, which is the only rule left in the panel.
+   * The previous treatment gave every section a filled header band *and* a bottom border, so the
+   * inspector read as a stack of stripes rather than a column of properties.
+   */
+  /**
+   * A section is separated from the next by a hairline under its header, which is the only rule left
+   * in the panel. The previous treatment gave every section both a filled header band and a bottom
+   * border, so the inspector read as a stack of stripes rather than a column of properties.
+   */
+  section: {
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  /** The hairline under a header, separating this section from the next. */
+  sectionHeaderRule: {
+    borderBlockEndWidth: '1px',
+    borderBlockEndStyle: 'solid',
+    borderBlockEndColor: color.border,
+  },
+  /**
+   * The section header is an uppercase micro-label with a rotating chevron.
+   *
+   * It carries no background, no border, and no radius — those all came from the old translated
+   * `button` element rule and are exactly what made a disclosure look like a form field. Hierarchy
+   * now comes from the label itself: at 10px, tracked and uppercase, it reads as a heading at a
+   * glance while staying quieter than the values underneath it.
+   */
+  /**
+   * A section header, on the reference's `PanelSection` geometry: a 40px band, the title on the
+   * leading edge, the summary and the chevron on the trailing one, and a hairline under the pair.
+   *
+   * Two details are load bearing. An expanded section keeps a faint fill, so its title reads as
+   * belonging to the body it opened rather than floating above it; and the chevron *turns* rather
+   * than swapping glyphs, which is what makes the relationship between the two states legible.
    */
   sectionHeader: {
     width: '100%',
     display: 'flex',
     alignItems: 'center',
-    gap: space.sm,
-    backgroundColor: color['panel-2'],
+    gap: space.md,
+    height: '36px',
+    backgroundColor: 'transparent',
     borderWidth: 0,
     borderStyle: 'none',
     borderRadius: 0,
-    paddingBlock: space.sm,
-    paddingInline: '8px',
+    paddingBlock: 0,
+    paddingInline: space.lg,
     textAlign: 'left',
+    color: color.muted,
+    cursor: 'pointer',
+    transitionProperty: 'background-color, color',
+    transitionDuration: '150ms',
+    ':hover': {
+      backgroundColor: color.wash,
+      color: color.text,
+    },
+  },
+  /** An open section's header sits on a faint fill: the title belongs to what it opened. */
+  sectionHeaderOpen: {
+    backgroundColor: color.wash,
+    color: color.text,
   },
   sectionTitle: {
-    fontWeight: 600,
+    fontSize: fontSize.sm,
+    fontWeight: 500,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   },
+  /**
+   * The subtitle is the technical name — `box 1 x 2.4 x 1 m`, a behavior id, `dynamic`. It sits on
+   * the far side of the header in mono so it cannot be confused with the heading itself.
+   */
   sectionSubtitle: {
-    color: color.muted,
+    color: color.dim,
     marginInlineStart: 'auto',
     fontSize: fontSize.xs,
+    fontFamily: fontFamily.mono,
+  },
+  /**
+   * Pushes the disclosure chevron to the trailing edge when there is no subtitle to push it.
+   * A section with a subtitle gets its spacing from the subtitle's own `marginInlineStart: auto`.
+   */
+  chevronTrailing: {
+    marginInlineStart: 'auto',
+    display: 'flex',
+    alignItems: 'center',
   },
   sectionBody: {
-    paddingBlockStart: space.sm,
-    paddingInline: '8px',
-    paddingBlockEnd: space.md,
     display: 'flex',
     flexDirection: 'column',
-    gap: space.sm,
+    gap: space.xs,
+    paddingBlockStart: space.xs,
+    paddingBlockEnd: space.sm,
+    paddingInline: space.xs,
   },
+  /**
+   * The field rhythm: a fixed label column, then a control that fills the rest.
+   *
+   * The fixed basis is what makes the panel scannable — with a content-sized label, every row's
+   * control started at a different x and the column of values had no edge to read down. `start`
+   * alignment rather than `center` keeps a label on the first line of a vector row.
+   */
   field: {
     display: 'flex',
     alignItems: 'center',
-    gap: '8px',
+    gap: space.sm,
+    minHeight: '24px',
+  },
+  /**
+   * A boolean row: the name on the left, the switch on the right, on the panel's own background.
+   *
+   * It deliberately has no field box. The reference marks an on/off property with a bare row and a
+   * switch, which is what keeps a component's list of toggles from reading as a form of inputs.
+   */
+  fieldToggle: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: space.md,
+    minHeight: '28px',
+    paddingInline: space.lg,
+  },
+  fieldToggleLabel: {
+    fontSize: fontSize.md,
+    fontWeight: 500,
+    color: color.text,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  /**
+   * The input inside a field box. It is borderless and transparent because the *box* is the field
+   * now: an input drawing its own border inside a bordered shell is two boxes for one control, which
+   * is exactly what the previous version looked like.
+   */
+  fieldInput: {
+    flex: 1,
+    minWidth: 0,
+    height: '24px',
+    paddingInline: space.xs,
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    borderStyle: 'none',
+    color: color.text,
+    fontSize: fontSize.md,
+    textAlign: 'right',
+    fontVariantNumeric: 'tabular-nums',
+    ':hover': {
+      borderWidth: 0,
+      borderColor: 'transparent',
+    },
+    ':focus': {
+      outline: 'none',
+      borderColor: 'transparent',
+    },
   },
   /** `.field.checkbox` — the tighter gap of a checkbox row. */
   fieldCheckbox: {
@@ -114,8 +256,12 @@ const styles = stylex.create({
   fieldLabel: {
     flexGrow: 0,
     flexShrink: 0,
-    flexBasis: '108px',
-    color: color.muted,
+    flexBasis: '96px',
+    color: color.dim,
+    fontSize: fontSize.sm,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   },
   /**
    * `.field input[type='number']`, `.field input[type='text']`, and `.field select` were one
@@ -124,15 +270,17 @@ const styles = stylex.create({
    */
   fieldControl: {
     flex: 1,
+    minWidth: 0,
   },
   /** `.field.checkbox span` — the label text carries its own colour instead of inheriting it. */
   checkboxText: {
     color: color.text,
+    fontSize: fontSize.sm,
   },
   vectorField: {
     display: 'flex',
     alignItems: 'center',
-    gap: '8px',
+    gap: '6px',
     width: '100%',
   },
   vectorInputs: {
@@ -141,83 +289,106 @@ const styles = stylex.create({
     gap: space.xs,
     flex: 1,
   },
+  /**
+   * A vector row's name sits *outside* the box, not inside it.
+   *
+   * One box around three numbers is what the reference does — the three axes are one value, and
+   * three separately bordered inputs would read as three unrelated settings. The name labels the
+   * group, so it belongs on the group's edge.
+   */
+  fieldLabelBare: {
+    flexShrink: 0,
+    flexBasis: '88px',
+    paddingInlineStart: space.lg,
+    fontSize: fontSize.xs,
+    fontWeight: 500,
+    color: color.muted,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
   axis: {
     display: 'flex',
     alignItems: 'center',
-    gap: '3px',
+    gap: '2px',
+    flex: 1,
+    minWidth: 0,
   },
   /**
-   * `.axis span`. 10px is off the type scale, so the pixel value is kept rather than snapped to
-   * `fontSize.xs` (11px), which would quietly resize the axis letters.
+   * `.axis span`. The axis letter stays at 10px: it is a colour-coded suffix on a number, not a
+   * label the reader parses, so it has to be quieter than the value beside it.
+   */
+  /**
+   * The axis letter is the scrub handle, so it carries the `ew-resize` cursor that advertises the
+   * gesture. It is deliberately not a chip or a button: it must stay a 10px letter so the number
+   * beside it keeps the row's width.
    */
   axisLabel: {
-    color: color.muted,
-    fontSize: '10px',
-  },
-  /** `.axis input` — the width moves onto the input itself. */
-  axisInput: {
-    width: '100%',
-  },
-  /**
-   * `.advanced button`: the disclosure row's own chrome. The class declared padding and border in
-   * full, so overriding the button element rule here is intended.
-   */
-  advancedToggle: {
-    backgroundColor: 'transparent',
-    borderWidth: 0,
-    borderStyle: 'none',
-    color: color.muted,
-    paddingBlock: space.xxs,
-    paddingInline: 0,
-  },
-  componentActions: {
-    display: 'flex',
-    justifyContent: 'flex-end',
-  },
-  /** `.component-actions button` — moved onto the button. */
-  componentActionButton: {
-    fontSize: fontSize.xs,
-    color: color.muted,
-  },
-  addComponent: {
-    padding: '8px',
-    position: 'relative',
-  },
-  /**
-   * `.add-menu` inherits the shared `.menu` block and is then overridden to `position: static` with
-   * a top margin, so the menu flows inside the panel instead of floating over it. The shared block's
-   * offsets are kept for fidelity; they are inert while the position is static.
-   */
-  addMenu: {
-    position: 'static',
-    zIndex: 20,
-    top: 'calc(100% + 4px)',
-    left: 0,
-    marginTop: space.sm,
-    backgroundColor: color['panel-2'],
-    borderWidth: '1px',
-    borderStyle: 'solid',
-    borderColor: color.line,
-    borderRadius: radius.lg,
-    padding: space.xs,
-    display: 'flex',
-    flexDirection: 'column',
-    minWidth: '170px',
-    boxShadow: '0 12px 28px rgba(0, 0, 0, 0.45)',
-  },
-  /** `.add-menu button` — the menu owns its buttons' chrome, so this is an intentional override. */
-  addMenuButton: {
-    backgroundColor: 'transparent',
-    borderWidth: 0,
-    borderStyle: 'none',
-    textAlign: 'left',
-    borderRadius: radius.sm,
+    color: color.dim,
+    fontSize: fontSize.micro,
+    fontWeight: 600,
+    cursor: 'ew-resize',
+    userSelect: 'none',
+    paddingInlineEnd: space.xs,
     ':hover': {
-      backgroundColor: '#212838',
+      color: color.text,
     },
   },
+  axisLabelDragging: {
+    color: color.text,
+  },
+  /**
+   * `.axis input` — borderless and transparent, because the surrounding field box is the control
+   * now. An input drawing its own border inside a bordered shell is two boxes for one value.
+   */
+  axisInput: {
+    width: '100%',
+    height: '22px',
+    paddingInline: space.xs,
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    borderStyle: 'none',
+    color: color.text,
+    fontSize: fontSize.sm,
+    textAlign: 'right',
+    fontVariantNumeric: 'tabular-nums',
+    ':hover': {
+      borderWidth: 0,
+      borderColor: 'transparent',
+    },
+    ':focus': {
+      outline: 'none',
+      borderColor: 'transparent',
+      backgroundColor: color.wash,
+    },
+  },
+  /**
+   * `.advanced button`: the disclosure row's own chrome. A quiet text disclosure with a chevron,
+   * rather than a bordered control — several of these appear inside one section and the borders
+   * were what made a component look like it had a dozen buttons.
+   */
+  advancedToggle: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: space.xs,
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    borderStyle: 'none',
+    color: color.dim,
+    fontSize: fontSize.xs,
+    paddingBlock: space.xxs,
+    paddingInline: 0,
+    ':hover': {
+      color: color.muted,
+    },
+  },
+  addComponent: {
+    paddingBlock: space.sm,
+    paddingInline: space.xs,
+    position: 'relative',
+  },
   menuHint: {
-    color: color.muted,
+    color: color.dim,
     padding: space.sm,
     maxWidth: '220px',
     fontSize: fontSize.xs,
@@ -226,14 +397,18 @@ const styles = stylex.create({
   muted: {
     color: color.muted,
     margin: 0,
+    fontSize: fontSize.sm,
   },
   warn: {
     color: color.warn,
+    margin: 0,
+    fontSize: fontSize.sm,
   },
   empty: {
-    color: color.muted,
-    padding: '14px',
+    color: color.dim,
+    padding: space.lg,
     textAlign: 'center',
+    fontSize: fontSize.sm,
   },
 });
 
@@ -242,7 +417,6 @@ export function Inspector({ locked }: { locked: boolean }): JSX.Element {
   const snapshot = useSessionSnapshot();
   const scene = session.scene;
   const entity = scene?.entities.find((candidate) => candidate.id === snapshot.primarySelection) ?? null;
-  const [addMenuOpen, setAddMenuOpen] = useState(false);
 
   if (!entity || !scene) {
     return (
@@ -323,21 +497,27 @@ export function Inspector({ locked }: { locked: boolean }): JSX.Element {
       )}
 
       <div {...withDomClass(styles.addComponent, DOM.addComponent)}>
-        <button type="button" disabled={locked} onClick={() => setAddMenuOpen((open) => !open)}>
-          + Add component
-        </button>
-        {addMenuOpen && (
-          <div {...withDomClass(styles.addMenu, DOM.addMenu)}>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button disabled={locked}>
+              <Plus size={control.icon} />
+              Add component
+            </Button>
+          </DropdownMenuTrigger>
+          {/**
+           * The menu is Radix's, like the toolbar's, rather than a hand-rolled popover. That is what
+           * gives it Escape, outside-click dismissal, and keyboard traversal for free — and it is
+           * why the `add-menu` hook rides along as data: Radix owns this element's `className`, so a
+           * hook the browser gates select on cannot be applied by the caller the usual way.
+           */}
+          <DropdownMenuContent align="start" hooks={[DOM.addMenu]}>
             {COMPONENT_TYPES.filter((type) => isAddable(entity, type))
               .map((type) => ({ type, component: defaultComponent(type, snapshot.assets) }))
               .filter((entry): entry is { type: ComponentType; component: Component } => entry.component !== null)
               .map(({ type, component }) => (
-                <button
+                <DropdownMenuItem
                   key={type}
-                  {...stylex.props(styles.addMenuButton)}
-                  type="button"
-                  onClick={() => {
-                    setAddMenuOpen(false);
+                  onSelect={() => {
                     // A model replaces the primitive placeholder rather than stacking a second
                     // renderable on the same entity; both changes are one undo step.
                     const replacePrimitive = type === 'model' && entity.components.some((candidate) => candidate.type === 'primitive');
@@ -352,13 +532,13 @@ export function Inspector({ locked }: { locked: boolean }): JSX.Element {
                   }}
                 >
                   {COMPONENT_LABELS[type]}
-                </button>
+                </DropdownMenuItem>
               ))}
             {snapshot.assets.filter((asset) => asset.kind === 'model').length === 0 && (
               <span {...stylex.props(styles.menuHint)}>Import a .glb in the Assets tab to add a Model component.</span>
             )}
-          </div>
-        )}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   );
@@ -475,7 +655,8 @@ function BehaviorSection({ entity, component, locked }: { entity: Entity; compon
       {advanced.length > 0 && (
         <div>
           <button {...stylex.props(styles.advancedToggle)} type="button" onClick={() => setAdvancedOpen((open) => !open)}>
-            {advancedOpen ? '− Hide advanced' : `+ ${advanced.length} advanced`}
+            <ChevronRight size={14} style={{ transform: advancedOpen ? 'rotate(90deg)' : undefined, transition: 'transform 120ms ease' }} />
+            {advancedOpen ? 'Hide advanced' : `${advanced.length} advanced`}
           </button>
           {advancedOpen &&
             advanced.map((field) => (
@@ -499,11 +680,16 @@ function BehaviorSection({ entity, component, locked }: { entity: Entity; compon
             ))}
         </div>
       )}
-      <div {...stylex.props(styles.componentActions)}>
-        <button {...stylex.props(styles.componentActionButton)} type="button" disabled={locked} onClick={() => session.execute({ kind: 'removeComponent', entityId: entity.id, componentType: 'behavior' })}>
-          Remove
-        </button>
-      </div>
+      <ActionGroup>
+        <ActionButton
+          label="Remove"
+          icon={<Trash2 size={control.iconSm} />}
+          disabled={locked}
+          onClick={() =>
+            session.execute({ kind: 'removeComponent', entityId: entity.id, componentType: 'behavior' })
+          }
+        />
+      </ActionGroup>
     </Section>
   );
 }
@@ -563,7 +749,8 @@ function ComponentSection({
       {advanced.length > 0 && (
         <div>
           <button {...stylex.props(styles.advancedToggle)} type="button" onClick={() => setAdvancedOpen((open) => !open)}>
-            {advancedOpen ? '− Hide advanced' : `+ ${advanced.length} advanced`}
+            <ChevronRight size={14} style={{ transform: advancedOpen ? 'rotate(90deg)' : undefined, transition: 'transform 120ms ease' }} />
+            {advancedOpen ? 'Hide advanced' : `${advanced.length} advanced`}
           </button>
           {advancedOpen &&
             advanced.map((field) => (
@@ -578,16 +765,22 @@ function ComponentSection({
             ))}
         </div>
       )}
-      <div {...stylex.props(styles.componentActions)}>
-        <button
-          {...stylex.props(styles.componentActionButton)}
-          type="button"
+      {/**
+       * The section's destructive action sits in a filled cluster rather than as a bare ghost link.
+       * Their `ActionButton` shape is what makes it read as the row's one button instead of a label
+       * that happens to be clickable.
+       */}
+      <ActionGroup>
+        <ActionButton
+          label="Remove"
+          icon={<Trash2 size={control.iconSm} />}
+          danger
           disabled={locked}
-          onClick={() => session.execute({ kind: 'removeComponent', entityId: entity.id, componentType: component.type })}
-        >
-          Remove
-        </button>
-      </div>
+          onClick={() =>
+            session.execute({ kind: 'removeComponent', entityId: entity.id, componentType: component.type })
+          }
+        />
+      </ActionGroup>
     </Section>
   );
 }
@@ -607,15 +800,28 @@ function Field({
 }): JSX.Element {
   const session = useSession();
   const snapshot = useSessionSnapshot();
+  const units = useUnitSystem();
   const scene = session.scene;
 
   switch (field.kind) {
     case 'boolean':
+      /**
+       * A switch, not a checkbox.
+       *
+       * The reference marks every on/off property with one, and the difference is not cosmetic: a
+       * checkbox is a box you tick as part of a form, a switch is a setting that is already in one of
+       * two states. These are all the latter.
+       */
       return (
-        <label {...stylex.props(styles.field, styles.fieldCheckbox)}>
-          <input type="checkbox" checked={Boolean(value)} disabled={disabled} onChange={(event) => onChange(event.target.checked)} />
-          <span {...stylex.props(styles.checkboxText)}>{field.label}</span>
-        </label>
+        <div {...withDomClass(styles.fieldToggle, DOM.field)}>
+          <span {...withDomClass(styles.fieldToggleLabel, DOM.fieldLabel)}>{field.label}</span>
+          <Switch
+            label={field.label}
+            checked={Boolean(value)}
+            disabled={disabled}
+            onCheckedChange={(next) => onChange(next)}
+          />
+        </div>
       );
     case 'color':
       return (
@@ -631,21 +837,13 @@ function Field({
       );
     case 'enum':
       return (
-        <label {...withDomClass(styles.field, DOM.field)}>
-          <span {...withDomClass(styles.fieldLabel, DOM.fieldLabel)}>{field.label}</span>
-          <select
-            {...stylex.props(styles.fieldControl)}
-            value={String(value ?? '')}
-            disabled={disabled}
-            onChange={(event) => onChange(coerceEnum(field, event.target.value))}
-          >
-            {(field.options ?? []).map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        <SelectField
+          label={field.label}
+          value={String(value ?? '')}
+          disabled={disabled}
+          options={(field.options ?? []).map((option) => ({ value: option.value, label: option.label }))}
+          onValueChange={(next) => onChange(coerceEnum(field, next))}
+        />
       );
     case 'vec3':
     case 'positive-vec3':
@@ -677,46 +875,39 @@ function Field({
       const kind = field.key === 'assetId' && entity.components.some((component) => component.type === 'audio') ? 'audio' : 'model';
       const options = snapshot.assets.filter((asset) => asset.kind === kind);
       return (
-        <label {...withDomClass(styles.field, DOM.field)}>
-          <span {...withDomClass(styles.fieldLabel, DOM.fieldLabel)}>{field.label}</span>
-          <select
-            {...stylex.props(styles.fieldControl)}
-            value={isJsonString(value) ? value : ''}
-            disabled={disabled}
-            onChange={(event) => onChange(event.target.value)}
-          >
-            <option value="">None</option>
-            {options.map((asset) => (
-              <option key={asset.id} value={asset.id}>
-                {asset.id}
-              </option>
-            ))}
-            {isJsonString(value) && value.length > 0 && !options.some((asset) => asset.id === value) && (
-              <option value={value}>{value} (missing)</option>
-            )}
-          </select>
-        </label>
+        <SelectField
+          label={field.label}
+          value={isJsonString(value) ? value : ''}
+          disabled={disabled}
+          options={[
+            { value: '', label: 'None' },
+            ...options.map((asset) => ({ value: asset.id, label: asset.id })),
+            /**
+             * A reference to an asset that is no longer in the manifest stays selectable and says
+             * so. Dropping it would silently rewrite the document to "None" the moment the field
+             * rendered, which is the failure this panel exists to prevent.
+             */
+            ...(isJsonString(value) && value.length > 0 && !options.some((asset) => asset.id === value)
+              ? [{ value, label: `${value} (missing)` }]
+              : []),
+          ]}
+          onValueChange={(next) => onChange(next)}
+        />
       );
     }
     case 'clip-reference': {
       const clips = snapshot.modelClips[entity.id] ?? [];
       return (
-        <label {...withDomClass(styles.field, DOM.field)}>
-          <span {...withDomClass(styles.fieldLabel, DOM.fieldLabel)}>{field.label}</span>
-          <select
-            {...stylex.props(styles.fieldControl)}
-            value={isJsonString(value) ? value : ''}
-            disabled={disabled || clips.length === 0}
-            onChange={(event) => onChange(event.target.value === '' ? null : event.target.value)}
-          >
-            <option value="">{clips.length === 0 ? 'No clips loaded' : 'First clip'}</option>
-            {clips.map((clip) => (
-              <option key={clip} value={clip}>
-                {clip}
-              </option>
-            ))}
-          </select>
-        </label>
+        <SelectField
+          label={field.label}
+          value={isJsonString(value) ? value : ''}
+          disabled={disabled || clips.length === 0}
+          options={[
+            { value: '', label: clips.length === 0 ? 'No clips loaded' : 'First clip' },
+            ...clips.map((clip) => ({ value: clip, label: clip })),
+          ]}
+          onValueChange={(next) => onChange(next === '' ? null : next)}
+        />
       );
     }
     case 'entity-reference':
@@ -741,12 +932,83 @@ function Field({
         </label>
       );
     case 'number':
+      /**
+       * A field whose value carries a unit gets the reference's metric treatment: the unit sits
+       * inside the box, after the number.
+       *
+       * The unit is not decoration. A number in a 3D editor is meaningless without it — `18` is a
+       * position or an extent or a rotation, and the suffix is the only thing that says which.
+       */
+      if (field.unit !== undefined) {
+        /**
+         * A field whose value carries a unit.
+         *
+         * The stored number is metres and stays metres; what changes with the unit setting is the
+         * number on screen and the meaning of what is typed. The conversion happens here and nowhere
+         * else — `units.ts` is the only place in the editor that knows how many feet are in a metre.
+         */
+        const stored = isFiniteJsonNumber(value) ? value : null;
+        /**
+         * Rounded to the precision the unit system shows.
+         *
+         * `toDisplay` returns the exact conversion, which for imperial is a long float —
+         * 18 m shows as `59.055118110236215 ft`. The document keeps the exact metre value; this only
+         * stops that float reaching the input box.
+         */
+        const shown =
+          stored === null
+            ? null
+            : Number(toDisplay(stored, units, 'length').toFixed(precisionFor(units, 'length')));
+        return (
+          <FieldShell
+            hookProps={withDomClass(styles.field, DOM.field)}
+            label={<span {...withDomClass(styles.fieldLabel, DOM.fieldLabel)}>{field.label}</span>}
+          >
+            <MetricField
+              label={field.label}
+              unit={unitSuffix(units, 'length')}
+              value={shown}
+              step={stepFor(units)}
+              min={field.min === undefined ? undefined : toDisplay(field.min, units, 'length')}
+              max={field.max === undefined ? undefined : toDisplay(field.max, units, 'length')}
+              disabled={disabled}
+              onChange={(next) =>
+                onChange(componentValue(field, clamp(toMetres(next, units, 'length'), field)))
+              }
+            />
+          </FieldShell>
+        );
+      }
+      /**
+       * A scrub handle *and* a real number input.
+       *
+       * The input stays because the browser gates drive these fields through it, and because typing
+       * an exact value is a legitimate thing to want. The gesture is attached to the label, which is
+       * where the reference puts it — see `ScrubField` for why the gesture lives on the label rather
+       * than on the value.
+       */
       return (
-        <label {...withDomClass(styles.field, DOM.field)}>
-          <span {...withDomClass(styles.fieldLabel, DOM.fieldLabel)}>{field.label}</span>
+        <FieldShell
+          hookProps={withDomClass(styles.field, DOM.field)}
+          label={
+            <ScrubLabel
+              label={field.label}
+              hookProps={withDomClass(styles.fieldLabel, DOM.fieldLabel)}
+              config={{
+                value: isFiniteJsonNumber(value) ? value : 0,
+                onChange: (next) => onChange(componentValue(field, clamp(next, field))),
+                step: field.step ?? 0.1,
+                min: field.min,
+                max: field.max,
+                disabled,
+              }}
+            />
+          }
+        >
           <input
-            {...stylex.props(styles.fieldControl)}
+            {...stylex.props(styles.fieldInput)}
             type="number"
+            aria-label={field.label}
             value={isFiniteJsonNumber(value) ? value : ''}
             step={field.step ?? 0.1}
             min={field.min}
@@ -759,23 +1021,37 @@ function Field({
               onChange(componentValue(field, clamped));
             }}
           />
-        </label>
+        </FieldShell>
       );
     case 'text':
     default:
       return (
-        <label {...withDomClass(styles.field, DOM.field)}>
-          <span {...withDomClass(styles.fieldLabel, DOM.fieldLabel)}>{field.label}</span>
+        <FieldShell
+          hookProps={withDomClass(styles.field, DOM.field)}
+          label={<span {...withDomClass(styles.fieldLabel, DOM.fieldLabel)}>{field.label}</span>}
+        >
           <input
-            {...stylex.props(styles.fieldControl)}
+            {...stylex.props(styles.fieldInput)}
             type="text"
+            aria-label={field.label}
             value={value === null || value === undefined ? '' : String(value)}
             disabled={disabled}
             onChange={(event) => onChange(event.target.value === '' && field.key === 'clip' ? null : event.target.value)}
           />
-        </label>
+        </FieldShell>
       );
   }
+}
+
+/**
+ * The increment a unit-bearing field steps by, in the unit currently shown.
+ *
+ * Imperial inches and metric centimetres: a step expressed in metres would be a different physical
+ * distance in each system, and the browser uses this to decide how many decimals the spinner
+ * produces.
+ */
+function stepFor(units: 'metric' | 'imperial'): number {
+  return units === 'imperial' ? 0.1 : 0.01;
 }
 
 function componentValue(field: FieldDescriptor, value: number): JsonValue {
@@ -813,30 +1089,151 @@ function VectorField({
   onChange(value: Vec3): void;
 }): JSX.Element {
   return (
-    <div {...withDomClass(styles.vectorField, DOM.vectorField)}>
-      {label && <span {...withDomClass(styles.fieldLabel, DOM.fieldLabel)}>{label}</span>}
+    <FieldShell
+      bare
+      hookProps={withDomClass(styles.vectorField, DOM.vectorField)}
+      label={
+        label ? <span {...withDomClass(styles.fieldLabelBare, DOM.fieldLabel)}>{label}</span> : undefined
+      }
+    >
       <div {...stylex.props(styles.vectorInputs)}>
         {(['X', 'Y', 'Z'] as const).map((axis, index) => (
-          <label key={axis} {...stylex.props(styles.axis)}>
-            <span {...stylex.props(styles.axisLabel)}>{axis}</span>
-            <input
-              {...stylex.props(styles.axisInput)}
-              type="number"
-              step={step}
-              disabled={disabled}
-              value={Number.isFinite(value[index]) ? String(value[index]) : ''}
-              onChange={(event) => {
-                const parsed = Number(event.target.value);
-                if (!Number.isFinite(parsed)) return;
-                const next: Vec3 = [value[0], value[1], value[2]];
-                next[index] = positive ? Math.max(0.001, Math.abs(parsed)) : parsed;
-                onChange(next);
-              }}
-            />
-          </label>
+          <ScrubAxisInput
+            key={axis}
+            axis={axis}
+            componentIndex={index}
+            value={value}
+            step={step}
+            disabled={disabled}
+            positive={positive}
+            onChange={onChange}
+          />
         ))}
       </div>
-    </div>
+    </FieldShell>
+  );
+}
+
+/**
+ * One axis of a vector row.
+ *
+ * The markup stays a `<label>` and a real `<input type="number">` on purpose: the browser gates
+ * drive these fields through `.vector-field … input`, so replacing them with the `ScrubField`
+ * readout would change the DOM contract to gain a gesture. Instead the *axis letter* is the drag
+ * handle — the same affordance the reference puts on a field's label — and the input is left exactly
+ * as it was for typing, arrow keys, and the gates.
+ */
+function ScrubAxisInput({
+  axis,
+  componentIndex,
+  value,
+  step,
+  disabled,
+  positive,
+  onChange,
+}: {
+  axis: 'X' | 'Y' | 'Z';
+  componentIndex: number;
+  value: Vec3;
+  step: number;
+  disabled: boolean;
+  positive?: boolean;
+  onChange(value: Vec3): void;
+}): JSX.Element {
+  const setComponent = (next: number) => {
+    const out: Vec3 = [value[0], value[1], value[2]];
+    out[componentIndex] = positive ? Math.max(0.001, Math.abs(next)) : next;
+    onChange(out);
+  };
+  const scrub = useScrub({
+    value: value[componentIndex],
+    onChange: setComponent,
+    step,
+    min: positive ? 0.001 : undefined,
+    disabled,
+  });
+
+  return (
+    <label {...stylex.props(styles.axis)}>
+      <span
+        {...stylex.props(styles.axisLabel, scrub.dragging && styles.axisLabelDragging)}
+        onPointerDown={scrub.onPointerDown}
+        title={`${axis} — drag to change, Shift for coarse, Alt for fine`}
+      >
+        {axis}
+      </span>
+      <input
+        {...stylex.props(styles.axisInput)}
+        type="number"
+        step={step}
+        disabled={disabled}
+        aria-label={`${axis} component`}
+        value={Number.isFinite(value[componentIndex]) ? String(value[componentIndex]) : ''}
+        onChange={(event) => {
+          const parsed = Number(event.target.value);
+          if (!Number.isFinite(parsed)) return;
+          setComponent(parsed);
+        }}
+      />
+    </label>
+  );
+}
+
+/**
+ * One axis of the rotation row.
+ *
+ * It is separate from `ScrubAxisInput` because rotation is stored as a quaternion and shown in
+ * degrees: the scrub has to convert the whole triple back through Euler angles on every step, which
+ * is a different write than setting one component of a stored vector.
+ */
+function ScrubRotationAxis({
+  axis,
+  componentIndex,
+  degrees,
+  disabled,
+  onChange,
+}: {
+  axis: 'X' | 'Y' | 'Z';
+  componentIndex: number;
+  degrees: Vec3;
+  disabled: boolean;
+  onChange(value: Quat): void;
+}): JSX.Element {
+  const setComponent = (next: number) => {
+    const out: Vec3 = [degrees[0], degrees[1], degrees[2]];
+    out[componentIndex] = next;
+    onChange(eulerDegreesToQuaternion(out));
+  };
+  const scrub = useScrub({
+    value: degrees[componentIndex],
+    onChange: setComponent,
+    step: 1,
+    disabled,
+  });
+
+  return (
+    <label {...stylex.props(styles.axis)}>
+      <span
+        {...stylex.props(styles.axisLabel, scrub.dragging && styles.axisLabelDragging)}
+        onPointerDown={scrub.onPointerDown}
+        title={`${axis} — drag to change, Shift for coarse, Alt for fine`}
+      >
+        {axis}
+      </span>
+      <input
+        {...stylex.props(styles.axisInput)}
+        type="number"
+        step={1}
+        disabled={disabled}
+        aria-label={`${axis} component`}
+        value={Number.isFinite(degrees[componentIndex]) ? Number(degrees[componentIndex]!.toFixed(3)) : ''}
+        onChange={(event) => {
+          const parsed = Number(event.target.value);
+          if (!Number.isFinite(parsed)) return;
+          setComponent(parsed);
+        }}
+      />
+    </label>
   );
 }
 
@@ -851,30 +1248,66 @@ function RotationField({
 }): JSX.Element {
   const degrees = quaternionToEulerDegrees(value);
   return (
-    <div {...withDomClass(styles.vectorField, DOM.vectorField)}>
-      <span {...withDomClass(styles.fieldLabel, DOM.fieldLabel)}>Rotation (°)</span>
+    <FieldShell
+      bare
+      hookProps={withDomClass(styles.vectorField, DOM.vectorField)}
+      label={
+        <span {...withDomClass(styles.fieldLabelBare, DOM.fieldLabel)}>Rotation (°)</span>
+      }
+    >
       <div {...stylex.props(styles.vectorInputs)}>
         {(['X', 'Y', 'Z'] as const).map((axis, index) => (
-          <label key={axis} {...stylex.props(styles.axis)}>
-            <span {...stylex.props(styles.axisLabel)}>{axis}</span>
-            <input
-              {...stylex.props(styles.axisInput)}
-              type="number"
-              step={1}
-              disabled={disabled}
-              value={Number.isFinite(degrees[index]) ? Number(degrees[index]!.toFixed(3)) : ''}
-              onChange={(event) => {
-                const parsed = Number(event.target.value);
-                if (!Number.isFinite(parsed)) return;
-                const next: Vec3 = [degrees[0], degrees[1], degrees[2]];
-                next[index] = parsed;
-                onChange(eulerDegreesToQuaternion(next));
-              }}
-            />
-          </label>
+          <ScrubRotationAxis
+            key={axis}
+            axis={axis}
+            componentIndex={index}
+            degrees={degrees}
+            disabled={disabled}
+            onChange={onChange}
+          />
         ))}
       </div>
-    </div>
+    </FieldShell>
+  );
+}
+
+/**
+ * A labelled picker: the field box, the label, and a Radix `Select`.
+ *
+ * The reference uses a real select for every enumerated property, which is what gives a long option
+ * list a scroll affordance, keyboard traversal, and a typeahead. A native `<select>` cannot be styled
+ * to match the field boxes around it — the popup is the platform's — so the field would have been the
+ * one control in the panel that looked like the operating system rather than the editor.
+ *
+ * Radix renders this as a `[role="combobox"]` button plus a portalled listbox, so the browser gate
+ * helper drives whichever of the two shapes it finds.
+ */
+function SelectField({
+  label,
+  value,
+  options,
+  onValueChange,
+  disabled,
+}: {
+  label: string;
+  value: string;
+  options: readonly { value: string; label: string }[];
+  onValueChange(next: string): void;
+  disabled: boolean;
+}): JSX.Element {
+  return (
+    <FieldShell
+      hookProps={withDomClass(styles.field, DOM.field)}
+      label={<span {...withDomClass(styles.fieldLabel, DOM.fieldLabel)}>{label}</span>}
+    >
+      <Select
+        label={label}
+        value={value}
+        options={options}
+        disabled={disabled}
+        onValueChange={onValueChange}
+      />
+    </FieldShell>
   );
 }
 
@@ -892,10 +1325,22 @@ function Section({
   const [open, setOpen] = useState(Boolean(defaultOpen));
   return (
     <section {...withDomClass(styles.section, DOM.section)}>
-      <button {...stylex.props(styles.sectionHeader)} type="button" onClick={() => setOpen((value) => !value)} aria-expanded={open}>
-        <span>{open ? '▾' : '▸'}</span>
+      <button
+        {...stylex.props(styles.sectionHeader, styles.sectionHeaderRule, open && styles.sectionHeaderOpen)}
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        aria-expanded={open}
+      >
         <span {...withDomClass(styles.sectionTitle, DOM.sectionTitle)}>{title}</span>
         {subtitle && <span {...stylex.props(styles.sectionSubtitle)}>{subtitle}</span>}
+        {/**
+         * The disclosure sits after the subtitle, not before the title. A leading chevron indents
+         * every heading by its own width, which breaks the left edge the labels below depend on;
+         * trailing it keeps one alignment line down the whole panel.
+         */}
+        <span {...stylex.props(subtitle ? undefined : styles.chevronTrailing)}>
+          <ChevronRight size={14} style={{ transform: open ? 'rotate(90deg)' : undefined, transition: 'transform 120ms ease' }} />
+        </span>
       </button>
       {open && <div {...stylex.props(styles.sectionBody)}>{children}</div>}
     </section>

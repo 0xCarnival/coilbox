@@ -6,9 +6,15 @@ import { RuntimeWorldError, type RuntimeStats } from '@runtime/world.js';
 import { RuntimeSession } from '@runtime/session.js';
 import { AssetCache } from '@runtime/assets/loader.js';
 import wasmUrl from 'virtual:box3d-wasm-url';
-import { color, radius, space } from '../styles/tokens.stylex.js';
+import { color, fontSize, radius, space } from '../styles/tokens.stylex.js';
 import { DOM, DOM_ID, withDomClass } from '../dom-contract.js';
-import { EditorViewport, type SnapSettings, type TransformTool } from '../viewport/viewport-controller.js';
+import {
+  EditorViewport,
+  type CanvasSize,
+  type ScreenPoint,
+  type SnapSettings,
+  type TransformTool,
+} from '../viewport/viewport-controller.js';
 import { useSession } from '../hooks.js';
 
 /**
@@ -56,39 +62,80 @@ const styles = stylex.create({
     pointerEvents: 'none',
     overflow: 'hidden',
   },
+  /**
+   * The mode badge.
+   *
+   * It floats over the render, so it keeps a translucent surface rather than a solid one — a solid
+   * chip in the corner of a viewport reads as part of the scene. The dot plus word is the same
+   * treatment the status bar uses for the same fact, so "the editor is live" looks like one idea
+   * in two places instead of two ideas.
+   */
   badge: {
     position: 'absolute',
-    top: '8px',
-    left: '8px',
-    backgroundColor: 'rgba(20, 26, 38, 0.86)',
+    top: space.sm,
+    left: space.sm,
+    display: 'flex',
+    alignItems: 'center',
+    gap: space.xs,
+    backgroundColor: 'rgba(10, 11, 13, 0.72)',
+    backdropFilter: 'blur(6px)',
     borderWidth: '1px',
     borderStyle: 'solid',
-    borderColor: color.line,
-    borderRadius: radius.md,
+    borderColor: color['border-strong'],
+    borderRadius: radius.pill,
     paddingBlock: '3px',
-    paddingInline: '8px',
-    color: color.ok,
+    paddingInline: space.sm,
+    color: color.text,
+    fontSize: fontSize.xs,
+    fontWeight: 600,
+    letterSpacing: '0.04em',
   },
+  badgeDot: {
+    width: '6px',
+    height: '6px',
+    borderRadius: radius.pill,
+    backgroundColor: color.primary,
+  },
+  /**
+   * A load failure is the one thing in the viewport that must not be missable, so it is the only
+   * surface in the editor that gets a full semantic fill rather than a tint.
+   */
   error: {
     position: 'absolute',
-    left: '12px',
-    right: '12px',
-    bottom: '12px',
-    backgroundColor: '#3a1418',
+    left: space.md,
+    right: space.md,
+    bottom: space.md,
+    backgroundColor: 'rgba(46, 20, 18, 0.94)',
     borderWidth: '1px',
     borderStyle: 'solid',
-    borderColor: '#7a2630',
-    color: '#ffd7db',
-    paddingBlock: '8px',
+    borderColor: color.danger,
+    color: '#f6ddd9',
+    paddingBlock: space.sm,
     paddingInline: space.md,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     display: 'flex',
     gap: space.md,
     alignItems: 'center',
+    fontSize: fontSize.sm,
+    boxShadow: '0 12px 32px rgba(0, 0, 0, 0.5)',
   },
 });
 
 export type PlayState = 'stopped' | 'running' | 'paused';
+
+/**
+ * The editor view's display settings, as the panel reads them back.
+ *
+ * A plain record rather than component state: the values live in Three objects, and this is the
+ * snapshot shape the panel compares against.
+ */
+export interface ViewportDisplay {
+  projection: 'perspective' | 'orthographic';
+  grid: boolean;
+  shadows: boolean;
+  /** What the stage shows: the 3D view, the plan view, or both. */
+  mode: '3d' | '2d' | 'split';
+}
 
 export interface ViewportHandle {
   play(): Promise<void>;
@@ -99,6 +146,27 @@ export interface ViewportHandle {
   setTool(tool: TransformTool): void;
   setSnap(snap: SnapSettings): void;
   setColliderOutlines(visible: boolean): void;
+  /**
+   * The editor view's display settings.
+   *
+   * They live on the viewport rather than in React state because each one mutates a Three object —
+   * a camera, a grid helper, the renderer's shadow map — and a re-render would not touch any of
+   * them. The panel reads the current value back from here so the two cannot disagree.
+   */
+  display(): ViewportDisplay;
+  setDisplay(next: Partial<ViewportDisplay>): void;
+  /**
+   * Geometry for the measurement overlay.
+   *
+   * The overlay is a DOM layer over the canvas, so it needs the box in world units *and* the box in
+   * canvas coordinates. Both come from the viewport because both need the camera; the projection is
+   * done there and the layout is done here.
+   */
+  worldBounds(entityId: string): { min: [number, number, number]; max: [number, number, number] } | null;
+  toScreen(point: [number, number, number]): ScreenPoint | null;
+  cameraDistance(): number;
+  /** The stage's size in CSS pixels, so an overlay can keep itself inside it. */
+  canvasSize(): CanvasSize;
   /** World position of an entity in the editor projection, for checks and debugging. */
   project(entityId: string): [number, number, number] | null;
   /** Whether a transform drag is in progress in the editor viewport. */
@@ -332,6 +400,27 @@ export function Viewport({ handleRef, tool, snap, onPlayStateChange, onStatus }:
       setTool: (next: TransformTool) => viewportRef.current?.setTool(next),
       setSnap: (next: SnapSettings) => viewportRef.current?.setSnap(next),
       setColliderOutlines: (visible: boolean) => viewportRef.current?.setColliderOutlinesVisible(visible),
+      display: () =>
+        viewportRef.current
+          ? {
+              projection: viewportRef.current.projection(),
+              grid: viewportRef.current.gridVisible(),
+              shadows: viewportRef.current.shadowsVisible(),
+              mode: viewportRef.current.viewMode(),
+            }
+          : { projection: 'perspective', grid: true, shadows: true, mode: '3d' },
+      worldBounds: (entityId: string) => viewportRef.current?.worldBounds(entityId) ?? null,
+      toScreen: (point: [number, number, number]) => viewportRef.current?.toScreen(point) ?? null,
+      cameraDistance: () => viewportRef.current?.cameraDistance() ?? 0,
+      canvasSize: () => viewportRef.current?.canvasSize() ?? { width: 0, height: 0 },
+      setDisplay: (next: Partial<ViewportDisplay>) => {
+        const viewport = viewportRef.current;
+        if (!viewport) return;
+        if (next.projection !== undefined) viewport.setProjection(next.projection);
+        if (next.grid !== undefined) viewport.setGridVisible(next.grid);
+        if (next.shadows !== undefined) viewport.setShadowsVisible(next.shadows);
+        if (next.mode !== undefined) viewport.setViewMode(next.mode);
+      },
       project: (entityId: string) => {
         const position = viewportRef.current?.entityWorldPosition(entityId);
         return position ? [position.x, position.y, position.z] : null;
@@ -402,7 +491,8 @@ export function Viewport({ handleRef, tool, snap, onPlayStateChange, onStatus }:
       <div {...withDomClass(styles.hudHost, DOM.hudHost)} ref={hudRootRef} />
       {playState !== 'stopped' && (
         <div {...withDomClass(styles.badge, DOM.viewportBadge)}>
-          Play mode — authoring is paused
+          <span {...stylex.props(styles.badgeDot)} />
+          {playState === 'paused' ? 'Paused' : 'Play mode'}
         </div>
       )}
       {error && (

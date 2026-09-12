@@ -579,11 +579,11 @@ async function main(): Promise<void> {
       join(root, 'tests', 'fixtures', 'models', 'animated-limb.glb'),
     ]);
     await studio.waitForFunction(() => document.querySelectorAll('.asset-table tbody tr').length >= 2, undefined, { timeout: 30_000 });
-    await studio.click('button:has-text("+ Create")');
-    await studio.click('.menu button:has-text("Box")');
+    await studio.click('button:has-text("Create")');
+    await studio.click('.menu [role="menuitem"]:has-text("Box")');
     await enterName(studio, 'Model Swap');
-    await studio.click('.add-component button:has-text("+ Add component")');
-    await studio.click('.add-menu button:has-text("Model")');
+    await studio.click('.add-component button:has-text("Add component")');
+    await studio.click('.add-menu [role="menuitem"]:has-text("Model")');
     await studio.waitForSelector('.section-title:has-text("Model")', { timeout: 10_000 });
     await selectComponentField(studio, 'Asset', 'spinning-crate');
     const crateLoaded = await waitForModelStatus(studio, 'loaded', 30_000);
@@ -629,7 +629,7 @@ async function main(): Promise<void> {
     });
 
     // 8-9: play, then stop.
-    await studio.click('button:has-text("Save")');
+    await studio.click('button[aria-label="Save"]');
     await studio.waitForFunction(() => document.querySelector('.save-indicator')?.getAttribute('data-save-state') === 'clean', undefined, { timeout: 20_000 });
     await studio.click('button:has-text("Play")');
     await studio.waitForSelector('.viewport-badge', { timeout: 20_000 });
@@ -639,7 +639,7 @@ async function main(): Promise<void> {
       return (viewport?.playStats() ?? null) as { state: string; steps: number; behaviors: number } | null;
     });
     await studio.screenshot({ path: join(evidenceDir, 'acceptance-play.png') });
-    await studio.click('button:has-text("Stop")');
+    await studio.click('button[aria-label="Stop and discard the simulation"]');
     await studio.waitForSelector('.viewport-badge', { state: 'detached', timeout: 15_000 });
     record({
       id: 'acceptance-play-stop',
@@ -675,7 +675,7 @@ async function main(): Promise<void> {
     });
 
     // Acceptance: export without touching code. This is the export the release checks below serve.
-    await studio.click('button:has-text("Export Game")');
+    await studio.click('button[aria-label="Export Game"]');
     await studio.waitForFunction(() => document.querySelector('.statusbar')?.textContent?.includes('Exported to') === true, undefined, { timeout: 120_000 });
     const exported = await studio.evaluate(() => document.querySelector('.statusbar')?.textContent ?? '');
     const exportedProject = join(workspaceRoot, 'gem-rush', '.coilbox', 'export', 'project');
@@ -885,11 +885,29 @@ async function enterName(page: Page, name: string): Promise<void> {
   await page.waitForTimeout(150);
 }
 
-/** Choose an option in a component field, e.g. the Model section's "Asset" picker. */
+/**
+ * Choose an option in a component field, e.g. the Model section's "Asset" picker.
+ *
+ * Handles both the native `<select>` this used to be and the Radix dropdown it is now — see the
+ * helper of the same name in `verify-stage2.ts` for why the gate is written against the choice
+ * rather than the element.
+ */
 async function selectComponentField(page: Page, label: string, value: string): Promise<void> {
-  const select = page.locator(`.field:has(.field-label:text-is("${label}")) select`).first();
-  if ((await select.count()) === 0) throw new Error(`no "${label}" select in the inspector`);
-  await select.selectOption(value);
+  const field = page.locator(`.field:has(.field-label:text-is("${label}"))`).first();
+  if ((await field.count()) === 0) throw new Error(`no "${label}" field in the inspector`);
+
+  const native = field.locator('select').first();
+  if ((await native.count()) > 0) {
+    await native.selectOption(value);
+    await page.waitForTimeout(120);
+    return;
+  }
+
+  await field.locator('[role="combobox"]').first().click();
+  const option = page
+    .locator(`[role="option"][data-value="${value}"], [role="option"][data-label="${value}"]`)
+    .first();
+  await option.click();
   await page.waitForTimeout(120);
 }
 
