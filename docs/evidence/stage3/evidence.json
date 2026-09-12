@@ -1,8 +1,8 @@
 {
   "stage": 3,
-  "generatedAt": "2026-09-12T12:11:35.168Z",
+  "generatedAt": "2026-09-12T13:33:18.186Z",
   "node": "v24.18.0",
-  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage3-vTLclW",
+  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage3-NIBDhU",
   "steps": [
     {
       "name": "typecheck",
@@ -78,19 +78,19 @@
       "id": "collect-room-input",
       "title": "Keyboard input drives the character mover, and it stays on the floor",
       "passed": true,
-      "detail": "player moved 5.79 m from (0.0, -6.0) to (0.0, -0.2); y went 0.00 → -0.00",
+      "detail": "player moved 5.71 m from (0.0, -6.0) to (0.0, -0.3); y went -0.00 → -0.00",
       "observed": {
         "beforeWalk": {
           "x": 0,
-          "y": 1.986822928401466e-9,
+          "y": -1.5894570992713852e-8,
           "z": -6
         },
         "afterWalk": {
           "x": 0,
-          "y": -9.934105094089318e-9,
-          "z": -0.20832309126853943
+          "y": -1.5894569216357013e-8,
+          "z": -0.2916548550128937
         },
-        "walked": 5.791676908731461,
+        "walked": 5.708345144987106,
         "grounded": true
       }
     },
@@ -98,25 +98,25 @@
       "id": "collect-room-wall-contact",
       "title": "A wall stops the character, and a diagonal push slides along it",
       "passed": true,
-      "detail": "walked into the wall at z=7.75: stopped at (0.00, 0.00, 7.40); 1.5 s later z=7.400 (moved 0.0000 m); walking forward and right slid 2.98 m along the wall to x=2.98 at z=7.400",
+      "detail": "walked into the wall at z=7.75: stopped at (0.00, 0.00, 7.40); 1.5 s later z=7.400 (moved 0.0000 m); walking forward and right slid 2.92 m along the wall to x=2.92 at z=7.400",
       "observed": {
         "atWall": {
           "x": 0,
-          "y": 1.986826037025935e-9,
+          "y": 7.947290825427444e-9,
           "z": 7.400000095367432
         },
         "stillAtWall": {
           "x": 0,
-          "y": -3.973637419107945e-9,
+          "y": 1.9868269252043547e-9,
           "z": 7.400000095367432
         },
         "slid": {
-          "x": 2.975850820541382,
-          "y": 1.9868273692935645e-9,
+          "x": 2.9169421195983887,
+          "y": -9.93410154137564e-9,
           "z": 7.400000095367432
         },
         "approachGap": 0,
-        "slideDistance": 2.975850820541382,
+        "slideDistance": 2.9169421195983887,
         "pinned": true
       }
     },
@@ -153,10 +153,10 @@
       "id": "collect-room-restart-position",
       "title": "After a restart the player is standing in the rebuilt level, not falling",
       "passed": true,
-      "detail": "player at (0.0, -0.00, -6.0) after restart",
+      "detail": "player at (0.0, 0.00, -6.0) after restart",
       "observed": {
         "x": 0,
-        "y": -9.934105982267738e-9,
+        "y": 1.986822928401466e-9,
         "z": -6
       }
     },
@@ -217,14 +217,14 @@
       "id": "targets-physics",
       "title": "Clicking launches the ball and knocking targets down updates the score",
       "passed": true,
-      "detail": "5 targets knocked down, score 5, launches 5",
+      "detail": "5 targets knocked down, score 5, launches 8",
       "observed": {
         "knocked": 5,
         "boardState": {
           "score": 5,
           "targetsDown": 5,
-          "launches": 5,
-          "timeRemaining": 54.08,
+          "launches": 8,
+          "timeRemaining": 50.77,
           "won": true,
           "lost": false,
           "scoreTarget": 5,
@@ -258,19 +258,19 @@
       "id": "editor-tuning-affects-play",
       "title": "The edited tuning value changes how the game plays",
       "passed": true,
-      "detail": "with move speed 12 the player covered 11.06 m over 72 simulated steps; at the default 5 m/s the same time allows 6.00 m",
+      "detail": "with move speed 12 the player covered 11.65 m over 72 simulated steps; at the default 5 m/s the same time allows 6.00 m",
       "observed": {
-        "studioWalked": 11.055485725402832,
+        "studioWalked": 11.646742343902588,
         "defaultSpeedDistance": 6,
         "before": {
           "x": 0,
-          "y": 7.947287272713766e-9,
+          "y": 1.986822928401466e-9,
           "z": -6
         },
         "after": {
           "x": 0,
-          "y": -1.5894569216357013e-8,
-          "z": 5.055485725402832
+          "y": 1.9868235945352808e-9,
+          "z": 5.646742343902588
         }
       }
     },

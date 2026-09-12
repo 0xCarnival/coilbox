@@ -106,9 +106,14 @@ function createCamera(projection: ProjectionKind): EditorCamera {
  * The two projections need different work: perspective takes an aspect ratio, orthographic takes a
  * rebuilt frustum. Both end in `updateProjectionMatrix`, and both are needed on every resize.
  */
-function fitCamera(camera: EditorCamera, width: number, height: number): void {
+function fitCamera(
+  camera: EditorCamera,
+  width: number,
+  height: number,
+  frustumHeight = ORTHO_HEIGHT,
+): void {
   if (camera instanceof THREE.OrthographicCamera) {
-    const halfHeight = ORTHO_HEIGHT / 2;
+    const halfHeight = frustumHeight / 2;
     const aspect = width / height;
     camera.left = -halfHeight * aspect;
     camera.right = halfHeight * aspect;
@@ -130,8 +135,26 @@ function fitCamera(camera: EditorCamera, width: number, height: number): void {
  */
 export type EditorCamera = THREE.PerspectiveCamera | THREE.OrthographicCamera;
 
-/** Which projection the editor view is using. */
+/** Which projection a camera provides. */
 export type ProjectionKind = 'perspective' | 'orthographic';
+
+/**
+ * What the stage is showing.
+ *
+ * `2d` is the plan view: a top-down orthographic camera whose orbit is locked to pan and zoom.
+ * `split` draws both cameras into one canvas side by side, which is how a change in the third
+ * dimension is checked against the plan without switching back and forth.
+ */
+export type ViewMode = '3d' | '2d' | 'split';
+
+/**
+ * How far above the target the 2D camera sits, and how far it can see.
+ *
+ * The plan view is orthographic, so distance does not change what is visible — only the frustum
+ * height does. The height is large enough to clear anything a scene is likely to contain.
+ */
+const PLAN_CAMERA_HEIGHT = 120;
+const PLAN_FRUSTUM_HEIGHT = 24;
 
 export class EditorViewport {
   readonly scene = new THREE.Scene();
@@ -143,6 +166,13 @@ export class EditorViewport {
    * a new one and hope. See `setProjection`.
    */
   camera: EditorCamera;
+  /**
+   * The top-down camera, kept alongside the working one rather than swapped in.
+   *
+   * `split` needs both at once, so they are a pair from construction. The active camera is whichever
+   * the current view mode is driving; the other still exists and still renders in split.
+   */
+  readonly planCamera: THREE.OrthographicCamera;
 
   private readonly canvas: HTMLCanvasElement;
   private readonly container: HTMLElement;
@@ -152,6 +182,8 @@ export class EditorViewport {
   private transform: TransformControls;
   /** The projection currently in use, so a resize knows which camera to refit. */
   private project: ProjectionKind = 'perspective';
+  /** What the stage is showing. */
+  private mode: ViewMode = '3d';
   private readonly raycaster = new THREE.Raycaster();
   private readonly pointer = new THREE.Vector2();
   private readonly root = new THREE.Group();
@@ -171,6 +203,9 @@ export class EditorViewport {
   private pointerDownAt: { x: number; y: number } | null = null;
   private disposed = false;
   private resizeObserver: ResizeObserver | null = null;
+  /** The last canvas size, so a render can set its own viewport without measuring the DOM. */
+  private width = 1;
+  private height = 1;
   private assetProvider: ViewportAssetProvider | null = null;
   private readonly clock = new THREE.Clock();
   private readonly pendingLoads = new Set<string>();
@@ -190,6 +225,21 @@ export class EditorViewport {
 
     this.camera = createCamera('perspective');
     this.camera.position.set(7, 5.5, 9);
+
+    const planCamera: THREE.OrthographicCamera = new THREE.OrthographicCamera(
+      -PLAN_FRUSTUM_HEIGHT / 2,
+      PLAN_FRUSTUM_HEIGHT / 2,
+      PLAN_FRUSTUM_HEIGHT / 2,
+      -PLAN_FRUSTUM_HEIGHT / 2,
+      0.05,
+      2000,
+    );
+    this.planCamera = planCamera;
+    // Straight down, looking at the origin, with `up` along -Z so the plan reads as a floor plan:
+    // +X to the right and +Z down the screen, which is the convention every plan view uses.
+    this.planCamera.position.set(0, PLAN_CAMERA_HEIGHT, 0);
+    this.planCamera.up.set(0, 0, -1);
+    this.planCamera.lookAt(0, 0, 0);
 
     this.orbit = new OrbitControls(this.camera, this.canvas);
     this.orbit.enableDamping = true;
@@ -754,7 +804,14 @@ export class EditorViewport {
     const height = this.container.clientHeight || this.canvas.clientHeight;
     if (width <= 0 || height <= 0) return;
     this.renderer.setSize(width, height, false);
+    this.width = width;
+    this.height = height;
     fitCamera(this.camera, width, height);
+    /**
+     * The plan camera is fitted to half the canvas in split mode and the whole canvas otherwise, so
+     * both halves show the same world extent rather than the plan being squeezed into half of it.
+     */
+    fitCamera(this.planCamera, this.mode === 'split' ? width / 2 : width, height, PLAN_FRUSTUM_HEIGHT);
   }
 
   /**
@@ -810,6 +867,80 @@ export class EditorViewport {
     return this.project;
   }
 
+  /** What the stage is showing. */
+  viewMode(): ViewMode {
+    return this.mode;
+  }
+
+  /**
+   * Switch between the 3D view, the plan view, and both at once.
+   *
+   * In `2d` the working camera *becomes* the plan camera: the gizmo, the raycaster, and the orbit
+   * controls all follow `this.camera`, so pointing them at the plan camera is what makes every tool
+   * work in the plan view without a second code path. `split` restores the perspective working camera
+   * and draws the plan camera beside it.
+   */
+  setViewMode(next: ViewMode): void {
+    if (next === this.mode) return;
+    const target = this.orbit.target.clone();
+    const planTarget = new THREE.Vector3(target.x, 0, target.z);
+
+    const helper = this.transform.getHelper();
+    this.transform.detach();
+    this.transform.removeEventListener('dragging-changed', this.handleDraggingChanged);
+    this.transform.removeEventListener('mouseUp', this.handleTransformCommit);
+    this.scene.remove(helper);
+    this.transform.dispose();
+    this.orbit.dispose();
+
+    this.mode = next;
+    this.camera = next === '2d' ? this.planCamera : createCamera(this.project);
+    if (next === '2d') {
+      this.planCamera.position.set(planTarget.x, PLAN_CAMERA_HEIGHT, planTarget.z);
+      this.planCamera.lookAt(planTarget.x, 0, planTarget.z);
+    } else if (next === '3d') {
+      this.camera.position.set(target.x + 7, target.y + 5.5, target.z + 9);
+    } else {
+      // Split keeps the perspective framing and gives the plan its own centre.
+      this.camera.position.set(target.x + 7, target.y + 5.5, target.z + 9);
+      this.planCamera.position.set(planTarget.x, PLAN_CAMERA_HEIGHT, planTarget.z);
+      this.planCamera.lookAt(planTarget.x, 0, planTarget.z);
+    }
+
+    this.orbit = new OrbitControls(this.camera, this.canvas);
+    this.orbit.enableDamping = true;
+    this.orbit.dampingFactor = 0.08;
+    this.orbit.target.copy(next === '2d' ? planTarget : target);
+    this.orbit.screenSpacePanning = true;
+    if (next === '2d') {
+      /**
+       * A plan view that can be orbited is not a plan view.
+       *
+       * The whole value of looking straight down is that "up" means something; letting the camera
+       * tumble turns it into a worse 3D view. Rotation is off and pan and zoom stay, which is the
+       * subset of orbit a plan actually needs.
+       */
+      this.orbit.enableRotate = false;
+    }
+    this.orbit.mouseButtons = {
+      LEFT: THREE.MOUSE.ROTATE,
+      MIDDLE: THREE.MOUSE.DOLLY,
+      RIGHT: THREE.MOUSE.PAN,
+    };
+
+    this.transform = new TransformControls(this.camera, this.canvas);
+    this.transform.setSize(0.9);
+    this.transform.addEventListener('dragging-changed', this.handleDraggingChanged);
+    this.transform.addEventListener('mouseUp', this.handleTransformCommit);
+    const nextHelper = this.transform.getHelper();
+    nextHelper.userData[EDITOR_ONLY] = true;
+    this.scene.add(nextHelper);
+    this.attachTransform();
+
+    this.resize();
+    this.renderNow();
+  }
+
   /** Show or hide the ground grid. */
   setGridVisible(visible: boolean): void {
     this.grid.visible = visible;
@@ -846,9 +977,41 @@ export class EditorViewport {
     return this.renderer.shadowMap.enabled;
   }
 
+  /**
+   * Draw the current view mode.
+   *
+   * `split` uses the renderer's scissor test to draw two cameras into one canvas: the perspective
+   * view on the left half, the plan on the right. A single canvas rather than two is what keeps the
+   * gizmo, the raycasting, and the resize observer on one surface — two canvases would mean two of
+   * each and a second place for them to disagree.
+   *
+   * The plan half renders the *plan* camera even when the working camera is the perspective one, so
+   * the two halves always show what their labels say.
+   */
   renderNow(): void {
     this.orbit.update();
+    if (this.mode !== 'split') {
+      this.renderer.setScissorTest(false);
+      this.renderer.setViewport(0, 0, this.width, this.height);
+      this.renderer.render(this.scene, this.camera);
+      return;
+    }
+
+    const half = Math.floor(this.width / 2);
+    const planHalf = this.width - half;
+
+    this.renderer.setScissorTest(true);
+
+    this.renderer.setViewport(0, 0, half, this.height);
+    this.renderer.setScissor(0, 0, half, this.height);
     this.renderer.render(this.scene, this.camera);
+
+    this.renderer.setViewport(half, 0, planHalf, this.height);
+    this.renderer.setScissor(half, 0, planHalf, this.height);
+    this.renderer.render(this.scene, this.planCamera);
+
+    this.renderer.setScissorTest(false);
+    this.renderer.setViewport(0, 0, this.width, this.height);
   }
 
   private renderLoop = (): void => {

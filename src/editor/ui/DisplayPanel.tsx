@@ -110,6 +110,12 @@ const styles = stylex.create({
   },
 });
 
+const VIEW_MODES = [
+  { value: '3d', label: '3D' },
+  { value: '2d', label: '2D' },
+  { value: 'split', label: 'Split' },
+] satisfies readonly SegmentedOption<ViewportDisplay['mode']>[];
+
 const PROJECTIONS = [
   { value: 'perspective', label: 'Perspective' },
   { value: 'orthographic', label: 'Ortho' },
@@ -134,6 +140,7 @@ export function DisplayPanel({
     projection: 'perspective',
     grid: true,
     shadows: true,
+    mode: '3d',
   });
 
   /**
@@ -178,12 +185,28 @@ export function DisplayPanel({
       {open ? (
         <div {...stylex.props(styles.body)}>
           <div {...stylex.props(styles.field)}>
+            <span {...stylex.props(styles.fieldLabel)}>View</span>
+            <SegmentedControl<ViewportDisplay['mode']>
+              ariaLabel="View mode"
+              value={display.mode}
+              onChange={(mode) => update({ mode })}
+              options={VIEW_MODES}
+            />
+          </div>
+
+          <div {...stylex.props(styles.field)}>
             <span {...stylex.props(styles.fieldLabel)}>Camera</span>
             <SegmentedControl<ViewportDisplay['projection']>
               ariaLabel="Camera projection"
               value={display.projection}
               onChange={(projection) => update({ projection })}
               options={PROJECTIONS}
+              /**
+               * In the plan view the camera is orthographic by definition, so the switch has
+               * nothing to choose. Disabling it says that; hiding it would make the panel's contents
+               * change shape as the view mode does.
+               */
+              disabled={display.mode === '2d'}
             />
           </div>
 

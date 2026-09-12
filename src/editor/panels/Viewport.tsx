@@ -127,6 +127,8 @@ export interface ViewportDisplay {
   projection: 'perspective' | 'orthographic';
   grid: boolean;
   shadows: boolean;
+  /** What the stage shows: the 3D view, the plan view, or both. */
+  mode: '3d' | '2d' | 'split';
 }
 
 export interface ViewportHandle {
@@ -386,14 +388,16 @@ export function Viewport({ handleRef, tool, snap, onPlayStateChange, onStatus }:
               projection: viewportRef.current.projection(),
               grid: viewportRef.current.gridVisible(),
               shadows: viewportRef.current.shadowsVisible(),
+              mode: viewportRef.current.viewMode(),
             }
-          : { projection: 'perspective', grid: true, shadows: true },
+          : { projection: 'perspective', grid: true, shadows: true, mode: '3d' },
       setDisplay: (next: Partial<ViewportDisplay>) => {
         const viewport = viewportRef.current;
         if (!viewport) return;
         if (next.projection !== undefined) viewport.setProjection(next.projection);
         if (next.grid !== undefined) viewport.setGridVisible(next.grid);
         if (next.shadows !== undefined) viewport.setShadowsVisible(next.shadows);
+        if (next.mode !== undefined) viewport.setViewMode(next.mode);
       },
       project: (entityId: string) => {
         const position = viewportRef.current?.entityWorldPosition(entityId);
