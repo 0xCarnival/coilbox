@@ -1,9 +1,9 @@
 {
   "stage": 5,
-  "generatedAt": "2026-09-12T10:12:50.808Z",
+  "generatedAt": "2026-09-12T10:23:49.619Z",
   "node": "v24.18.0",
   "host": "darwin",
-  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage5-fzbGOd",
+  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage5-qRWepm",
   "measurements": {
     "playStopCycles": {
       "first": {
@@ -216,18 +216,18 @@
     },
     "referenceScene": {
       "frames": 120,
-      "medianFrameMs": 39.9471303235601,
-      "p95FrameMs": 46.32424791933623,
-      "medianPhysicsMs": 0.03419836168506567,
+      "medianFrameMs": 37.48225721528986,
+      "p95FrameMs": 40.57069176016576,
+      "medianPhysicsMs": 0.03127448216242249,
       "drawCalls": 401,
       "triangles": 4812,
       "entities": 203,
       "physicsBodies": 26,
-      "fps": 21.41572292555872
+      "fps": 26.894839782872538
     },
     "frameRateIndependence": {
       "stepsTaken": 18,
-      "droppedTime": 0.18306666666666782,
+      "droppedTime": 0.18306666666666793,
       "clampedTime": 0.09999999999999998,
       "busiestFrameSteps": 5,
       "maxSubSteps": 5,
@@ -236,9 +236,9 @@
     "narrowViewport": {
       "width": 390,
       "height": 844,
-      "rendered": 0.6060791104629967,
-      "distinctColors": 2299,
-      "steps": 63
+      "rendered": 0.6060335399197958,
+      "distinctColors": 2292,
+      "steps": 62
     }
   },
   "steps": [
@@ -274,7 +274,7 @@
       "id": "clean-checkout",
       "title": "A clean checkout installs from the frozen lockfile, typechecks, tests, and builds",
       "passed": true,
-      "detail": "built in /var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-clean-8jpLH3 from a fresh clone"
+      "detail": "built in /var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-clean-tY4s9W from a fresh clone"
     },
     {
       "id": "reference-scene",
@@ -299,17 +299,17 @@
       "id": "reference-performance",
       "title": "The reference scene renders on the declared conditions and the numbers are recorded",
       "passed": true,
-      "detail": "203 entities, 26 bodies, 401 draw calls, 4812 triangles; median frame 39.95 ms, p95 46.32 ms, physics 0.03 ms (software rasteriser, not the M1 Pro target)",
+      "detail": "203 entities, 26 bodies, 401 draw calls, 4812 triangles; median frame 37.48 ms, p95 40.57 ms, physics 0.03 ms (software rasteriser, not the M1 Pro target)",
       "observed": {
         "frames": 120,
-        "medianFrameMs": 39.9471303235601,
-        "p95FrameMs": 46.32424791933623,
-        "medianPhysicsMs": 0.03419836168506567,
+        "medianFrameMs": 37.48225721528986,
+        "p95FrameMs": 40.57069176016576,
+        "medianPhysicsMs": 0.03127448216242249,
         "drawCalls": 401,
         "triangles": 4812,
         "entities": 203,
         "physicsBodies": 26,
-        "fps": 21.41572292555872
+        "fps": 26.894839782872538
       }
     },
     {
@@ -319,7 +319,7 @@
       "detail": "a 400 ms stall produced 18 steps, 0.183 s dropped, 0.100 s clamped; the busiest of the 8 following frames ran 5 steps (cap 5)",
       "observed": {
         "stepsTaken": 18,
-        "droppedTime": 0.18306666666666782,
+        "droppedTime": 0.18306666666666793,
         "clampedTime": 0.09999999999999998,
         "busiestFrameSteps": 5,
         "maxSubSteps": 5,
@@ -330,22 +330,22 @@
       "id": "no-catch-up-spiral",
       "title": "Time spent waiting is not replayed as a burst of simulation steps",
       "passed": true,
-      "detail": "71 steps during a 1.2 s wait (about 72 expected at 60 Hz)",
+      "detail": "69 steps during a 1.2 s wait (about 72 expected at 60 Hz)",
       "observed": {
-        "stepsDuringWait": 71
+        "stepsDuringWait": 69
       }
     },
     {
       "id": "narrow-viewport",
       "title": "The game runs at a narrow viewport (a viewport test, not a phone test)",
       "passed": true,
-      "detail": "390x844, 60.6% rendered, 63 steps",
+      "detail": "390x844, 60.6% rendered, 62 steps",
       "observed": {
         "width": 390,
         "height": 844,
-        "rendered": 0.6060791104629967,
-        "distinctColors": 2299,
-        "steps": 63
+        "rendered": 0.6060335399197958,
+        "distinctColors": 2292,
+        "steps": 62
       }
     },
     {
@@ -402,16 +402,16 @@
       "id": "acceptance-play-stop",
       "title": "Acceptance: play and stop without touching code",
       "passed": true,
-      "detail": "play world ran 60 steps with 9 behaviors, then stopped",
+      "detail": "play world ran 61 steps with 9 behaviors, then stopped",
       "observed": {
         "state": "running",
         "frames": 21,
-        "steps": 60,
-        "fps": 9.933610104952551,
-        "frameTimeMs": 100.66833602633899,
-        "physicsTimeMs": 0.12523752225072007,
-        "droppedTime": 0.8165666666666648,
-        "clampedTime": 1.5998980000000047,
+        "steps": 61,
+        "fps": 9.814484318722993,
+        "frameTimeMs": 101.89022342134777,
+        "physicsTimeMs": 0.1082728461462204,
+        "droppedTime": 0.7998333333333336,
+        "clampedTime": 1.5001000000000022,
         "drawCalls": 14,
         "triangles": 4076,
         "geometries": 13,
@@ -474,7 +474,7 @@
       "id": "export-nested-path",
       "title": "The export runs from a nested path on a separate static server with no workspace service",
       "passed": true,
-      "detail": "8 requests from http://127.0.0.1:64042/releases/2026/gem-rush/, 0 failed, 64 steps",
+      "detail": "8 requests from http://127.0.0.1:64865/releases/2026/gem-rush/, 0 failed, 63 steps",
       "observed": {
         "failures": [],
         "requests": 8
@@ -509,7 +509,7 @@
         "gameState": {
           "score": 2,
           "collectiblesRemaining": 3,
-          "timeRemaining": 44.07,
+          "timeRemaining": 44.15,
           "objective": "",
           "won": false,
           "lost": false,
@@ -529,7 +529,7 @@
         "before": {
           "score": 2,
           "collectiblesRemaining": 3,
-          "timeRemaining": 44.07,
+          "timeRemaining": 44.15,
           "objective": "",
           "won": false,
           "lost": false,

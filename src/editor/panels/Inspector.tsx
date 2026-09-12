@@ -17,7 +17,8 @@ import {
 import type { BehaviorPropertyDescriptor } from '@runtime/behaviors/types.js';
 import { componentsFor, type CreatableKind } from '../document/factory.js';
 import { isFiniteJsonNumber, isJsonString, jsonQuaternion, jsonVec3 } from '../json-values.js';
-import { ChevronRight, Plus } from 'lucide-react';
+import { ChevronRight, Plus, Trash2 } from 'lucide-react';
+import { ActionButton, ActionGroup } from '../ui/Controls.js';
 import { useScrub } from '../ui/useScrub.js';
 import { FieldShell, ScrubLabel, Select } from '../ui/Field.js';
 import { Switch } from '../ui/Field.js';
@@ -379,18 +380,6 @@ const styles = stylex.create({
       color: color.muted,
     },
   },
-  componentActions: {
-    display: 'flex',
-    justifyContent: 'flex-end',
-  },
-  /** `.component-actions button` — moved onto the button, and demoted to a hover affordance. */
-  componentActionButton: {
-    fontSize: fontSize.xs,
-    color: color.dim,
-    ':hover': {
-      color: color.danger,
-    },
-  },
   addComponent: {
     paddingBlock: space.sm,
     paddingInline: space.xs,
@@ -689,11 +678,16 @@ function BehaviorSection({ entity, component, locked }: { entity: Entity; compon
             ))}
         </div>
       )}
-      <div {...stylex.props(styles.componentActions)}>
-        <button {...stylex.props(styles.componentActionButton)} type="button" disabled={locked} onClick={() => session.execute({ kind: 'removeComponent', entityId: entity.id, componentType: 'behavior' })}>
-          Remove
-        </button>
-      </div>
+      <ActionGroup>
+        <ActionButton
+          label="Remove"
+          icon={<Trash2 size={control.iconSm} />}
+          disabled={locked}
+          onClick={() =>
+            session.execute({ kind: 'removeComponent', entityId: entity.id, componentType: 'behavior' })
+          }
+        />
+      </ActionGroup>
     </Section>
   );
 }
@@ -769,16 +763,22 @@ function ComponentSection({
             ))}
         </div>
       )}
-      <div {...stylex.props(styles.componentActions)}>
-        <button
-          {...stylex.props(styles.componentActionButton)}
-          type="button"
+      {/**
+       * The section's destructive action sits in a filled cluster rather than as a bare ghost link.
+       * Their `ActionButton` shape is what makes it read as the row's one button instead of a label
+       * that happens to be clickable.
+       */}
+      <ActionGroup>
+        <ActionButton
+          label="Remove"
+          icon={<Trash2 size={control.iconSm} />}
+          danger
           disabled={locked}
-          onClick={() => session.execute({ kind: 'removeComponent', entityId: entity.id, componentType: component.type })}
-        >
-          Remove
-        </button>
-      </div>
+          onClick={() =>
+            session.execute({ kind: 'removeComponent', entityId: entity.id, componentType: component.type })
+          }
+        />
+      </ActionGroup>
     </Section>
   );
 }
