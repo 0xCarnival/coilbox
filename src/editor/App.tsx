@@ -18,6 +18,7 @@ import { IconRail } from './ui/IconRail.js';
 import { ResizeHandle } from './ui/ResizeHandle.js';
 import { HintCard } from './ui/HintCard.js';
 import { DisplayPanel } from './ui/DisplayPanel.js';
+import { CommandPalette } from './ui/CommandPalette.js';
 import { Toasts } from './ui/Toasts.js';
 import { ToolDock } from './ui/ToolDock.js';
 
@@ -209,6 +210,7 @@ function StudioShell(): JSX.Element {
   const [railPanel, setRailPanel] = useState('objects');
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [bottomTab, setBottomTab] = useState<BottomTab>('console');
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
@@ -230,8 +232,19 @@ function StudioShell(): JSX.Element {
   // and Play mode never trigger them.
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (editorLocked || isTextEntryTarget(event.target)) return;
       const meta = event.metaKey || event.ctrlKey;
+      /**
+       * The palette opens from anywhere, including from inside a text field.
+       *
+       * That is why it is checked before the text-entry guard below: a palette that refuses to open
+       * while the search box has focus is a palette you cannot reach at the moment you most want it.
+       */
+      if (meta && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        setPaletteOpen((open) => !open);
+        return;
+      }
+      if (editorLocked || isTextEntryTarget(event.target)) return;
       if (meta && event.key.toLowerCase() === 'z') {
         event.preventDefault();
         if (event.shiftKey) session.redo();
@@ -421,6 +434,20 @@ function StudioShell(): JSX.Element {
            * repeating the line the user is already looking at is noise, not a notification.
            */}
           <Toasts enabled={bottomTab !== 'console'} />
+          <CommandPalette
+            open={paletteOpen}
+            onOpenChange={setPaletteOpen}
+            onToolChange={setTool}
+            onFocusSelection={() => viewportRef.current?.focusSelection()}
+            playback={{
+              play: () => void viewportRef.current?.play(),
+              pause: () => viewportRef.current?.pause(),
+              step: () => viewportRef.current?.step(),
+              stop: () => viewportRef.current?.stop(),
+              state: playState,
+            }}
+            onExport={() => void exportGame()}
+          />
           <footer {...withDomClass(styles.statusbar, DOM.statusbar)}>
             <span>{status || 'Ready'}</span>
             <span {...withDomClass(styles.statusbarSpacer, DOM.toolbarSpacer)} />
