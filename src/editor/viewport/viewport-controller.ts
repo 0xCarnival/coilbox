@@ -135,6 +135,18 @@ function fitCamera(
  */
 export type EditorCamera = THREE.PerspectiveCamera | THREE.OrthographicCamera;
 
+/** A point in CSS pixels. */
+export interface ScreenPoint {
+  x: number;
+  y: number;
+}
+
+/** A size in CSS pixels. Shared by the controller, the viewport handle, and overlays. */
+export interface CanvasSize {
+  width: number;
+  height: number;
+}
+
 /** Which projection a camera provides. */
 export type ProjectionKind = 'perspective' | 'orthographic';
 
@@ -860,6 +872,49 @@ export class EditorViewport {
 
     this.resize();
     this.renderNow();
+  }
+
+  /**
+   * The world-space bounding box of an entity, or null when it has none.
+   *
+   * The measurement overlay needs the box in world units and the camera needs it in screen space, so
+   * this returns the box and lets the caller decide — projecting inside the controller would put
+   * layout arithmetic in a class that has no business knowing the canvas is measured in CSS pixels.
+   */
+  worldBounds(entityId: string): { min: [number, number, number]; max: [number, number, number] } | null {
+    const object = this.projections.get(entityId)?.object;
+    if (!object) return null;
+    const box = new THREE.Box3().setFromObject(object);
+    if (box.isEmpty()) return null;
+    return {
+      min: [box.min.x, box.min.y, box.min.z],
+      max: [box.max.x, box.max.y, box.max.z],
+    };
+  }
+
+  /**
+   * A world point as canvas coordinates, or null when it is behind the camera.
+   *
+   * The `z` check matters: `project` happily maps a point behind the viewer to a plausible-looking
+   * screen position, which would draw a label for something not on screen.
+   */
+  toScreen(point: [number, number, number]): ScreenPoint | null {
+    const vector = new THREE.Vector3(point[0], point[1], point[2]).project(this.camera);
+    if (vector.z > 1) return null;
+    return {
+      x: ((vector.x + 1) / 2) * this.width,
+      y: ((1 - vector.y) / 2) * this.height,
+    };
+  }
+
+  /** The stage's size in CSS pixels, for an overlay that has to stay inside it. */
+  canvasSize(): CanvasSize {
+    return { width: this.width, height: this.height };
+  }
+
+  /** The camera's distance from its orbit target, for the scene-scale readout. */
+  cameraDistance(): number {
+    return this.camera.position.distanceTo(this.orbit.target);
   }
 
   /** The projection in use, for the display panel's switch. */

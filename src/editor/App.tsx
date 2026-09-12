@@ -18,6 +18,7 @@ import { IconRail } from './ui/IconRail.js';
 import { ResizeHandle } from './ui/ResizeHandle.js';
 import { HintCard } from './ui/HintCard.js';
 import { DisplayPanel } from './ui/DisplayPanel.js';
+import { MeasurementOverlay } from './ui/MeasurementOverlay.js';
 import { CommandPalette } from './ui/CommandPalette.js';
 import { UnitProvider } from './units-context.js';
 import type { UnitSystem } from './units.js';
@@ -236,6 +237,8 @@ function StudioShell(): JSX.Element {
    * never reaches a scene. The document is metres, always — see `units.ts`.
    */
   const [units, setUnits] = useState<UnitSystem>(() => loadUnits());
+  /** Whether the dimension overlay is drawn. An editor preference, like the unit system. */
+  const [measurements, setMeasurements] = useState(true);
   const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
@@ -439,7 +442,10 @@ function StudioShell(): JSX.Element {
                   setUnits(next);
                   globalThis.localStorage?.setItem(UNITS_KEY, next);
                 }}
+                measurements={measurements}
+                onMeasurementsChange={setMeasurements}
               />
+              <MeasurementOverlay viewport={viewportRef} visible={!editorLocked && measurements} />
               <ToolDock
                 tool={tool}
                 onToolChange={setTool}

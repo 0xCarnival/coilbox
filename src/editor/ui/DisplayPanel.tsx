@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { JSX } from 'react';
 import * as stylex from '@stylexjs/stylex';
-import { ChevronDown, Grid3x3, Magnet, Monitor, Ruler, Sun } from 'lucide-react';
+import { ChevronDown, Grid3x3, Magnet, Monitor, Ruler, Sun, SquareDashed } from 'lucide-react';
 import { color, control, fontSize, radius, space } from '../styles/tokens.stylex.js';
 import type { SnapSettings } from '../viewport/viewport-controller.js';
 import type { ViewportDisplay, ViewportHandle } from '../panels/Viewport.js';
@@ -140,6 +140,9 @@ export interface DisplayPanelProps {
   /** The unit system lengths are shown in. The document stays in metres either way. */
   units: UnitSystem;
   onUnitsChange(units: UnitSystem): void;
+  /** Whether the dimension overlay is drawn over the selection. */
+  measurements: boolean;
+  onMeasurementsChange(visible: boolean): void;
   /** Shown collapsed to its header when false, so the stage is not permanently covered. */
   defaultOpen?: boolean;
 }
@@ -150,6 +153,8 @@ export function DisplayPanel({
   onSnapChange,
   units,
   onUnitsChange,
+  measurements,
+  onMeasurementsChange,
   defaultOpen = true,
 }: DisplayPanelProps): JSX.Element {
   const [open, setOpen] = useState(defaultOpen);
@@ -264,6 +269,18 @@ export function DisplayPanel({
                 options={UNIT_OPTIONS}
               />
             </span>
+          </div>
+
+          <div {...stylex.props(styles.row)}>
+            <span {...stylex.props(styles.rowGlyph)}>
+              <SquareDashed size={control.iconSm} />
+            </span>
+            <span {...stylex.props(styles.rowLabel)}>Measurements</span>
+            <Switch
+              label="Show the selection's dimensions"
+              checked={measurements}
+              onCheckedChange={onMeasurementsChange}
+            />
           </div>
 
           <div {...stylex.props(styles.row)}>

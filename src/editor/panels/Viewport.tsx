@@ -8,7 +8,13 @@ import { AssetCache } from '@runtime/assets/loader.js';
 import wasmUrl from 'virtual:box3d-wasm-url';
 import { color, fontSize, radius, space } from '../styles/tokens.stylex.js';
 import { DOM, DOM_ID, withDomClass } from '../dom-contract.js';
-import { EditorViewport, type SnapSettings, type TransformTool } from '../viewport/viewport-controller.js';
+import {
+  EditorViewport,
+  type CanvasSize,
+  type ScreenPoint,
+  type SnapSettings,
+  type TransformTool,
+} from '../viewport/viewport-controller.js';
 import { useSession } from '../hooks.js';
 
 /**
@@ -149,6 +155,18 @@ export interface ViewportHandle {
    */
   display(): ViewportDisplay;
   setDisplay(next: Partial<ViewportDisplay>): void;
+  /**
+   * Geometry for the measurement overlay.
+   *
+   * The overlay is a DOM layer over the canvas, so it needs the box in world units *and* the box in
+   * canvas coordinates. Both come from the viewport because both need the camera; the projection is
+   * done there and the layout is done here.
+   */
+  worldBounds(entityId: string): { min: [number, number, number]; max: [number, number, number] } | null;
+  toScreen(point: [number, number, number]): ScreenPoint | null;
+  cameraDistance(): number;
+  /** The stage's size in CSS pixels, so an overlay can keep itself inside it. */
+  canvasSize(): CanvasSize;
   /** World position of an entity in the editor projection, for checks and debugging. */
   project(entityId: string): [number, number, number] | null;
   /** Whether a transform drag is in progress in the editor viewport. */
@@ -391,6 +409,10 @@ export function Viewport({ handleRef, tool, snap, onPlayStateChange, onStatus }:
               mode: viewportRef.current.viewMode(),
             }
           : { projection: 'perspective', grid: true, shadows: true, mode: '3d' },
+      worldBounds: (entityId: string) => viewportRef.current?.worldBounds(entityId) ?? null,
+      toScreen: (point: [number, number, number]) => viewportRef.current?.toScreen(point) ?? null,
+      cameraDistance: () => viewportRef.current?.cameraDistance() ?? 0,
+      canvasSize: () => viewportRef.current?.canvasSize() ?? { width: 0, height: 0 },
       setDisplay: (next: Partial<ViewportDisplay>) => {
         const viewport = viewportRef.current;
         if (!viewport) return;
