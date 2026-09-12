@@ -93,11 +93,20 @@ const styles = stylex.create({
    * The previous treatment gave every section a filled header band *and* a bottom border, so the
    * inspector read as a stack of stripes rather than a column of properties.
    */
+  /**
+   * A section is separated from the next by a hairline under its header, which is the only rule left
+   * in the panel. The previous treatment gave every section both a filled header band and a bottom
+   * border, so the inspector read as a stack of stripes rather than a column of properties.
+   */
   section: {
-    borderBlockStartWidth: '1px',
-    borderBlockStartStyle: 'solid',
-    borderBlockStartColor: color.border,
-    paddingBlock: space.sm,
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  /** The hairline under a header, separating this section from the next. */
+  sectionHeaderRule: {
+    borderBlockEndWidth: '1px',
+    borderBlockEndStyle: 'solid',
+    borderBlockEndColor: color.border,
   },
   /**
    * The section header is an uppercase micro-label with a rotating chevron.
@@ -107,28 +116,47 @@ const styles = stylex.create({
    * now comes from the label itself: at 10px, tracked and uppercase, it reads as a heading at a
    * glance while staying quieter than the values underneath it.
    */
+  /**
+   * A section header, on the reference's `PanelSection` geometry: a 40px band, the title on the
+   * leading edge, the summary and the chevron on the trailing one, and a hairline under the pair.
+   *
+   * Two details are load bearing. An expanded section keeps a faint fill, so its title reads as
+   * belonging to the body it opened rather than floating above it; and the chevron *turns* rather
+   * than swapping glyphs, which is what makes the relationship between the two states legible.
+   */
   sectionHeader: {
     width: '100%',
     display: 'flex',
     alignItems: 'center',
-    gap: space.xs,
+    gap: space.md,
+    height: '36px',
     backgroundColor: 'transparent',
     borderWidth: 0,
     borderStyle: 'none',
     borderRadius: 0,
-    paddingBlock: space.xs,
-    paddingInline: space.xs,
+    paddingBlock: 0,
+    paddingInline: space.lg,
     textAlign: 'left',
-    color: color.dim,
+    color: color.muted,
+    cursor: 'pointer',
+    transitionProperty: 'background-color, color',
+    transitionDuration: '150ms',
     ':hover': {
-      color: color.muted,
+      backgroundColor: color.wash,
+      color: color.text,
     },
   },
+  /** An open section's header sits on a faint fill: the title belongs to what it opened. */
+  sectionHeaderOpen: {
+    backgroundColor: color.wash,
+    color: color.text,
+  },
   sectionTitle: {
-    fontSize: fontSize.micro,
-    fontWeight: 600,
-    letterSpacing: '0.09em',
-    textTransform: 'uppercase',
+    fontSize: fontSize.sm,
+    fontWeight: 500,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   },
   /**
    * The subtitle is the technical name — `box 1 x 2.4 x 1 m`, a behavior id, `dynamic`. It sits on
@@ -1236,7 +1264,12 @@ function Section({
   const [open, setOpen] = useState(Boolean(defaultOpen));
   return (
     <section {...withDomClass(styles.section, DOM.section)}>
-      <button {...stylex.props(styles.sectionHeader)} type="button" onClick={() => setOpen((value) => !value)} aria-expanded={open}>
+      <button
+        {...stylex.props(styles.sectionHeader, styles.sectionHeaderRule, open && styles.sectionHeaderOpen)}
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        aria-expanded={open}
+      >
         <span {...withDomClass(styles.sectionTitle, DOM.sectionTitle)}>{title}</span>
         {subtitle && <span {...stylex.props(styles.sectionSubtitle)}>{subtitle}</span>}
         {/**
