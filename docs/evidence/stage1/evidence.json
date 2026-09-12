@@ -1,8 +1,8 @@
 {
   "stage": 1,
-  "generatedAt": "2026-09-12T16:57:16.953Z",
+  "generatedAt": "2026-09-12T19:41:52.520Z",
   "node": "v24.18.0",
-  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage1-zrW1t8",
+  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage1-WnCq9v",
   "steps": [
     {
       "name": "typecheck",
@@ -95,13 +95,13 @@
         },
         "stats": {
           "state": "running",
-          "frames": 30,
+          "frames": 33,
           "steps": 60,
-          "fps": 23.097671711928246,
-          "frameTimeMs": 43.294407006554415,
-          "physicsTimeMs": 0.035083591953739515,
-          "droppedTime": 0.34989999999999993,
-          "clampedTime": 0.13340000000000007,
+          "fps": 27.00229463798477,
+          "frameTimeMs": 37.03388965296587,
+          "physicsTimeMs": 0.03093884202375198,
+          "droppedTime": 0.3833000000000002,
+          "clampedTime": 0.0500999999999997,
           "drawCalls": 4,
           "triangles": 1112,
           "geometries": 2,
@@ -135,12 +135,12 @@
       "id": "pause-and-step",
       "title": "Pause stops the clock and Step advances exactly one tick",
       "passed": true,
-      "detail": "paused at 78 steps, still 78 after 400 ms, 79 after one Step (and 79 400 ms later)",
+      "detail": "paused at 79 steps, still 79 after 400 ms, 80 after one Step (and 80 400 ms later)",
       "observed": {
-        "pausedSteps": 78,
-        "stillPausedSteps": 78,
-        "steppedSteps": 79,
-        "afterStepSteps": 79
+        "pausedSteps": 79,
+        "stillPausedSteps": 79,
+        "steppedSteps": 80,
+        "afterStepSteps": 80
       }
     },
     {
@@ -157,16 +157,16 @@
       "id": "export-produces-build",
       "title": "Export produces a standalone player plus the project documents",
       "passed": true,
-      "detail": "index.html and project documents present in /var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage1-zrW1t8/stage1-room/.coilbox/export",
+      "detail": "index.html and project documents present in /var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage1-WnCq9v/stage1-room/.coilbox/export",
       "observed": {
-        "exportDir": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage1-zrW1t8/stage1-room/.coilbox/export"
+        "exportDir": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage1-WnCq9v/stage1-room/.coilbox/export"
       }
     },
     {
       "id": "export-runs-standalone",
       "title": "The export runs with the editor and workspace service switched off",
       "passed": true,
-      "detail": "running at http://127.0.0.1:57788/games/stage1/ — 37.9% rendered, 799 colours, 0 failed requests",
+      "detail": "running at http://127.0.0.1:62914/games/stage1/ — 37.9% rendered, 799 colours, 0 failed requests",
       "observed": {
         "requests": 7,
         "failures": 0
