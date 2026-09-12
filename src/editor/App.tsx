@@ -16,7 +16,7 @@ import type { SnapSettings, TransformTool } from './viewport/viewport-controller
 import { isFiniteJsonNumber, isJsonString, jsonField } from './json-values.js';
 import { IconRail } from './ui/IconRail.js';
 import { ResizeHandle } from './ui/ResizeHandle.js';
-import { SelectionToolbar } from './ui/SelectionToolbar.js';
+import { HintCard } from './ui/HintCard.js';
 import { Toasts } from './ui/Toasts.js';
 import { ToolDock } from './ui/ToolDock.js';
 
@@ -384,7 +384,12 @@ function StudioShell(): JSX.Element {
                * inspector footer. The viewport owns the focus action, so the bar is mounted beside
                * it rather than inside the inspector.
                */}
-              <SelectionToolbar visible={!editorLocked} hint="Actions in the dock below" />
+              {/**
+               * One card, not two. The badge above the stage named the selection and the hint card
+               * explains it; two floating overlays over one canvas is one too many, and the card
+               * carries both facts.
+               */}
+              <HintCard tool={tool} visible={!editorLocked} />
               <ToolDock
                 tool={tool}
                 onToolChange={setTool}

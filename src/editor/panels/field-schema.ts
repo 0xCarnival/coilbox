@@ -31,6 +31,15 @@ export interface FieldDescriptor {
   max?: number;
   step?: number;
   options?: Array<{ value: string; label: string }>;
+  /**
+   * The unit of a numeric field, shown inside its box.
+   *
+   * Carried apart from `label` because the two answer different questions: the label names the
+   * property, the unit says what the number *is*. Baking it into the label — `Shadow extent (m)` —
+   * makes the name unreadable at a glance and puts the one part a reader scans for at the end of a
+   * string they have to parse.
+   */
+  unit?: string;
   /** Advanced fields are collapsed by default. */
   advanced?: boolean;
 }
@@ -148,9 +157,9 @@ export const COMPONENT_DESCRIPTORS: Record<ComponentType, ComponentDescriptor> =
       { key: 'groundColor', label: 'Ground colour', kind: 'color' },
       shadowField,
       { key: 'shadowMapSize', label: 'Shadow resolution', kind: 'enum', options: [512, 1024, 2048, 4096].map((size) => ({ value: String(size), label: `${size} x ${size}` })), advanced: true },
-      { key: 'shadowExtent', label: 'Shadow extent (m)', kind: 'number', min: 1, step: 1, advanced: true },
+      { key: 'shadowExtent', label: 'Shadow extent', kind: 'number', min: 1, step: 1, unit: 'm', advanced: true },
       { key: 'shadowBias', label: 'Shadow bias', kind: 'number', step: 0.0001, advanced: true },
-      { key: 'range', label: 'Range (m)', kind: 'number', min: 0.1, step: 1, advanced: true },
+      { key: 'range', label: 'Range', kind: 'number', min: 0.1, step: 1, unit: 'm', advanced: true },
       { key: 'decay', label: 'Decay', kind: 'number', min: 0, step: 0.5, advanced: true },
       { key: 'coneAngleDegrees', label: 'Cone angle', kind: 'number', min: 1, max: 89, step: 1, advanced: true },
     ],

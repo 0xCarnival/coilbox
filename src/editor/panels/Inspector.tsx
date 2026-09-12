@@ -18,7 +18,7 @@ import type { BehaviorPropertyDescriptor } from '@runtime/behaviors/types.js';
 import { componentsFor, type CreatableKind } from '../document/factory.js';
 import { isFiniteJsonNumber, isJsonString, jsonQuaternion, jsonVec3 } from '../json-values.js';
 import { ChevronRight, Plus, Trash2 } from 'lucide-react';
-import { ActionButton, ActionGroup } from '../ui/Controls.js';
+import { ActionButton, ActionGroup, MetricField } from '../ui/Controls.js';
 import { useScrub } from '../ui/useScrub.js';
 import { FieldShell, ScrubLabel, Select } from '../ui/Field.js';
 import { Switch } from '../ui/Field.js';
@@ -929,6 +929,32 @@ function Field({
         </label>
       );
     case 'number':
+      /**
+       * A field whose value carries a unit gets the reference's metric treatment: the unit sits
+       * inside the box, after the number.
+       *
+       * The unit is not decoration. A number in a 3D editor is meaningless without it — `18` is a
+       * position or an extent or a rotation, and the suffix is the only thing that says which.
+       */
+      if (field.unit !== undefined) {
+        return (
+          <FieldShell
+            hookProps={withDomClass(styles.field, DOM.field)}
+            label={<span {...withDomClass(styles.fieldLabel, DOM.fieldLabel)}>{field.label}</span>}
+          >
+            <MetricField
+              label={field.label}
+              unit={field.unit}
+              value={isFiniteJsonNumber(value) ? value : null}
+              step={field.step}
+              min={field.min}
+              max={field.max}
+              disabled={disabled}
+              onChange={(next) => onChange(componentValue(field, clamp(next, field)))}
+            />
+          </FieldShell>
+        );
+      }
       /**
        * A scrub handle *and* a real number input.
        *
