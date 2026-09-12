@@ -10,7 +10,7 @@ gaps that are knowingly left open.
 | 1. End-to-end authoring loop | complete | `pnpm verify:stage1` — 12/12 checks |
 | 2. Comfortable scene editing | complete | `pnpm verify:stage2` — 15/15 checks |
 | 3. Actual games | complete | `pnpm verify:stage3` — 14/14 checks |
-| 4. Agent and management workflow | complete | `pnpm verify:stage4` — 18/18 checks |
+| 4. Agent and management workflow | complete | `pnpm verify:stage4` — 17/17 checks |
 | 5. Reliability and release | complete | `pnpm verify:stage5` — 23/23 checks |
 
 ## Stage 0 — compatibility probe — **complete**
@@ -99,7 +99,7 @@ inspector, save/load, undo, Play/Stop, crude export.
 **Evidence required:** move a box, save/reopen it, simulate a fresh copy, stop without
 changing authoring state, and run the export independently.
 
-**Status:** all five demonstrated, 11/11 automated checks passing.
+**Status:** all five demonstrated, 12/12 automated checks passing.
 
 ### How to run
 
@@ -178,7 +178,7 @@ playback, pause/step, errors.
 **Evidence required:** "Build and revise a small scene without editing code; missing asset and
 unsupported import errors are understandable."
 
-**Status:** demonstrated, 13/13 automated checks passing.
+**Status:** demonstrated, 15/15 automated checks passing.
 
 ### How to run
 
@@ -394,8 +394,9 @@ pnpm verify                        # every gate in order
 ### Demonstrated result
 
 `tools/verify-stage5.ts` passes 23/23 checks (22 with `--skip-clean-clone`, which drops the
-clean-checkout check). `pnpm verify` runs every gate in order and reports 6/6 passing:
-`14/14`, `12/12`, `15/15`, `14/14`, `18/18`, `23/23`. The measured and observed results:
+clean-checkout check). The per-stage counts for every gate are in the table at the top of this file.
+`pnpm verify` runs them all in order — lint, then stages 0-5 — and reports 7/7 passing. The measured
+and observed results:
 
 | Requirement | Observed |
 |---|---|

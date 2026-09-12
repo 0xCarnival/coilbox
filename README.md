@@ -28,7 +28,7 @@ rules.
 - `pnpm verify:stage1` — 12/12 checks (authoring loop end to end, pause and step)
 - `pnpm verify:stage2` — 15/15 checks (assets, clips, property controls, keyboard focus, drag cancellation)
 - `pnpm verify:stage3` — 14/14 checks (both demo games played end to end, wall contact, tuning editable)
-- `pnpm verify:stage4` — 18/18 checks (agent-built game, human edit, independence, management)
+- `pnpm verify:stage4` — 17/17 checks (agent-built game, human edit, independence, management)
 - `pnpm verify:stage5` — 23/23 checks (compatibility, resource ownership, reference-scene
   performance, the release acceptance session, and an export served with the service shut down)
 - `pnpm lint` — the architectural rules: one vendor boundary, one renderer, runtime never imports
