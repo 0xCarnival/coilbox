@@ -66,11 +66,16 @@ const HANDLES = [
 const RADIUS = 33;
 const HANDLE = 22;
 
-/** Radians of rotation per pixel dragged. A drag across the ball is a little over a right angle. */
-const DRAG_SENSITIVITY = 0.011;
-
-/** Below this many pixels of movement, a pointer gesture is a click rather than an orbit. */
-const CLICK_SLOP = 4;
+/**
+ * Below this many pixels of movement, a pointer gesture is a click rather than an orbit.
+ *
+ * This was 4, which is inside the wobble of an ordinary press-and-drag: a user intending to orbit
+ * would move three or four pixels before the drag registered, the release was then read as a click on
+ * whichever handle was under the pointer, and the view snapped to an orthographic face. That is the
+ * "touching the gizmo makes it orthographic" report, and the answer is a threshold that a real drag
+ * cannot fall under rather than a cleverer guess.
+ */
+const CLICK_SLOP = 8;
 
 const styles = stylex.create({
   /** The column on the stage's trailing edge: the ball, then the overlays button beneath it. */
@@ -247,7 +252,12 @@ export function ViewGizmo({
       current.x = moveEvent.clientX;
       current.y = moveEvent.clientY;
       current.moved += Math.abs(deltaX) + Math.abs(deltaY);
-      viewport.current?.orbitBy(deltaX * DRAG_SENSITIVITY, deltaY * DRAG_SENSITIVITY);
+      /**
+       * Raw pixels, not radians: `orbitBy` owns the pixels-to-radians conversion, and this used to
+       * scale the delta here as well — so a 100px drag turned the view 0.011 radians, about 0.6°,
+       * and the gizmo felt immovable. One conversion, in one place.
+       */
+      viewport.current?.orbitBy(deltaX, deltaY);
     };
     const end = () => {
       window.removeEventListener('pointermove', move);

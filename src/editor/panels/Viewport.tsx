@@ -11,6 +11,7 @@ import { DOM, DOM_ID, withDomClass } from '../dom-contract.js';
 import {
   EditorViewport,
   type CameraBasis,
+  type CameraPlanes,
   type CanvasSize,
   type ScreenPoint,
   type SnapSettings,
@@ -166,6 +167,25 @@ export interface ViewportHandle {
   cameraBasis(): CameraBasis;
   faceView(face: ViewFace): void;
   orbitBy(deltaX: number, deltaY: number): void;
+  /** A camera turn in radians, which is what the numpad steps use. */
+  orbitAround(azimuth: number, polar: number): void;
+  /** Swap perspective and orthographic, returning whichever is now in force. */
+  toggleProjection(): 'perspective' | 'orthographic';
+  /** Half a turn about the vertical axis. */
+  oppositeView(): void;
+  /**
+   * Look through the scene's active game camera; false when there is nothing to look through.
+   *
+   * The authored field of view and clipping planes travel together: the preview is only honest if it
+   * clips what the game camera clips.
+   */
+  enterCameraView(entityId: string, planes: CameraPlanes): boolean;
+  exitCameraView(): void;
+  inCameraView(): boolean;
+  /** The editor camera's fov and clipping planes, for checking a camera-view preview against the document. */
+  cameraPlanes(): CameraPlanes;
+  /** Frame the whole scene. */
+  frameAll(): void;
   /**
    * Geometry for the measurement overlay.
    *
@@ -438,6 +458,15 @@ export function Viewport({ handleRef, tool, snap, onPlayStateChange, onStatus }:
         },
       faceView: (face: ViewFace) => viewportRef.current?.faceView(face),
       orbitBy: (deltaX: number, deltaY: number) => viewportRef.current?.orbitBy(deltaX, deltaY),
+      orbitAround: (azimuth: number, polar: number) => viewportRef.current?.orbitAround(azimuth, polar),
+      toggleProjection: () => viewportRef.current?.toggleProjection() ?? 'perspective',
+      oppositeView: () => viewportRef.current?.oppositeView(),
+      enterCameraView: (entityId: string, planes: CameraPlanes) =>
+        viewportRef.current?.enterCameraView(entityId, planes) ?? false,
+      exitCameraView: () => viewportRef.current?.exitCameraView(),
+      inCameraView: () => viewportRef.current?.inCameraView() ?? false,
+      cameraPlanes: () => viewportRef.current?.cameraPlanes() ?? { fov: 0, near: 0, far: 0 },
+      frameAll: () => viewportRef.current?.frameAll(),
       project: (entityId: string) => {
         const position = viewportRef.current?.entityWorldPosition(entityId);
         return position ? [position.x, position.y, position.z] : null;
