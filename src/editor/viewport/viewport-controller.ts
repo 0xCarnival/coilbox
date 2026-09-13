@@ -157,6 +157,28 @@ const CAMERA_VIEW_TARGET = 10;
 /** Within this many radians of a pole, "the opposite view" means the other pole, not a half turn. */
 const OPPOSITE_POLE_THRESHOLD = 0.05;
 
+/**
+ * The world bounds of an object's *content*, ignoring everything that exists only for editing.
+ *
+ * `Box3.setFromObject` walks the whole subtree, and under an entity's group live things the game never
+ * sees: a camera's `CameraHelper` draws its frustum out to the far plane, a collider draws its shape,
+ * a light draws its cone. Framing a scene on those is catastrophic rather than untidy — with a camera
+ * in the scene, Home put the editor camera 1268 metres away and the level became a speck, because the
+ * bundled game cameras have far planes in the hundreds.
+ *
+ * So the walk is manual and skips any subtree marked `EDITOR_ONLY`, which is the marker the editor
+ * already puts on every helper it adds.
+ */
+function expandContentBounds(object: THREE.Object3D, box: THREE.Box3): void {
+  if (object.userData[EDITOR_ONLY] === true) return;
+  if (object instanceof THREE.Mesh || object instanceof THREE.Line || object instanceof THREE.Points) {
+    object.geometry.computeBoundingBox();
+    const local = object.geometry.boundingBox;
+    if (local) box.union(local.clone().applyMatrix4(object.matrixWorld));
+  }
+  for (const child of object.children) expandContentBounds(child, box);
+}
+
 /** Build a camera in the requested projection, at the editor's default framing. */
 function createCamera(projection: ProjectionKind): EditorCamera {
   if (projection === 'orthographic') {
@@ -236,6 +258,20 @@ export type ViewFace = { axis: 'x' | 'y' | 'z'; sign: 1 | -1 };
  * wrong — `forward` points the way the camera looks, so a direction aimed *at* the viewer has a
  * negative dot product with it — is worth spelling out once.
  */
+/**
+ * A camera's field of view and its clipping planes.
+ *
+ * Named rather than repeated inline because it crosses three layers: the authored camera component's
+ * values, `enterCameraView`, and the `cameraPlanes` read-back. The parameter here used to be a bare
+ * `fov: number`, and that is exactly how the clipping planes came to be dropped — a shape with a name
+ * is harder to half-pass.
+ */
+export interface CameraPlanes {
+  fov: number;
+  near: number;
+  far: number;
+}
+
 export interface CameraBasis {
   right: [number, number, number];
   up: [number, number, number];
@@ -273,6 +309,10 @@ export class EditorViewport {
     target: THREE.Vector3;
     project: ProjectionKind;
     fov: number | null;
+    /** Which entity's transform the preview is following, so `sync` can keep it live. */
+    entityId: string;
+    /** The authored clipping and field of view, re-applied with the transform on every sync. */
+    planes: CameraPlanes;
   } | null = null;
   private readonly raycaster = new THREE.Raycaster();
   private readonly pointer = new THREE.Vector2();
@@ -444,6 +484,15 @@ export class EditorViewport {
       scene.environment.background.type === 'color' ? scene.environment.background.color : SCENE.background,
     );
     this.updateSelectionHelper();
+    /**
+     * Last, because it reads the transforms just written.
+     *
+     * While the game camera's view is held, this is what keeps it a view of the camera the game would
+     * use *now*: moving the camera in the inspector, reparenting it, or editing an ancestor updates
+     * the projection here, and without this the preview would keep showing where the camera used to
+     * be until the user left and re-entered.
+     */
+    if (this.cameraView) this.applyCameraView(this.cameraView.planes);
   }
 
   private syncEntity(entity: Entity): void {
@@ -758,7 +807,9 @@ export class EditorViewport {
    */
   private frame(object: THREE.Object3D): void {
     this.exitCameraView();
-    const box = new THREE.Box3().setFromObject(object);
+    object.updateWorldMatrix(false, true);
+    const box = new THREE.Box3();
+    expandContentBounds(object, box);
     if (box.isEmpty()) {
       this.orbit.target.set(0, 0.5, 0);
       return;
@@ -794,7 +845,14 @@ export class EditorViewport {
 
   private handleDraggingChanged = (event: { value: unknown }): void => {
     this.dragging = Boolean(event.value);
-    this.orbit.enabled = !this.dragging;
+    /**
+     * Orbit stays off while the game camera's view is held.
+     *
+     * A transform drag releases with `enabled = true`, which handed the canvas back to OrbitControls
+     * while `inCameraView()` still said true — the next drag orbited away from the camera the user
+     * was supposedly looking through, and the preview silently stopped being one.
+     */
+    this.orbit.enabled = !this.dragging && this.cameraView === null;
     this.callbacks.onDragStateChange?.(this.dragging);
   };
 
@@ -837,7 +895,8 @@ export class EditorViewport {
       // The pointer may already be gone; the drag is cancelled either way.
     }
     this.dragging = false;
-    this.orbit.enabled = true;
+    /** Guarded for the same reason as `handleDraggingChanged`: camera view keeps orbit switched off. */
+    this.orbit.enabled = this.cameraView === null;
     this.callbacks.onDragStateChange?.(false);
     return true;
   }
@@ -1160,6 +1219,14 @@ export class EditorViewport {
     const spherical = new THREE.Spherical().setFromVector3(offset);
     if (spherical.phi < OPPOSITE_POLE_THRESHOLD || spherical.phi > Math.PI - OPPOSITE_POLE_THRESHOLD) {
       spherical.phi = Math.PI - spherical.phi;
+      /**
+       * The up vector has to travel with the pole.
+       *
+       * Looking down uses `-Z` and looking up uses `+Z`, so reflecting the elevation while keeping
+       * the old up leaves world `+X` running the other way across the screen — Numpad 9 and Ctrl+7
+       * would show the same view mirrored.
+       */
+      this.camera.up.set(0, 0, spherical.phi < Math.PI / 2 ? -1 : 1);
     } else {
       spherical.theta += Math.PI;
     }
@@ -1177,40 +1244,83 @@ export class EditorViewport {
    * the game camera's aim instead of fighting it. Input is switched off while the view is held: a
    * camera you can orbit away from is not showing you what the game will show.
    *
+   * The entity id is kept, so `sync` can re-read the authored transform while the view is held —
+   * otherwise editing the camera in the inspector would leave a preview of where it used to be.
+   *
    * Returns false when the entity has no projected object, so the caller can say so rather than
    * leaving the user pressing a key that appears dead.
    */
-  enterCameraView(entityId: string, fov: number): boolean {
+  enterCameraView(entityId: string, planes: CameraPlanes): boolean {
     const object = this.projections.get(entityId)?.object;
     if (!object) return false;
     this.exitCameraView();
-    this.replaceCamera('perspective');
-    this.camera.up.set(0, 1, 0);
 
+    /**
+     * The framing is captured *before* anything about the camera changes.
+     *
+     * It used to be captured after `replaceCamera('perspective')` and the up reset, so the snapshot
+     * always said "perspective, up = +Y" and entering from an orthographic face view and leaving
+     * again quietly lost the face view instead of restoring it.
+     */
     this.cameraView = {
       position: this.camera.position.clone(),
       up: this.camera.up.clone(),
       target: this.orbit.target.clone(),
       project: this.project,
       fov: this.camera instanceof THREE.PerspectiveCamera ? this.camera.fov : null,
+      entityId,
+      planes,
     };
+
+    this.replaceCamera('perspective');
+    this.camera.up.set(0, 1, 0);
+    this.applyCameraView(planes);
+    this.orbit.enabled = false;
+    this.renderNow();
+    return true;
+  }
+
+  /**
+   * Put the editor camera on the viewed entity's authored transform.
+   *
+   * Separate from `enterCameraView` because the authored transform can change while the view is
+   * held: `sync` calls this again after each projection update, so the preview follows the inspector
+   * instead of freezing at the moment the key was pressed.
+   */
+  private applyCameraView(planes: CameraPlanes): void {
+    const viewing = this.cameraView;
+    if (!viewing) return;
+    const object = this.projections.get(viewing.entityId)?.object;
+    if (!object) return;
 
     object.updateWorldMatrix(true, false);
     const position = new THREE.Vector3().setFromMatrixPosition(object.matrixWorld);
-    const rotation = new THREE.Quaternion().setFromRotationMatrix(object.matrixWorld);
+    /**
+     * `getWorldQuaternion` rather than `setFromRotationMatrix`.
+     *
+     * The latter assumes an orthonormal matrix, and a scene is free to scale a camera or any of its
+     * ancestors — a scaled world matrix fed to it yields a rotation that is not the entity's, so the
+     * preview would look through a camera aimed somewhere the game's is not.
+     */
+    const rotation = object.getWorldQuaternion(new THREE.Quaternion());
     const up = new THREE.Vector3(0, 1, 0).applyQuaternion(rotation).normalize();
     const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(rotation).normalize();
 
     this.camera.position.copy(position);
     this.camera.up.copy(up);
     this.orbit.target.copy(position).addScaledVector(forward, CAMERA_VIEW_TARGET);
-    if (this.camera instanceof THREE.PerspectiveCamera) this.camera.fov = fov;
+    if (this.camera instanceof THREE.PerspectiveCamera) {
+      this.camera.fov = planes.fov;
+      /**
+       * The authored clipping planes come with the field of view. Keeping the editor's own near and
+       * far shows geometry the game camera would clip, which makes the preview a different picture
+       * from the one the game starts with — the whole point of looking through it.
+       */
+      this.camera.near = planes.near;
+      this.camera.far = planes.far;
+    }
     this.camera.lookAt(this.orbit.target);
     this.camera.updateProjectionMatrix();
-
-    this.orbit.enabled = false;
-    this.renderNow();
-    return true;
   }
 
   /** Leave the game camera's view, restoring the framing it was entered from. */
@@ -1232,6 +1342,18 @@ export class EditorViewport {
 
   inCameraView(): boolean {
     return this.cameraView !== null;
+  }
+
+  /**
+   * The editor camera's field of view and clipping planes.
+   *
+   * Read back rather than assumed because camera view sets all three from the authored component, and
+   * "the preview clips what the game camera clips" is only true if they actually arrived — which a
+   * gate can check against the document.
+   */
+  cameraPlanes(): CameraPlanes {
+    const perspective = this.camera instanceof THREE.PerspectiveCamera ? this.camera : null;
+    return { fov: perspective?.fov ?? 0, near: this.camera.near, far: this.camera.far };
   }
 
   /** Frame the whole scene. Blender's Home, and the counterpart to `focusSelection`. */

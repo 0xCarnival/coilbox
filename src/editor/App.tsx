@@ -2,6 +2,7 @@ import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } fro
 import type { JSX } from 'react';
 import * as stylex from '@stylexjs/stylex';
 import type { JsonValue } from '@schema/index.js';
+import { activeCameraEntityId } from '@runtime/scene-graph.js';
 import { color, controlSize, fontSize, radius, space, surface } from './styles/tokens.stylex.js';
 import { DOM, withDomClass } from './dom-contract.js';
 import { SessionProvider, isTextEntryTarget, useSession, useSessionSnapshot } from './hooks.js';
@@ -12,7 +13,7 @@ import { Inspector } from './panels/Inspector.js';
 import { Toolbar, SaveIndicator } from './panels/Toolbar.js';
 import { BottomPanel, type BottomTab } from './panels/BottomPanel.js';
 import { Viewport, type PlayState, type ViewportDisplay, type ViewportHandle } from './panels/Viewport.js';
-import type { SnapSettings, TransformTool, ViewFace } from './viewport/viewport-controller.js';
+import type { CameraPlanes, SnapSettings, TransformTool, ViewFace } from './viewport/viewport-controller.js';
 import { isFiniteJsonNumber, isJsonString, jsonField } from './json-values.js';
 import { IconRail } from './ui/IconRail.js';
 import { ResizeHandle } from './ui/ResizeHandle.js';
@@ -64,21 +65,23 @@ function numpadDigit(code: string): string | null {
 }
 
 /**
- * The scene's active game camera, or the first entity with one.
+ * The scene's active game camera, resolved by the runtime's own rule.
  *
- * Falls back rather than giving up on a scene whose `activeCameraId` was never set: the runtime does
- * the same, so key 0 shows the view the game would actually start from in both cases.
+ * This used to pick `activeCameraId` if it existed and otherwise the first camera in raw array order,
+ * which is not what the runtime does: the runtime drops disabled entities and the children of a
+ * disabled parent, sorts by `order` then id, and skips editor helpers. So key 0 could show a camera
+ * the game would never use — a disabled one, or a different one from the same scene. Asking the
+ * runtime for the id is the only way the preview and the game cannot disagree.
  */
-function activeGameCamera(scene: EditorSession['scene']): { id: string; name: string; fov: number } | null {
+function activeGameCamera(
+  scene: EditorSession['scene'],
+): ({ id: string; name: string } & CameraPlanes) | null {
   if (!scene) return null;
-  const active = scene.activeCameraId
-    ? scene.entities.find((entity) => entity.id === scene.activeCameraId)
-    : undefined;
-  const entity =
-    active ?? scene.entities.find((candidate) => candidate.components.some((component) => component.type === 'camera'));
+  const id = activeCameraEntityId(scene);
+  const entity = id === null ? undefined : scene.entities.find((candidate) => candidate.id === id);
   const component = entity?.components.find((candidate) => candidate.type === 'camera');
   if (!entity || !component || component.type !== 'camera') return null;
-  return { id: entity.id, name: entity.name, fov: component.fov };
+  return { id: entity.id, name: entity.name, fov: component.fov, near: component.near, far: component.far };
 }
 
 interface Layout {
@@ -344,7 +347,11 @@ function StudioShell(): JSX.Element {
       session.log('warning', 'Numpad 0: this scene has no camera to look through.');
       return;
     }
-    const entered = viewport.enterCameraView(camera.id, camera.fov);
+    const entered = viewport.enterCameraView(camera.id, {
+      fov: camera.fov,
+      near: camera.near,
+      far: camera.far,
+    });
     setCameraView(entered);
     setStatus(entered ? `Looking through “${camera.name}”` : `“${camera.name}” is not in the viewport`);
   }, [session]);
@@ -367,37 +374,47 @@ function StudioShell(): JSX.Element {
       if (digit === null || !viewport) return false;
       /** Ctrl is Blender's "the other side of this axis", not a modifier on the same view. */
       const sign: 1 | -1 = event.ctrlKey || event.metaKey ? -1 : 1;
+      /**
+       * Every command below except 0 calls something that leaves the game camera's view, so the
+       * shell's copy of that state is re-read from the viewport rather than assumed. Without this,
+       * Numpad 0 then Numpad 1 left the palette offering "Leave the game camera" for a view that had
+       * already been left.
+       */
+      const finish = (): true => {
+        setCameraView(viewport.inCameraView());
+        return true;
+      };
 
       switch (digit) {
         case '1':
           viewport.faceView({ axis: 'z', sign });
-          return true;
+          return finish();
         case '3':
           viewport.faceView({ axis: 'x', sign });
-          return true;
+          return finish();
         case '7':
           viewport.faceView({ axis: 'y', sign });
-          return true;
+          return finish();
         case '9':
           viewport.oppositeView();
-          return true;
+          return finish();
         case '5':
           setStatus(
             viewport.toggleProjection() === 'orthographic' ? 'Orthographic view' : 'Perspective view',
           );
-          return true;
+          return finish();
         case '4':
           viewport.orbitAround(-VIEW_STEP_RADIANS, 0);
-          return true;
+          return finish();
         case '6':
           viewport.orbitAround(VIEW_STEP_RADIANS, 0);
-          return true;
+          return finish();
         case '2':
           viewport.orbitAround(0, -VIEW_STEP_RADIANS);
-          return true;
+          return finish();
         case '8':
           viewport.orbitAround(0, VIEW_STEP_RADIANS);
-          return true;
+          return finish();
         case '0':
           toggleCameraView();
           return true;
@@ -433,7 +450,15 @@ function StudioShell(): JSX.Element {
        * anyone with Num Lock off — which is most of the time. `code` is the only field that says which
        * physical key was pressed.
        */
-      if (handleViewKey(event)) return;
+      if (handleViewKey(event)) {
+        /**
+         * Ctrl/Cmd + a digit is a tab switch in every mainstream browser, and Ctrl/Cmd + 1/3/7 is
+         * exactly how the opposite faces are reached — so without this the editor changes view and
+         * the browser changes tab, or the browser wins and the editor does nothing.
+         */
+        event.preventDefault();
+        return;
+      }
       if (event.code === 'Home') {
         viewportRef.current?.frameAll();
         return;

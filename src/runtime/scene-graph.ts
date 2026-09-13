@@ -68,6 +68,35 @@ export interface BuildSceneOptions {
   onWarning?: (message: string) => void;
 }
 
+/**
+ * Which entity the runtime would treat as the active camera.
+ *
+ * The editor needs this to answer "which camera would the game start from" without building a world,
+ * and the answer has to be the runtime's, not a plausible one: a preview of a camera the game will
+ * not use is worse than no preview.
+ *
+ * The rules are `buildSceneGraph`'s, in its order — entities sorted by `order` then id, then disabled
+ * entities and the children of a disabled parent dropped, then editor helpers excluded. They are
+ * written out again rather than shared through a refactor of the builder, so
+ * `tests/unit/active-camera.test.ts` runs both against the same documents and fails if they ever
+ * disagree. Two copies of a rule are two rules; two copies plus a test that pins them together are
+ * one rule with a witness.
+ */
+export function activeCameraEntityId(scene: SceneDocument, includeHelpers = false): string | null {
+  const ordered = [...scene.entities].sort((a, b) => a.order - b.order || a.id.localeCompare(b.id));
+  const knownIds = new Set(ordered.map((entity) => entity.id));
+  const enabledIds = new Set(ordered.filter((entity) => entity.enabled).map((entity) => entity.id));
+  const playable = ordered.filter((entity) => {
+    if (!entity.enabled) return false;
+    if (entity.parentId !== null && knownIds.has(entity.parentId) && !enabledIds.has(entity.parentId)) return false;
+    if (!includeHelpers && entity.editor.helper) return false;
+    return entity.components.some((component) => component.type === 'camera');
+  });
+  const active =
+    scene.activeCameraId === null ? undefined : playable.find((entity) => entity.id === scene.activeCameraId);
+  return (active ?? playable[0])?.id ?? null;
+}
+
 export function buildSceneGraph(scene: SceneDocument, options: BuildSceneOptions = {}): BuiltScene {
   const root = new THREE.Group();
   root.name = `scene:${scene.id}`;

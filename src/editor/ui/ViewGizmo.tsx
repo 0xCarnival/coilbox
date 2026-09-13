@@ -66,9 +66,6 @@ const HANDLES = [
 const RADIUS = 33;
 const HANDLE = 22;
 
-/** Radians of rotation per pixel dragged. A drag across the ball is a little over a right angle. */
-const DRAG_SENSITIVITY = 0.011;
-
 /**
  * Below this many pixels of movement, a pointer gesture is a click rather than an orbit.
  *
@@ -255,7 +252,12 @@ export function ViewGizmo({
       current.x = moveEvent.clientX;
       current.y = moveEvent.clientY;
       current.moved += Math.abs(deltaX) + Math.abs(deltaY);
-      viewport.current?.orbitBy(deltaX * DRAG_SENSITIVITY, deltaY * DRAG_SENSITIVITY);
+      /**
+       * Raw pixels, not radians: `orbitBy` owns the pixels-to-radians conversion, and this used to
+       * scale the delta here as well — so a 100px drag turned the view 0.011 radians, about 0.6°,
+       * and the gizmo felt immovable. One conversion, in one place.
+       */
+      viewport.current?.orbitBy(deltaX, deltaY);
     };
     const end = () => {
       window.removeEventListener('pointermove', move);

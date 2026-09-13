@@ -1,8 +1,8 @@
 {
   "stage": 2,
-  "generatedAt": "2026-09-13T15:26:14.004Z",
+  "generatedAt": "2026-09-13T16:20:02.612Z",
   "node": "v24.18.0",
-  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage2-KM3zeT",
+  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage2-wKwK4O",
   "steps": [
     {
       "name": "typecheck",
@@ -68,10 +68,10 @@
       "id": "clip-playback",
       "title": "The imported clip is discoverable and plays in the editor preview",
       "passed": true,
-      "detail": "clips offered: Hop; preview time advanced from 0.041 to 0.6226999998092652",
+      "detail": "clips offered: Hop; preview time advanced from 0.044799999713897705 to 0.6228999996185303",
       "observed": {
-        "before": 0.041,
-        "after": 0.6226999998092652,
+        "before": 0.044799999713897705,
+        "after": 0.6228999996185303,
         "clip": "Hop"
       }
     },
@@ -118,7 +118,7 @@
       "id": "drag-cancellation",
       "title": "A transform drag abandoned with Escape changes nothing and records nothing",
       "passed": true,
-      "detail": "grabbed=true; during the drag the projection moved to [0,1,-0.5] while the document stayed [0,1,0]; after Escape the projection is [0,1,0] and the undo label is still Rename Crate Awer to Crate A",
+      "detail": "grabbed=true; during the drag the projection moved to [-0.5,1,0] while the document stayed [0,1,0]; after Escape the projection is [0,1,0] and the undo label is still Rename Crate Awer to Crate A",
       "observed": {
         "beforeDrag": {
           "id": "box",
@@ -146,9 +146,9 @@
             0
           ],
           "projected": [
-            0,
+            -0.5,
             1,
-            -0.5
+            0
           ],
           "dragging": true,
           "undoLabel": "Rename Crate Awer to Crate A",
@@ -214,7 +214,7 @@
       "id": "play-animates",
       "title": "Play runs the runtime animation: clips advance inside the play world",
       "passed": true,
-      "detail": "Limb clip \"Wave\" advanced 0.133 -> 0.150 after 251 ms; 2 animated entities, 2 models loaded",
+      "detail": "Limb clip \"Wave\" advanced 0.083 -> 0.133 after 253 ms; 2 animated entities, 2 models loaded",
       "observed": {
         "ids": {
           "limbId": "box-2",
@@ -228,7 +228,7 @@
           "playing": true,
           "loop": true,
           "speed": 1,
-          "time": 0.13333333333333333,
+          "time": 0.08333333333333333,
           "duration": 1
         },
         "second": {
@@ -239,7 +239,7 @@
           "playing": true,
           "loop": true,
           "speed": 1,
-          "time": 0.15,
+          "time": 0.13333333333333333,
           "duration": 1
         },
         "crate": {
@@ -250,18 +250,18 @@
           "playing": true,
           "loop": true,
           "speed": 1,
-          "time": 0.15,
+          "time": 0.13333333333333333,
           "duration": 0.800000011920929
         },
         "stats": {
           "state": "running",
           "frames": 6,
-          "steps": 9,
-          "fps": 5.89064003217703,
-          "frameTimeMs": 169.76084000000006,
-          "physicsTimeMs": 0.06391242088466026,
+          "steps": 8,
+          "fps": 5.891049863436627,
+          "frameTimeMs": 169.74903000000003,
+          "physicsTimeMs": 0.0621786061227894,
           "droppedTime": 0.16666666666666669,
-          "clampedTime": 0.18329999999999996,
+          "clampedTime": 0.26659999999999995,
           "drawCalls": 6,
           "triangles": 1268,
           "geometries": 4,
@@ -289,7 +289,7 @@
           "inputListeners": 8,
           "audioActivated": true
         },
-        "waitedMs": 251
+        "waitedMs": 253
       }
     },
     {
@@ -345,12 +345,21 @@
       "id": "gizmo-orbit-does-not-roll",
       "title": "Dragging the view gizmo turns the view without rolling the horizon",
       "passed": true,
-      "detail": "the camera's right axis stayed horizontal through a tilt and two sideways drags: |right.y| = 2.8e-17, 2.8e-17, 1.4e-17",
+      "detail": "tilt and two sideways drags: |right.y| = 2.8e-17, 0.0e+0, 2.2e-19; turned 45.8°, 52.7°, 40.6°",
       "observed": {
-        "rolls": [
-          2.775557561562892e-17,
-          2.7755575615628914e-17,
-          1.3877787807814457e-17
+        "drags": [
+          {
+            "roll": 2.7755575615628914e-17,
+            "turned": 0.8000000000000005
+          },
+          {
+            "roll": 0,
+            "turned": 0.9201590643863119
+          },
+          {
+            "roll": 2.1684043449710093e-19,
+            "turned": 0.7085441560396252
+          }
         ]
       }
     },
@@ -358,7 +367,7 @@
       "id": "numpad-view-navigation",
       "title": "The numpad drives the view: a face, the projection, and the game camera",
       "passed": true,
-      "detail": "after Numpad7 the view was orthographic with up [0,0,-1] (a top view is orthographic with up (0, 0, -1)); Numpad5 then made it perspective; Numpad0 entered the game camera (true) and left it (true)",
+      "detail": "after Numpad7 the view was orthographic with up [0,0,-1] (a top view is orthographic with up (0, 0, -1)); Numpad5 then made it perspective; Numpad0 entered the game camera (true) and left it (true); Home framed the scene from 21.4 m; the preview used the authored fov 42 and far plane 1000 against 42 and 1000 in the document",
       "observed": {
         "topView": {
           "projection": "orthographic",
@@ -395,6 +404,19 @@
             -1
           ],
           "inCameraView": false
+        },
+        "framedDistance": 21.388650314785654,
+        "previewPlanes": {
+          "shown": {
+            "fov": 42,
+            "near": 0.1,
+            "far": 1000
+          },
+          "authored": {
+            "fov": 42,
+            "near": 0.1,
+            "far": 1000
+          }
         }
       }
     },

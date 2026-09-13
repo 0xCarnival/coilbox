@@ -569,10 +569,11 @@ async function main(): Promise<void> {
      * so requiring `up = (0,1,0)` would fail on a perfectly good view. It is the *right* axis that
      * says whether the horizon is level.
      */
-    const rollAfterDrag = async (dx: number, dy: number): Promise<number> => {
+    const dragGizmo = async (dx: number, dy: number): Promise<{ roll: number; turned: number }> => {
       const box = await page.locator('.view-gizmo').boundingBox();
-      if (!box) return Number.NaN;
+      if (!box) return { roll: Number.NaN, turned: Number.NaN };
       const centre = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+      const before = await page.evaluate(() => window.__STUDIO__?.viewport?.()?.cameraBasis().forward ?? [0, 0, 0]);
       await page.mouse.move(centre.x, centre.y);
       await page.mouse.down();
       for (let step = 1; step <= 10; step += 1) {
@@ -580,21 +581,42 @@ async function main(): Promise<void> {
       }
       await page.mouse.up();
       await page.waitForTimeout(200);
-      return page.evaluate(() => Math.abs(window.__STUDIO__?.viewport?.()?.cameraBasis().right[1] ?? 1));
+      return page.evaluate(
+        ({ previous }) => {
+          const basis = window.__STUDIO__?.viewport?.()?.cameraBasis();
+          if (!basis) return { roll: Number.NaN, turned: Number.NaN };
+          const dot = basis.forward[0] * previous[0] + basis.forward[1] * previous[1] + basis.forward[2] * previous[2];
+          return {
+            roll: Math.abs(basis.right[1]),
+            /** How far the view actually turned, which "did it roll?" cannot tell you. */
+            turned: Math.acos(Math.min(1, Math.max(-1, dot))),
+          };
+        },
+        { previous: before },
+      );
     };
 
-    const afterTilt = await rollAfterDrag(0, -80);
-    const afterSideways = await rollAfterDrag(100, 0);
-    const afterBoth = await rollAfterDrag(-60, 40);
-    const rolls = [afterTilt, afterSideways, afterBoth];
+    const afterTilt = await dragGizmo(0, -80);
+    const afterSideways = await dragGizmo(100, 0);
+    const afterBoth = await dragGizmo(-60, 40);
+    const drags = [afterTilt, afterSideways, afterBoth];
+    /**
+     * Both halves matter, and the second half is the one that was missing.
+     *
+     * Roll was the reported bug, so the level check came first. But a drag that rolls *nothing*
+     * because it barely moves also passes it: the pixels-to-radians conversion was being applied
+     * twice, so 100px turned the view 0.6°, and this check was happy. Asserting that each drag also
+     * turns the view a sensible amount is what makes "no roll" mean "a level turn" rather than "no
+     * turn at all".
+     */
     record({
       id: 'gizmo-orbit-does-not-roll',
       title: 'Dragging the view gizmo turns the view without rolling the horizon',
-      passed: rolls.every((roll) => roll < 1e-3),
-      detail: `the camera's right axis stayed horizontal through a tilt and two sideways drags: |right.y| = ${rolls
-        .map((roll) => roll.toExponential(1))
-        .join(', ')}`,
-      observed: { rolls },
+      passed: drags.every((drag) => drag.roll < 1e-3 && drag.turned > 0.2),
+      detail: `tilt and two sideways drags: |right.y| = ${drags
+        .map((drag) => drag.roll.toExponential(1))
+        .join(', ')}; turned ${drags.map((drag) => `${((drag.turned * 180) / Math.PI).toFixed(1)}°`).join(', ')}`,
+      observed: { drags },
     });
 
     /**
@@ -626,9 +648,39 @@ async function main(): Promise<void> {
     await page.keyboard.press('Numpad0');
     await page.waitForTimeout(700);
     const entered = await readView();
+    /**
+     * What the preview is actually showing *through*, not just where it is standing.
+     *
+     * A camera view that keeps the editor's own field of view and clipping planes is a different
+     * picture from the one the game starts with — it shows geometry the game camera clips — and the
+     * authored values are in the document, so the comparison is exact rather than approximate.
+     */
+    const previewPlanes = await page.evaluate(() => {
+      const viewport = window.__STUDIO__?.viewport?.();
+      const scene = window.__STUDIO__?.session.scene;
+      const entity = scene?.entities.find((candidate) => candidate.id === scene.activeCameraId);
+      const component = entity?.components.find((candidate) => candidate.type === 'camera');
+      return {
+        shown: viewport?.cameraPlanes() ?? null,
+        authored: component && component.type === 'camera' ? { fov: component.fov, near: component.near, far: component.far } : null,
+      };
+    });
     await page.keyboard.press('Numpad0');
     await page.waitForTimeout(700);
     const left = await readView();
+
+    /**
+     * Home has to frame the *level*, and the number says whether it did.
+     *
+     * `Box3.setFromObject` walked the editor-only helpers under each entity, and a camera's
+     * `CameraHelper` draws its frustum out to the far plane — hundreds of metres in these projects. So
+     * Home moved the camera 1268 metres away and the level became a speck. Distance is the honest
+     * measurement: a framed sixteen-metre room cannot need two hundred metres of standoff.
+     */
+    await page.keyboard.press('Home');
+    await page.waitForTimeout(700);
+    const framedDistance = await page.evaluate(() => window.__STUDIO__?.viewport?.()?.cameraDistance() ?? 0);
+
     record({
       id: 'numpad-view-navigation',
       title: 'The numpad drives the view: a face, the projection, and the game camera',
@@ -637,9 +689,14 @@ async function main(): Promise<void> {
         Math.abs((topView.up[2] ?? 0) + 1) < 1e-3 &&
         afterToggle.projection === 'perspective' &&
         entered.inCameraView &&
-        !left.inCameraView,
-      detail: `after Numpad7 the view was ${topView.projection} with up ${JSON.stringify(topView.up)} (a top view is orthographic with up (0, 0, -1)); Numpad5 then made it ${afterToggle.projection}; Numpad0 entered the game camera (${entered.inCameraView}) and left it (${!left.inCameraView})`,
-      observed: { topView, afterToggle, entered, left },
+        !left.inCameraView &&
+        framedDistance < 200 &&
+        previewPlanes.authored !== null &&
+        previewPlanes.shown !== null &&
+        Math.abs(previewPlanes.shown.far - previewPlanes.authored.far) < 1e-6 &&
+        Math.abs(previewPlanes.shown.fov - previewPlanes.authored.fov) < 1e-6,
+      detail: `after Numpad7 the view was ${topView.projection} with up ${JSON.stringify(topView.up)} (a top view is orthographic with up (0, 0, -1)); Numpad5 then made it ${afterToggle.projection}; Numpad0 entered the game camera (${entered.inCameraView}) and left it (${!left.inCameraView}); Home framed the scene from ${framedDistance.toFixed(1)} m; the preview used the authored fov ${previewPlanes.shown?.fov} and far plane ${previewPlanes.shown?.far} against ${previewPlanes.authored?.fov} and ${previewPlanes.authored?.far} in the document`,
+      observed: { topView, afterToggle, entered, left, framedDistance, previewPlanes },
     });
 
     // --- missing asset error is understandable -------------------------------------
