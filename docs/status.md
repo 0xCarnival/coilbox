@@ -8,7 +8,7 @@ gaps that are knowingly left open.
 |---|---|---|
 | 0. Compatibility probe | complete | `pnpm verify:stage0` — 14/14 checks |
 | 1. End-to-end authoring loop | complete | `pnpm verify:stage1` — 12/12 checks |
-| 2. Comfortable scene editing | complete | `pnpm verify:stage2` — 15/15 checks |
+| 2. Comfortable scene editing | complete | `pnpm verify:stage2` — 17/17 checks |
 | 3. Actual games | complete | `pnpm verify:stage3` — 14/14 checks |
 | 4. Agent and management workflow | complete | `pnpm verify:stage4` — 17/17 checks |
 | 5. Reliability and release | complete | `pnpm verify:stage5` — 23/23 checks |
@@ -178,7 +178,7 @@ playback, pause/step, errors.
 **Evidence required:** "Build and revise a small scene without editing code; missing asset and
 unsupported import errors are understandable."
 
-**Status:** demonstrated, 15/15 automated checks passing.
+**Status:** demonstrated, 17/17 automated checks passing.
 
 ### How to run
 

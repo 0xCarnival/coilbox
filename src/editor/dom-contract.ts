@@ -74,6 +74,13 @@ export const DOM = {
   vectorField: 'vector-field',
   /** Stage 2: the create-entity menu in the toolbar. */
   menu: 'menu',
+  /**
+   * Stage 2: the two floating overlays on the stage are measured against each other. They share the
+   * top of the stage and the same `zIndex`, so the check is geometric — their boxes must not
+   * intersect — and both boxes have to be locatable for that to be assertable.
+   */
+  hintCard: 'hint-card',
+  displayPanel: 'display-panel',
   /** Stage 5: the play-mode badge proves the viewport switched modes. */
   viewportBadge: 'viewport-badge',
   /** Stage 1-5: the hierarchy row is clicked to select an object. */

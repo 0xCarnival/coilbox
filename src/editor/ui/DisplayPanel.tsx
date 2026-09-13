@@ -2,11 +2,12 @@ import { useCallback, useEffect, useState } from 'react';
 import type { JSX } from 'react';
 import * as stylex from '@stylexjs/stylex';
 import { ChevronDown, Grid3x3, Magnet, Monitor, Sun, SquareDashed } from 'lucide-react';
-import { color, control, fontSize, radius, space } from '../styles/tokens.stylex.js';
+import { color, control, fontSize, overlay, radius, space } from '../styles/tokens.stylex.js';
 import type { SnapSettings } from '../viewport/viewport-controller.js';
 import type { ViewportDisplay, ViewportHandle } from '../panels/Viewport.js';
 import { SegmentedControl, type SegmentedOption } from './Controls.js';
 import { Switch } from './Field.js';
+import { DOM, withDomClass } from '../dom-contract.js';
 import { SegmentedControl as _SegmentedControl } from './Controls.js';
 import { IconButton } from './Button.js';
 
@@ -32,7 +33,7 @@ const styles = stylex.create({
     position: 'absolute',
     insetBlockStart: space.md,
     insetInlineEnd: space.md,
-    width: '248px',
+    width: overlay.panel,
     display: 'flex',
     flexDirection: 'column',
     borderRadius: radius.lg,
@@ -131,6 +132,17 @@ export interface DisplayPanelProps {
   onMeasurementsChange(visible: boolean): void;
   /** Shown collapsed to its header when false, so the stage is not permanently covered. */
   defaultOpen?: boolean;
+  /**
+   * Hidden while a simulation runs, like the hint card and the tool dock beside it.
+   *
+   * Everything here changes how the *authored* scene is being looked at — the view mode, the grid,
+   * shadows, snapping. None of it reaches the play world, which is built fresh from a snapshot on
+   * its own canvas, so during Play the panel was a set of switches that visibly did nothing while
+   * covering the game and the play-mode banner. The settings it shows are read back from the
+   * viewport on mount, so hiding the panel loses nothing: it re-reads the live values when the
+   * simulation stops.
+   */
+  visible: boolean;
 }
 
 export function DisplayPanel({
@@ -140,7 +152,8 @@ export function DisplayPanel({
   measurements,
   onMeasurementsChange,
   defaultOpen = true,
-}: DisplayPanelProps): JSX.Element {
+  visible,
+}: DisplayPanelProps): JSX.Element | null {
   const [open, setOpen] = useState(defaultOpen);
   const [display, setDisplay] = useState<ViewportDisplay>({
     projection: 'perspective',
@@ -171,8 +184,11 @@ export function DisplayPanel({
     sync();
   };
 
+  // After the hooks, so the panel keeps syncing while it is hidden and comes back showing the truth.
+  if (!visible) return null;
+
   return (
-    <div {...stylex.props(styles.panel)}>
+    <div {...withDomClass(styles.panel, DOM.displayPanel)}>
       <div {...stylex.props(styles.header)}>
         <Monitor size={control.iconSm} />
         <span {...stylex.props(styles.title)}>Display</span>

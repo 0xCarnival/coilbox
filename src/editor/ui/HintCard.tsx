@@ -2,8 +2,9 @@ import { useState } from 'react';
 import type { JSX } from 'react';
 import * as stylex from '@stylexjs/stylex';
 import { Box, MousePointerClick, X } from 'lucide-react';
-import { color, control, fontSize, radius, space } from '../styles/tokens.stylex.js';
+import { color, control, fontSize, overlay, radius, space } from '../styles/tokens.stylex.js';
 import { useSession, useSessionSnapshot } from '../hooks.js';
+import { DOM, withDomClass } from '../dom-contract.js';
 import { IconButton } from './Button.js';
 import type { TransformTool } from '../viewport/viewport-controller.js';
 
@@ -29,12 +30,26 @@ const styles = stylex.create({
   card: {
     position: 'absolute',
     insetBlockStart: space.md,
-    insetInlineStart: '50%',
-    transform: 'translateX(-50%)',
+    /**
+     * Centred in the stage *minus the display panel's lane*, not in the stage.
+     *
+     * The card used to be centred on the stage with `insetInlineStart: 50%`, which put its right
+     * edge 223px underneath the panel at the default layout — the panel is later in the DOM and
+     * shares the card's `zIndex`, so it painted over the hint and clipped it mid-sentence. Raising
+     * the card's `zIndex` would only have moved the problem: it would have covered the panel's
+     * controls instead. Reserving the lane is what actually separates them.
+     *
+     * `fit-content` keeps the card hugging its text rather than stretching into a full-width bar
+     * now that it has a box to fill, and the auto margins are what centre it in that box.
+     */
+    insetInlineStart: space.md,
+    insetInlineEnd: overlay.lane,
+    marginInline: 'auto',
+    width: 'fit-content',
     display: 'flex',
     alignItems: 'center',
     gap: space.md,
-    maxWidth: '460px',
+    maxWidth: overlay.card,
     paddingBlock: space.sm,
     paddingInline: space.md,
     borderRadius: radius.lg,
@@ -120,7 +135,7 @@ export function HintCard({ tool, visible }: HintCardProps): JSX.Element | null {
   if (!visible || dismissed || !entity) return null;
 
   return (
-    <div {...stylex.props(styles.card)} role="status">
+    <div {...withDomClass(styles.card, DOM.hintCard)} role="status">
       <span {...stylex.props(styles.glyph)}>
         <Box size={control.icon} />
       </span>
