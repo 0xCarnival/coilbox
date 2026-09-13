@@ -8,6 +8,11 @@ dist-*/
 .scratch/
 .cache/
 .generated/
+# Screenshots taken while checking a UI change by eye. They are working material, not evidence:
+# the gates write what they observed into `docs/evidence/`, which *is* tracked. Eighteen of these
+# directories accumulated in one checkout before this rule existed, none of them tracked, and a
+# single `git add -A` would have committed twenty-one megabytes of them.
+screenshots*/
 games/*/dist/
 games/*/.cache/
 games/*/.coilbox/
