@@ -27,28 +27,47 @@ import type { TransformTool } from '../viewport/viewport-controller.js';
  */
 
 const styles = stylex.create({
-  card: {
+  /**
+   * The band the card is centred in: the stage *minus the view gizmo's lane*.
+   *
+   * The card used to be centred on the stage with `insetInlineStart: 50%`, which put its right edge
+   * 223px underneath whatever occupies that corner — that control is later in the DOM and shares the
+   * card's `zIndex`, so it painted over the hint and clipped it mid-sentence. Raising the card's
+   * `zIndex` would only have moved the problem: it would have covered that control instead.
+   * Reserving the lane is what actually separates them.
+   *
+   * It is a wrapper rather than the card's own insets because those two cannot coexist with a
+   * `fit-content` width: with `left`, `right`, and `width` all specified the box is over-constrained
+   * and CSS drops the trailing inset, so the card kept its full content width and ran straight under
+   * the gizmo. It passed a wide measurement by luck — the gizmo's lane is narrower than the panel it
+   * replaced — and only failed once the stage was narrow enough for the difference to show.
+   *
+   * The wrapper therefore owns the geometry and a flex row centres a card that still hugs its text.
+   */
+  lane: {
     position: 'absolute',
     insetBlockStart: space.md,
-    /**
-     * Centred in the stage *minus the display panel's lane*, not in the stage.
-     *
-     * The card used to be centred on the stage with `insetInlineStart: 50%`, which put its right
-     * edge 223px underneath the panel at the default layout — the panel is later in the DOM and
-     * shares the card's `zIndex`, so it painted over the hint and clipped it mid-sentence. Raising
-     * the card's `zIndex` would only have moved the problem: it would have covered the panel's
-     * controls instead. Reserving the lane is what actually separates them.
-     *
-     * `fit-content` keeps the card hugging its text rather than stretching into a full-width bar
-     * now that it has a box to fill, and the auto margins are what centre it in that box.
-     */
     insetInlineStart: space.md,
     insetInlineEnd: overlay.lane,
-    marginInline: 'auto',
-    width: 'fit-content',
+    display: 'flex',
+    justifyContent: 'center',
+    /** A band across the top of the stage must not swallow drags aimed at the canvas behind it. */
+    pointerEvents: 'none',
+    zIndex: 30,
+  },
+  card: {
     display: 'flex',
     alignItems: 'center',
     gap: space.md,
+    /**
+     * The card has to be *allowed* to be narrower than its text.
+     *
+     * A flex item's automatic minimum size is its min-content size, and the hint line is `nowrap` —
+     * so without this the card refused to shrink below its full text width and ran out of the lane it
+     * had just been given. `minWidth: 0` is what lets it shrink; the ellipsis on the text is what
+     * makes the shrinking readable rather than a clip.
+     */
+    minWidth: 0,
     maxWidth: overlay.card,
     paddingBlock: space.sm,
     paddingInline: space.md,
@@ -59,7 +78,7 @@ const styles = stylex.create({
     backgroundColor: 'rgba(23, 23, 23, 0.92)',
     backdropFilter: 'blur(8px)',
     boxShadow: '0 8px 24px rgba(0, 0, 0, 0.45)',
-    zIndex: 30,
+    pointerEvents: 'auto',
     /**
      * The entrance is the toast's keyframes reused. One arrival motion for every floating layer
      * means a card appearing always looks like the same kind of event.
@@ -135,20 +154,22 @@ export function HintCard({ tool, visible }: HintCardProps): JSX.Element | null {
   if (!visible || dismissed || !entity) return null;
 
   return (
-    <div {...withDomClass(styles.card, DOM.hintCard)} role="status">
-      <span {...stylex.props(styles.glyph)}>
-        <Box size={control.icon} />
-      </span>
-      <span {...stylex.props(styles.body)}>
-        <span {...stylex.props(styles.title)}>{entity.name}</span>
-        <span {...stylex.props(styles.hint)}>
-          <MousePointerClick size={10} style={{ verticalAlign: '-1px', marginRight: '4px' }} />
-          {TOOL_HINTS[tool] ?? 'Select an object to edit its properties.'}
+    <div {...stylex.props(styles.lane)}>
+      <div {...withDomClass(styles.card, DOM.hintCard)} role="status">
+        <span {...stylex.props(styles.glyph)}>
+          <Box size={control.icon} />
         </span>
-      </span>
-      <IconButton size="row" label="Dismiss hint" onClick={() => setDismissed(true)}>
-        <X size={control.iconSm} />
-      </IconButton>
+        <span {...stylex.props(styles.body)}>
+          <span {...stylex.props(styles.title)}>{entity.name}</span>
+          <span {...stylex.props(styles.hint)}>
+            <MousePointerClick size={10} style={{ verticalAlign: '-1px', marginRight: '4px' }} />
+            {TOOL_HINTS[tool] ?? 'Select an object to edit its properties.'}
+          </span>
+        </span>
+        <IconButton size="row" label="Dismiss hint" onClick={() => setDismissed(true)}>
+          <X size={control.iconSm} />
+        </IconButton>
+      </div>
     </div>
   );
 }

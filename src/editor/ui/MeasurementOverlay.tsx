@@ -31,9 +31,9 @@ const styles = stylex.create({
     /**
      * Centred horizontally under the box's bottom edge.
      *
-     * Above the box was the first attempt and it collided with the display panel whenever the
-     * selection sat in the top-right of the stage, which is exactly where a raised object tends to
-     * be. Below is clear of every panel in the shell.
+     * Above the box was the first attempt and it collided with whatever occupies the stage's
+     * top-right corner whenever the selection sat there, which is exactly where a raised object tends
+     * to be. Below is clear of every floating control in the shell.
      */
     transform: 'translate(-50%, 0)',
     /**
@@ -66,16 +66,16 @@ const styles = stylex.create({
     whiteSpace: 'nowrap',
     pointerEvents: 'none',
     /**
-     * Above the display panel, and below the toasts.
+     * Above the stage's floating controls, and below the toasts.
      *
-     * This was 20, under the panel's 30, and that was the actual bug: the label rendered its full
-     * text and the panel's translucent surface painted over the right end of it. Reading that as a
-     * sizing problem sent three attempts at `max-content`, `nowrap`, and `flex-shrink` after a cause
-     * that was never there — the label's own box was always wide enough, and only a measurement
-     * against the *panel* could have shown it.
+     * This was 20, under the floating layer's 30, and that was the actual bug: the label rendered its
+     * full text and a translucent surface painted over the right end of it. Reading that as a sizing
+     * problem sent three attempts at `max-content`, `nowrap`, and `flex-shrink` after a cause that was
+     * never there — the label's own box was always wide enough, and only a measurement against the
+     * *overlay* could have shown it.
      *
      * The measurement wins the overlap because it is transient and it describes the thing the user
-     * just clicked; the panel is permanent and its values are readable a moment later.
+     * just clicked; the controls it covers are permanent and readable a moment later.
      */
     zIndex: 40,
   },
@@ -100,7 +100,7 @@ const styles = stylex.create({
 
 export interface MeasurementOverlayProps {
   viewport: React.RefObject<ViewportHandle | null>;
-  /** Hidden while measuring makes no sense: Play mode and the 2D view both qualify. */
+  /** Hidden while measuring makes no sense: Play mode qualifies, because the camera is not the user's. */
   visible: boolean;
 }
 

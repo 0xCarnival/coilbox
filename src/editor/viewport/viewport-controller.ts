@@ -195,22 +195,28 @@ export interface CanvasSize {
 export type ProjectionKind = 'perspective' | 'orthographic';
 
 /**
- * What the stage is showing.
+ * The six directions the view gizmo can look from.
  *
- * `2d` is the plan view: a top-down orthographic camera whose orbit is locked to pan and zoom.
- * `split` draws both cameras into one canvas side by side, which is how a change in the third
- * dimension is checked against the plan without switching back and forth.
+ * Named after the axis and the side rather than after Blender's Front/Back/Top/Bottom vocabulary:
+ * which world axis is "front" depends on the engine's convention, and this editor's is the
+ * document's — +Z is toward the viewer in the default framing, but nothing enforces that a game
+ * faces that way, so the gizmo labels the axis it will actually look along.
  */
-export type ViewMode = '3d' | '2d' | 'split';
+export type ViewFace = { axis: 'x' | 'y' | 'z'; sign: 1 | -1 };
 
 /**
- * How far above the target the 2D camera sits, and how far it can see.
+ * The camera's world-space orientation, as the view gizmo reads it.
  *
- * The plan view is orthographic, so distance does not change what is visible — only the frustum
- * height does. The height is large enough to clear anything a scene is likely to contain.
+ * A named contract rather than three loose tuples at each end: the gizmo and the controller are two
+ * files that have to agree on the order and meaning of these vectors, and the one that is easy to get
+ * wrong — `forward` points the way the camera looks, so a direction aimed *at* the viewer has a
+ * negative dot product with it — is worth spelling out once.
  */
-const PLAN_CAMERA_HEIGHT = 120;
-const PLAN_FRUSTUM_HEIGHT = 24;
+export interface CameraBasis {
+  right: [number, number, number];
+  up: [number, number, number];
+  forward: [number, number, number];
+}
 
 export class EditorViewport {
   readonly scene = new THREE.Scene();
@@ -222,13 +228,6 @@ export class EditorViewport {
    * a new one and hope. See `setProjection`.
    */
   camera: EditorCamera;
-  /**
-   * The top-down camera, kept alongside the working one rather than swapped in.
-   *
-   * `split` needs both at once, so they are a pair from construction. The active camera is whichever
-   * the current view mode is driving; the other still exists and still renders in split.
-   */
-  readonly planCamera: THREE.OrthographicCamera;
 
   private readonly canvas: HTMLCanvasElement;
   private readonly container: HTMLElement;
@@ -238,8 +237,6 @@ export class EditorViewport {
   private transform: TransformControls;
   /** The projection currently in use, so a resize knows which camera to refit. */
   private project: ProjectionKind = 'perspective';
-  /** What the stage is showing. */
-  private mode: ViewMode = '3d';
   private readonly raycaster = new THREE.Raycaster();
   private readonly pointer = new THREE.Vector2();
   private readonly root = new THREE.Group();
@@ -281,21 +278,6 @@ export class EditorViewport {
 
     this.camera = createCamera('perspective');
     this.camera.position.set(7, 5.5, 9);
-
-    const planCamera: THREE.OrthographicCamera = new THREE.OrthographicCamera(
-      -PLAN_FRUSTUM_HEIGHT / 2,
-      PLAN_FRUSTUM_HEIGHT / 2,
-      PLAN_FRUSTUM_HEIGHT / 2,
-      -PLAN_FRUSTUM_HEIGHT / 2,
-      0.05,
-      2000,
-    );
-    this.planCamera = planCamera;
-    // Straight down, looking at the origin, with `up` along -Z so the plan reads as a floor plan:
-    // +X to the right and +Z down the screen, which is the convention every plan view uses.
-    this.planCamera.position.set(0, PLAN_CAMERA_HEIGHT, 0);
-    this.planCamera.up.set(0, 0, -1);
-    this.planCamera.lookAt(0, 0, 0);
 
     this.orbit = new OrbitControls(this.camera, this.canvas);
     this.orbit.enableDamping = true;
@@ -876,24 +858,24 @@ export class EditorViewport {
     this.width = width;
     this.height = height;
     fitCamera(this.camera, width, height);
-    /**
-     * The plan camera is fitted to half the canvas in split mode and the whole canvas otherwise, so
-     * both halves show the same world extent rather than the plan being squeezed into half of it.
-     */
-    fitCamera(this.planCamera, this.mode === 'split' ? width / 2 : width, height, PLAN_FRUSTUM_HEIGHT);
   }
 
   /**
-   * Switch the editor view between perspective and orthographic.
+   * Rebuild the camera for a new projection, carrying the framing across.
    *
    * `OrbitControls` and `TransformControls` each capture the camera at construction, so replacing the
    * camera means rebuilding both. The orbit target and the camera's position are carried across, so
    * the view does not jump — only the projection changes, which is the whole point of the switch.
+   *
+   * Split out from `setProjection` because the view gizmo also needs a rebuilt camera without a
+   * projection change: clicking an axis switches to orthographic *and* moves the camera, and doing
+   * those as two rebuilds would flicker through an intermediate framing.
    */
-  setProjection(next: ProjectionKind): void {
+  private replaceCamera(next: ProjectionKind): void {
     if (next === this.project) return;
     const target = this.orbit.target.clone();
     const position = this.camera.position.clone();
+    const up = this.camera.up.clone();
 
     const helper = this.transform.getHelper();
     this.transform.detach();
@@ -906,6 +888,12 @@ export class EditorViewport {
     this.project = next;
     this.camera = createCamera(next);
     this.camera.position.copy(position);
+    /**
+     * The up vector travels with the position. A face view sets it (top and bottom look along ±Y, so
+     * their up cannot be +Y), and losing it here would silently roll the view back to a default
+     * horizon the moment the projection changed underneath it.
+     */
+    this.camera.up.copy(up);
 
     this.orbit = new OrbitControls(this.camera, this.canvas);
     this.orbit.enableDamping = true;
@@ -929,6 +917,11 @@ export class EditorViewport {
 
     this.resize();
     this.renderNow();
+  }
+
+  /** Switch the editor view between perspective and orthographic. */
+  setProjection(next: ProjectionKind): void {
+    this.replaceCamera(next);
   }
 
   /**
@@ -974,82 +967,91 @@ export class EditorViewport {
     return this.camera.position.distanceTo(this.orbit.target);
   }
 
-  /** The projection in use, for the display panel's switch. */
+  /** The projection in use, for `setDisplay` and the face views. */
   projection(): ProjectionKind {
     return this.project;
   }
 
-  /** What the stage is showing. */
-  viewMode(): ViewMode {
-    return this.mode;
+  /**
+   * The camera's world-space basis, for the view gizmo.
+   *
+   * The gizmo has to place six axis handles at the screen positions their world directions project
+   * to, and it has to do that every frame while the camera moves. Returning the basis rather than a
+   * projection of six points keeps that arithmetic in the overlay, where the pixel radius lives, and
+   * keeps the controller free of layout — the same split `worldBounds`/`toScreen` already use.
+   *
+   * `forward` is the direction the camera looks, so a direction pointing *at* the viewer has a
+   * negative dot product with it; the gizmo draws those in front.
+   */
+  cameraBasis(): CameraBasis {
+    const matrix = this.camera.matrixWorld;
+    const right = new THREE.Vector3().setFromMatrixColumn(matrix, 0).normalize();
+    const up = new THREE.Vector3().setFromMatrixColumn(matrix, 1).normalize();
+    const forward = new THREE.Vector3().setFromMatrixColumn(matrix, 2).normalize().negate();
+    return { right: [right.x, right.y, right.z], up: [up.x, up.y, up.z], forward: [forward.x, forward.y, forward.z] };
   }
 
   /**
-   * Switch between the 3D view, the plan view, and both at once.
+   * Look along a world axis, flat.
    *
-   * In `2d` the working camera *becomes* the plan camera: the gizmo, the raycaster, and the orbit
-   * controls all follow `this.camera`, so pointing them at the plan camera is what makes every tool
-   * work in the plan view without a second code path. `split` restores the perspective working camera
-   * and draws the plan camera beside it.
+   * This is what the gizmo's axis handles do, and it is deliberately two changes at once: the camera
+   * moves onto the axis, and the projection becomes orthographic. A face view drawn in perspective is
+   * not a face view — parallel edges converge and the elevation you are trying to read is wrong — so
+   * "show me this face" and "stop showing me perspective" are the same request. Blender's numpad
+   * views behave the same way.
+   *
+   * The up vector is chosen per axis rather than inherited: looking along ±Y means the old up vector
+   * is parallel to the view direction, which makes `lookAt` degenerate and renders nothing
+   * predictable. The four side views keep a world-up horizon; top and bottom take ∓Z so the scene
+   * still reads with +X to the right.
    */
-  setViewMode(next: ViewMode): void {
-    if (next === this.mode) return;
-    const target = this.orbit.target.clone();
-    const planTarget = new THREE.Vector3(target.x, 0, target.z);
+  faceView(face: ViewFace): void {
+    this.replaceCamera('orthographic');
 
-    const helper = this.transform.getHelper();
-    this.transform.detach();
-    this.transform.removeEventListener('dragging-changed', this.handleDraggingChanged);
-    this.transform.removeEventListener('mouseUp', this.handleTransformCommit);
-    this.scene.remove(helper);
-    this.transform.dispose();
-    this.orbit.dispose();
-
-    this.mode = next;
-    this.camera = next === '2d' ? this.planCamera : createCamera(this.project);
-    if (next === '2d') {
-      this.planCamera.position.set(planTarget.x, PLAN_CAMERA_HEIGHT, planTarget.z);
-      this.planCamera.lookAt(planTarget.x, 0, planTarget.z);
-    } else if (next === '3d') {
-      this.camera.position.set(target.x + 7, target.y + 5.5, target.z + 9);
-    } else {
-      // Split keeps the perspective framing and gives the plan its own centre.
-      this.camera.position.set(target.x + 7, target.y + 5.5, target.z + 9);
-      this.planCamera.position.set(planTarget.x, PLAN_CAMERA_HEIGHT, planTarget.z);
-      this.planCamera.lookAt(planTarget.x, 0, planTarget.z);
-    }
-
-    this.orbit = new OrbitControls(this.camera, this.canvas);
-    this.orbit.enableDamping = true;
-    this.orbit.dampingFactor = 0.08;
-    this.orbit.target.copy(next === '2d' ? planTarget : target);
-    this.orbit.screenSpacePanning = true;
-    if (next === '2d') {
-      /**
-       * A plan view that can be orbited is not a plan view.
-       *
-       * The whole value of looking straight down is that "up" means something; letting the camera
-       * tumble turns it into a worse 3D view. Rotation is off and pan and zoom stay, which is the
-       * subset of orbit a plan actually needs.
-       */
-      this.orbit.enableRotate = false;
-    }
-    this.orbit.mouseButtons = {
-      LEFT: THREE.MOUSE.ROTATE,
-      MIDDLE: THREE.MOUSE.DOLLY,
-      RIGHT: THREE.MOUSE.PAN,
-    };
-
-    this.transform = new TransformControls(this.camera, this.canvas);
-    this.transform.setSize(0.9);
-    this.transform.addEventListener('dragging-changed', this.handleDraggingChanged);
-    this.transform.addEventListener('mouseUp', this.handleTransformCommit);
-    const nextHelper = this.transform.getHelper();
-    nextHelper.userData[EDITOR_ONLY] = true;
-    this.scene.add(nextHelper);
-    this.attachTransform();
+    const distance = this.camera.position.distanceTo(this.orbit.target);
+    const direction = new THREE.Vector3(
+      face.axis === 'x' ? face.sign : 0,
+      face.axis === 'y' ? face.sign : 0,
+      face.axis === 'z' ? face.sign : 0,
+    );
+    this.camera.up.set(0, 1, 0);
+    if (face.axis === 'y') this.camera.up.set(0, 0, -face.sign);
+    this.camera.position.copy(this.orbit.target).addScaledVector(direction, distance);
+    this.camera.lookAt(this.orbit.target);
 
     this.resize();
+    this.renderNow();
+  }
+
+  /**
+   * Rotate the camera around its target, in screen terms.
+   *
+   * `deltaX` and `deltaY` are pixels dragged on the gizmo. Rotating about the camera's *own* axes
+   * rather than about a fixed world-up is what keeps the drag honest after a face view: from the top
+   * view there is no meaningful world yaw, and a world-up turntable would either refuse to move or
+   * snap. Rotating the up vector by the same quaternion keeps the frame rigid, so repeated drags
+   * accumulate orientation rather than roll.
+   *
+   * Orbiting also returns the view to perspective. That is Blender's auto-perspective, and it is what
+   * stops a face view being a trap: a user who clicks Front and then drags away is asking for a 3D
+   * view of the thing they just squared up to, and answering with an orthographic tumble would leave
+   * them in a projection they never chose and have no visible way out of.
+   */
+  orbitBy(deltaX: number, deltaY: number): void {
+    this.replaceCamera('perspective');
+    const target = this.orbit.target;
+    const offset = this.camera.position.clone().sub(target);
+    const matrix = this.camera.matrixWorld;
+    const right = new THREE.Vector3().setFromMatrixColumn(matrix, 0).normalize();
+    const up = new THREE.Vector3().setFromMatrixColumn(matrix, 1).normalize();
+
+    const rotation = new THREE.Quaternion()
+      .setFromAxisAngle(up, -deltaX)
+      .multiply(new THREE.Quaternion().setFromAxisAngle(right, -deltaY));
+    offset.applyQuaternion(rotation);
+    this.camera.up.applyQuaternion(rotation).normalize();
+    this.camera.position.copy(target).add(offset);
+    this.camera.lookAt(target);
     this.renderNow();
   }
 
@@ -1090,40 +1092,18 @@ export class EditorViewport {
   }
 
   /**
-   * Draw the current view mode.
+   * Draw the stage.
    *
-   * `split` uses the renderer's scissor test to draw two cameras into one canvas: the perspective
-   * view on the left half, the plan on the right. A single canvas rather than two is what keeps the
-   * gizmo, the raycasting, and the resize observer on one surface — two canvases would mean two of
-   * each and a second place for them to disagree.
-   *
-   * The plan half renders the *plan* camera even when the working camera is the perspective one, so
-   * the two halves always show what their labels say.
+   * One camera and one viewport: the split view this used to support drew a second camera into the
+   * same canvas with a scissor rectangle, and it went with the 2D mode. A face view now answers the
+   * question split existed for — seeing an elevation without losing your place — and it answers it
+   * without a second render target, a second camera to keep framed, or a second place for the gizmo
+   * and the raycaster to disagree.
    */
   renderNow(): void {
     this.orbit.update();
-    if (this.mode !== 'split') {
-      this.renderer.setScissorTest(false);
-      this.renderer.setViewport(0, 0, this.width, this.height);
-      this.renderer.render(this.scene, this.camera);
-      return;
-    }
-
-    const half = Math.floor(this.width / 2);
-    const planHalf = this.width - half;
-
-    this.renderer.setScissorTest(true);
-
-    this.renderer.setViewport(0, 0, half, this.height);
-    this.renderer.setScissor(0, 0, half, this.height);
-    this.renderer.render(this.scene, this.camera);
-
-    this.renderer.setViewport(half, 0, planHalf, this.height);
-    this.renderer.setScissor(half, 0, planHalf, this.height);
-    this.renderer.render(this.scene, this.planCamera);
-
-    this.renderer.setScissorTest(false);
     this.renderer.setViewport(0, 0, this.width, this.height);
+    this.renderer.render(this.scene, this.camera);
   }
 
   private renderLoop = (): void => {

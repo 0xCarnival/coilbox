@@ -10,10 +10,12 @@ import { color, fontSize, radius, space } from '../styles/tokens.stylex.js';
 import { DOM, DOM_ID, withDomClass } from '../dom-contract.js';
 import {
   EditorViewport,
+  type CameraBasis,
   type CanvasSize,
   type ScreenPoint,
   type SnapSettings,
   type TransformTool,
+  type ViewFace,
 } from '../viewport/viewport-controller.js';
 import { useSession } from '../hooks.js';
 
@@ -124,17 +126,16 @@ const styles = stylex.create({
 export type PlayState = 'stopped' | 'running' | 'paused';
 
 /**
- * The editor view's display settings, as the panel reads them back.
+ * The editor view's display settings, as an overlay reads them back.
  *
  * A plain record rather than component state: the values live in Three objects, and this is the
- * snapshot shape the panel compares against.
+ * snapshot shape a control compares against. The view mode used to be here as well; it is gone with
+ * the 2D view, and the camera's orientation is now read as a basis instead — see `cameraBasis`.
  */
 export interface ViewportDisplay {
   projection: 'perspective' | 'orthographic';
   grid: boolean;
   shadows: boolean;
-  /** What the stage shows: the 3D view, the plan view, or both. */
-  mode: '3d' | '2d' | 'split';
 }
 
 export interface ViewportHandle {
@@ -151,10 +152,20 @@ export interface ViewportHandle {
    *
    * They live on the viewport rather than in React state because each one mutates a Three object —
    * a camera, a grid helper, the renderer's shadow map — and a re-render would not touch any of
-   * them. The panel reads the current value back from here so the two cannot disagree.
+   * them. The control reads the current value back from here so the two cannot disagree.
    */
   display(): ViewportDisplay;
   setDisplay(next: Partial<ViewportDisplay>): void;
+  /**
+   * The view gizmo's half of the camera API.
+   *
+   * `cameraBasis` is polled every frame while the gizmo is mounted, so it returns three vectors
+   * rather than reading back through `display()`: the gizmo needs the orientation continuously, not
+   * just when a switch is flipped.
+   */
+  cameraBasis(): CameraBasis;
+  faceView(face: ViewFace): void;
+  orbitBy(deltaX: number, deltaY: number): void;
   /**
    * Geometry for the measurement overlay.
    *
@@ -406,9 +417,8 @@ export function Viewport({ handleRef, tool, snap, onPlayStateChange, onStatus }:
               projection: viewportRef.current.projection(),
               grid: viewportRef.current.gridVisible(),
               shadows: viewportRef.current.shadowsVisible(),
-              mode: viewportRef.current.viewMode(),
             }
-          : { projection: 'perspective', grid: true, shadows: true, mode: '3d' },
+          : { projection: 'perspective', grid: true, shadows: true },
       worldBounds: (entityId: string) => viewportRef.current?.worldBounds(entityId) ?? null,
       toScreen: (point: [number, number, number]) => viewportRef.current?.toScreen(point) ?? null,
       cameraDistance: () => viewportRef.current?.cameraDistance() ?? 0,
@@ -419,8 +429,15 @@ export function Viewport({ handleRef, tool, snap, onPlayStateChange, onStatus }:
         if (next.projection !== undefined) viewport.setProjection(next.projection);
         if (next.grid !== undefined) viewport.setGridVisible(next.grid);
         if (next.shadows !== undefined) viewport.setShadowsVisible(next.shadows);
-        if (next.mode !== undefined) viewport.setViewMode(next.mode);
       },
+      cameraBasis: () =>
+        viewportRef.current?.cameraBasis() ?? {
+          right: [1, 0, 0],
+          up: [0, 1, 0],
+          forward: [0, 0, -1],
+        },
+      faceView: (face: ViewFace) => viewportRef.current?.faceView(face),
+      orbitBy: (deltaX: number, deltaY: number) => viewportRef.current?.orbitBy(deltaX, deltaY),
       project: (entityId: string) => {
         const position = viewportRef.current?.entityWorldPosition(entityId);
         return position ? [position.x, position.y, position.z] : null;
