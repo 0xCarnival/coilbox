@@ -11,13 +11,13 @@ import { Hierarchy } from './panels/Hierarchy.js';
 import { Inspector } from './panels/Inspector.js';
 import { Toolbar, SaveIndicator } from './panels/Toolbar.js';
 import { BottomPanel, type BottomTab } from './panels/BottomPanel.js';
-import { Viewport, type PlayState, type ViewportHandle } from './panels/Viewport.js';
+import { Viewport, type PlayState, type ViewportDisplay, type ViewportHandle } from './panels/Viewport.js';
 import type { SnapSettings, TransformTool } from './viewport/viewport-controller.js';
 import { isFiniteJsonNumber, isJsonString, jsonField } from './json-values.js';
 import { IconRail } from './ui/IconRail.js';
 import { ResizeHandle } from './ui/ResizeHandle.js';
 import { HintCard } from './ui/HintCard.js';
-import { DisplayPanel } from './ui/DisplayPanel.js';
+import { ViewGizmo } from './ui/ViewGizmo.js';
 import { MeasurementOverlay } from './ui/MeasurementOverlay.js';
 /**
  * The command palette is loaded on demand.
@@ -223,11 +223,38 @@ function StudioShell(): JSX.Element {
   const [paletteOpen, setPaletteOpen] = useState(false);
   /** Whether the dimension overlay is drawn. An editor preference, like the unit system. */
   const [measurements, setMeasurements] = useState(true);
+  /**
+   * The two view overlays the gizmo's menu switches, mirrored from the viewport.
+   *
+   * They live on Three objects — a grid helper and the renderer's shadow map — so the viewport owns
+   * them and this is a copy for the menu's ticks. The Display panel used to hold them the same way;
+   * the copy is re-read from the viewport below rather than trusted, because a re-render never touches
+   * the objects themselves.
+   */
+  const [grid, setGrid] = useState(true);
+  const [shadows, setShadows] = useState(true);
   const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     globalThis.localStorage?.setItem(LAYOUT_KEY, JSON.stringify(layout));
   }, [layout]);
+
+  /**
+   * Read the live overlay values back once the viewport exists.
+   *
+   * Deferred by a frame for the same reason the panel deferred it: the handle is assigned in an effect
+   * below this one, so on the first render it exists but the Three objects behind it may not, and
+   * reading through it would report defaults that are not what is on screen.
+   */
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      const display = viewportRef.current?.display();
+      if (!display) return;
+      setGrid(display.grid);
+      setShadows(display.shadows);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, []);
 
   // Test hook: the browser checks drive the same handle the toolbar buttons use.
   useEffect(() => {
@@ -239,6 +266,21 @@ function StudioShell(): JSX.Element {
   }, []);
 
   const editorLocked = playState !== 'stopped';
+
+  /**
+   * Apply an overlay switch, then read both back.
+   *
+   * The read-back is the point: the ticks in the gizmo's menu describe Three objects this component
+   * does not own, and setting React state from the requested value instead of the applied one is how
+   * a tick comes to disagree with the grid it claims to describe.
+   */
+  const setOverlay = (next: Partial<ViewportDisplay>) => {
+    viewportRef.current?.setDisplay(next);
+    const display = viewportRef.current?.display();
+    if (!display) return;
+    setGrid(display.grid);
+    setShadows(display.shadows);
+  };
 
   // Editor shortcuts only fire while the viewport owns the keyboard (plan §3). Text fields
   // and Play mode never trigger them.
@@ -416,13 +458,15 @@ function StudioShell(): JSX.Element {
                * carries both facts.
                */}
               <HintCard tool={tool} visible={!editorLocked} />
-              <DisplayPanel
+              <ViewGizmo
                 viewport={viewportRef}
-                snap={snap}
-                onSnapChange={setSnap}
+                visible={!editorLocked}
+                grid={grid}
+                onGridChange={(next) => setOverlay({ grid: next })}
+                shadows={shadows}
+                onShadowsChange={(next) => setOverlay({ shadows: next })}
                 measurements={measurements}
                 onMeasurementsChange={setMeasurements}
-                visible={!editorLocked}
               />
               <MeasurementOverlay viewport={viewportRef} visible={!editorLocked && measurements} />
               <ToolDock

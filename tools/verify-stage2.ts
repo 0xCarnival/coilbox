@@ -489,54 +489,71 @@ async function main(): Promise<void> {
     await page.screenshot({ path: join(evidenceDir, 'play-with-models.png') });
 
     /**
-     * The display panel is a set of view controls — projection, grid, shadows, snapping — and none
-     * of them reach the play world, which is built fresh from a snapshot on its own canvas. It used
-     * to stay mounted through Play anyway, covering the game and the runtime HUD's own readout while
-     * offering switches that did nothing.
+     * The view gizmo is the stage's view control, and a view control has nothing to say during Play:
+     * the camera belongs to the game then, not to the user, and the play world is rendered on its own
+     * canvas from a fresh snapshot. It used to stay up — it was a whole panel of switches then —
+     * covering the game and the runtime HUD's own readout.
      */
-    const panelsInPlay = await page.locator('.display-panel').count();
+    const gizmosInPlay = await page.locator('.view-gizmo').count();
     record({
-      id: 'display-panel-hidden-in-play',
-      title: 'The display panel is not mounted while a simulation runs',
-      passed: panelsInPlay === 0,
+      id: 'view-gizmo-hidden-in-play',
+      title: 'The view gizmo is not mounted while a simulation runs',
+      passed: gizmosInPlay === 0,
       detail:
-        panelsInPlay === 0
-          ? 'the panel leaves the stage in Play, so it covers neither the game nor the runtime HUD'
-          : `${panelsInPlay} display panel(s) still mounted over the play canvas`,
-      observed: { panelsInPlay },
+        gizmosInPlay === 0
+          ? 'the gizmo leaves the stage in Play, so it covers neither the game nor the runtime HUD'
+          : `${gizmosInPlay} view gizmo(s) still mounted over the play canvas`,
+      observed: { gizmosInPlay },
     });
 
     await page.click('button[aria-label="Stop and discard the simulation"]');
     await page.waitForSelector('.viewport-badge', { state: 'detached', timeout: 15_000 });
 
     /**
-     * Geometric, not textual: the two overlays share the top of the stage and the same `zIndex`, so
-     * paint order falls to DOM order and the assertion is simply that their boxes do not intersect.
-     * The hint card was centred on the whole stage, which put its right edge 223px underneath the
-     * panel's lane, and the panel painted over it — clipping the hint mid-sentence. Re-centring the
-     * card on the stage again is the regression this catches.
+     * Geometric, not textual: the hint card and the gizmo share the top of the stage and the same
+     * `zIndex`, so paint order falls to DOM order and the assertion is simply that their boxes do not
+     * intersect.
+     *
+     * Measured at two stage widths, and the narrow one is the point. At the default 764px stage a card
+     * centred on the *whole* stage happens to stop short of the gizmo's 116px lane, so a single wide
+     * measurement passes whether or not the card reserves that lane — it would be a check asserting
+     * coverage it does not have. Shrinking the window is what makes the two implementations differ,
+     * and a narrow stage is reachable in normal use by dragging either column wider.
      */
-    await page.waitForSelector('.display-panel', { timeout: 15_000 });
-    const hintCard = await page.locator('.hint-card').boundingBox();
-    const displayPanel = await page.locator('.display-panel').boundingBox();
-    const stageWidth = await page
-      .locator('.display-panel')
-      .evaluate((element) => Math.round(element.parentElement?.getBoundingClientRect().width ?? 0));
-    const overlap =
-      hintCard && displayPanel
-        ? Math.min(hintCard.x + hintCard.width, displayPanel.x + displayPanel.width) - Math.max(hintCard.x, displayPanel.x)
-        : null;
+    const measureOverlap = async () => {
+      await page.waitForSelector('.view-gizmo', { timeout: 15_000 });
+      const card = await page.locator('.hint-card').boundingBox();
+      const gizmo = await page.locator('.view-gizmo').boundingBox();
+      const stage = await page
+        .locator('.view-gizmo')
+        .evaluate((element) => Math.round(element.parentElement?.parentElement?.getBoundingClientRect().width ?? 0));
+      const gap =
+        card && gizmo
+          ? Math.min(card.x + card.width, gizmo.x + gizmo.width) - Math.max(card.x, gizmo.x)
+          : null;
+      return { card, gizmo, stage, gap };
+    };
+
+    const wide = await measureOverlap();
+    await page.setViewportSize({ width: 1024, height: 900 });
+    await page.waitForTimeout(500);
+    const narrow = await measureOverlap();
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.waitForTimeout(300);
+
+    const describe = (sample: typeof wide): string =>
+      sample.gap === null
+        ? `a stage of ${sample.stage}px could not be measured`
+        : `on a ${sample.stage}px stage the hint ends at ${Math.round((sample.card?.x ?? 0) + (sample.card?.width ?? 0))} and the gizmo starts at ${Math.round(sample.gizmo?.x ?? 0)}: ${
+            sample.gap <= 0 ? `${Math.round(-sample.gap)}px clear` : `${Math.round(sample.gap)}px of the hint is covered`
+          }`;
+
     record({
       id: 'overlays-do-not-overlap',
-      title: 'The hint card and the display panel do not overlap on the stage',
-      passed: overlap !== null && overlap <= 0,
-      detail:
-        overlap === null
-          ? `could not measure both overlays: hint card ${hintCard ? 'found' : 'missing'}, display panel ${displayPanel ? 'found' : 'missing'}`
-          : `on a ${stageWidth}px stage, hint card ends at ${Math.round((hintCard?.x ?? 0) + (hintCard?.width ?? 0))} and the panel starts at ${Math.round(displayPanel?.x ?? 0)}: ${
-              overlap <= 0 ? `${Math.round(-overlap)}px clear` : `${Math.round(overlap)}px of the hint is covered`
-            }`,
-      observed: { hintCard, displayPanel, overlap, stageWidth },
+      title: 'The hint card and the view gizmo do not overlap on the stage, wide or narrow',
+      passed: wide.gap !== null && wide.gap <= 0 && narrow.gap !== null && narrow.gap <= 0,
+      detail: `${describe(wide)}; ${describe(narrow)}`,
+      observed: { wide, narrow },
     });
 
     // --- missing asset error is understandable -------------------------------------

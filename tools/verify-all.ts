@@ -129,11 +129,25 @@ function documentedClaims(text: string): Array<{ what: string; count: string }> 
  *
  * A partial run checks the counts it measured and nothing else: `--from 3` neither reports stages
  * 0-2 as missing nor holds their documents to a total they were not run against.
+ *
+ * Only gates that *passed* are compared, and the total only when all of them did. A gate that fails
+ * early — a failed typecheck, a flaky watcher test — reports no tally at all, and reading that as "0
+ * of 14" told the reader their documentation was out of date when the actual news was that a gate had
+ * failed. The documents describe a passing tree; there is nothing to compare them against until there
+ * is one.
  */
 function documentationDrift(results: ReadonlyArray<{ label: string; ok: boolean; summary: string }>): string[] {
-  const actual = new Map(results.map((result) => [result.label, result.summary.replace(' checks passed', '')]));
-  // The documented total counts lint as well, so it only applies when lint and every stage ran.
-  const whole = results.length === stages.length + 1 && stages.length === ALL_STAGES.length;
+  /** Only the gates that reported a tally: a failure early enough to skip its checks reports none. */
+  const actual = new Map(
+    results.flatMap((result) =>
+      result.ok ? [[result.label, result.summary.replace(' checks passed', '')] as const] : [],
+    ),
+  );
+  /** The documented total counts lint as well, so it only applies to a complete, wholly passing run. */
+  const whole =
+    results.every((result) => result.ok) &&
+    results.length === stages.length + 1 &&
+    stages.length === ALL_STAGES.length;
   const total = `${results.filter((result) => result.ok).length}/${results.length}`;
   const problems: string[] = [];
   for (const file of ['README.md', 'docs/status.md']) {

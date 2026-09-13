@@ -188,20 +188,29 @@ export const controlSize = stylex.defineVars({
 /**
  * The geometry the floating overlays on the stage share.
  *
- * `panel` is the display panel's width and `lane` is what it occupies once its gutter is counted,
+ * `gizmo` is the view gizmo's ball and `lane` is the column it occupies once its gutters are counted,
  * measured from the stage's trailing edge. The hint card centres itself in what is left rather than
- * in the stage as a whole. Both were anchored to the stage's top with the same `zIndex`, so the
- * card's centred 460px reached 223px under the panel and the panel — later in the DOM — painted
- * over it, clipping the hint mid-sentence.
+ * in the stage as a whole: centred on the stage, its 460px reached 223px underneath the control that
+ * occupies that corner and was painted over mid-sentence.
  *
- * The two are one token pair rather than two literals because they have to agree: a panel that
- * changes width without its lane changing is the same bug again.
+ * The two are one token pair rather than two literals because they have to agree — a ball that
+ * changes size without its lane changing is the same bug again. `lane` also has to cover the overlays
+ * button in the same column, which is narrower than the ball.
  */
 export const overlay = stylex.defineVars({
-  panel: '248px',
-  lane: '272px',
+  gizmo: '92px',
+  lane: '116px',
   card: '460px',
 });
+
+/**
+ * The gizmo's ball size as a number, for the arithmetic that places its six handles.
+ *
+ * The same split as `control` and `controlSize`: a handle's position is `centre ± radius`, computed in
+ * JavaScript from the camera's basis every frame, and a custom property is a string that would have to
+ * be parsed back out. `overlay.gizmo` and this must agree.
+ */
+export const GIZMO_SIZE = 92;
 
 /**
  * Shared button treatments.

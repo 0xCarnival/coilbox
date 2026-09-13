@@ -1,8 +1,8 @@
 {
   "stage": 2,
-  "generatedAt": "2026-09-13T12:16:15.293Z",
+  "generatedAt": "2026-09-13T13:49:23.663Z",
   "node": "v24.18.0",
-  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage2-pZhPK4",
+  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage2-HEXeaX",
   "steps": [
     {
       "name": "typecheck",
@@ -68,10 +68,10 @@
       "id": "clip-playback",
       "title": "The imported clip is discoverable and plays in the editor preview",
       "passed": true,
-      "detail": "clips offered: Hop; preview time advanced from 0.04880000019073486 to 0.6369000000953674",
+      "detail": "clips offered: Hop; preview time advanced from 0.048200000286102294 to 0.6189000000953674",
       "observed": {
-        "before": 0.04880000019073486,
-        "after": 0.6369000000953674,
+        "before": 0.048200000286102294,
+        "after": 0.6189000000953674,
         "clip": "Hop"
       }
     },
@@ -118,7 +118,7 @@
       "id": "drag-cancellation",
       "title": "A transform drag abandoned with Escape changes nothing and records nothing",
       "passed": true,
-      "detail": "grabbed=true; during the drag the projection moved to [-0.5,1,0] while the document stayed [0,1,0]; after Escape the projection is [0,1,0] and the undo label is still Rename Crate Awer to Crate A",
+      "detail": "grabbed=true; during the drag the projection moved to [0,1,-0.5] while the document stayed [0,1,0]; after Escape the projection is [0,1,0] and the undo label is still Rename Crate Awer to Crate A",
       "observed": {
         "beforeDrag": {
           "id": "box",
@@ -146,9 +146,9 @@
             0
           ],
           "projected": [
-            -0.5,
+            0,
             1,
-            0
+            -0.5
           ],
           "dragging": true,
           "undoLabel": "Rename Crate Awer to Crate A",
@@ -214,7 +214,7 @@
       "id": "play-animates",
       "title": "Play runs the runtime animation: clips advance inside the play world",
       "passed": true,
-      "detail": "Limb clip \"Wave\" advanced 0.150 -> 0.233 after 252 ms; 2 animated entities, 2 models loaded",
+      "detail": "Limb clip \"Wave\" advanced 0.117 -> 0.150 after 250 ms; 2 animated entities, 2 models loaded",
       "observed": {
         "ids": {
           "limbId": "box-2",
@@ -228,7 +228,7 @@
           "playing": true,
           "loop": true,
           "speed": 1,
-          "time": 0.15,
+          "time": 0.11666666666666665,
           "duration": 1
         },
         "second": {
@@ -239,7 +239,7 @@
           "playing": true,
           "loop": true,
           "speed": 1,
-          "time": 0.2333333333333333,
+          "time": 0.15,
           "duration": 1
         },
         "crate": {
@@ -250,18 +250,18 @@
           "playing": true,
           "loop": true,
           "speed": 1,
-          "time": 0.2333333333333333,
+          "time": 0.15,
           "duration": 0.800000011920929
         },
         "stats": {
           "state": "running",
           "frames": 6,
-          "steps": 14,
-          "fps": 5.233217555372543,
-          "frameTimeMs": 191.08703000000003,
-          "physicsTimeMs": 0.04490443457741825,
-          "droppedTime": 0.29996666666666694,
-          "clampedTime": 0.08329999999999993,
+          "steps": 9,
+          "fps": 5.890699369159112,
+          "frameTimeMs": 169.75913000000006,
+          "physicsTimeMs": 0.0817413991132293,
+          "droppedTime": 0.16666666666666669,
+          "clampedTime": 0.2,
           "drawCalls": 6,
           "triangles": 1268,
           "geometries": 4,
@@ -289,38 +289,56 @@
           "inputListeners": 8,
           "audioActivated": true
         },
-        "waitedMs": 252
+        "waitedMs": 250
       }
     },
     {
-      "id": "display-panel-hidden-in-play",
-      "title": "The display panel is not mounted while a simulation runs",
+      "id": "view-gizmo-hidden-in-play",
+      "title": "The view gizmo is not mounted while a simulation runs",
       "passed": true,
-      "detail": "the panel leaves the stage in Play, so it covers neither the game nor the runtime HUD",
+      "detail": "the gizmo leaves the stage in Play, so it covers neither the game nor the runtime HUD",
       "observed": {
-        "panelsInPlay": 0
+        "gizmosInPlay": 0
       }
     },
     {
       "id": "overlays-do-not-overlap",
-      "title": "The hint card and the display panel do not overlap on the stage",
+      "title": "The hint card and the view gizmo do not overlap on the stage, wide or narrow",
       "passed": true,
-      "detail": "on a 764px stage, hint card ends at 777 and the panel starts at 866: 89px clear",
+      "detail": "on a 764px stage the hint ends at 855 and the gizmo starts at 1020: 165px clear; on a 348px stage the hint ends at 588 and the gizmo starts at 604: 16px clear",
       "observed": {
-        "hintCard": {
-          "x": 434.790771484375,
-          "y": 64.51234436035156,
-          "width": 342.40283203125,
-          "height": 50.209686279296875
+        "wide": {
+          "card": {
+            "x": 512.790771484375,
+            "y": 64.51234436035156,
+            "width": 342.40283203125,
+            "height": 50.209686279296875
+          },
+          "gizmo": {
+            "x": 1020,
+            "y": 56,
+            "width": 92,
+            "height": 92
+          },
+          "stage": 764,
+          "gap": -164.806396484375
         },
-        "displayPanel": {
-          "x": 866.47998046875,
-          "y": 67.19000244140625,
-          "width": 243.0400390625,
-          "height": 312.6199951171875
-        },
-        "overlap": -89.286376953125,
-        "stageWidth": 764
+        "narrow": {
+          "card": {
+            "x": 364,
+            "y": 56,
+            "width": 224,
+            "height": 51.234375
+          },
+          "gizmo": {
+            "x": 604,
+            "y": 56,
+            "width": 92,
+            "height": 92
+          },
+          "stage": 348,
+          "gap": -16
+        }
       }
     },
     {

@@ -80,7 +80,7 @@ export const DOM = {
    * intersect — and both boxes have to be locatable for that to be assertable.
    */
   hintCard: 'hint-card',
-  displayPanel: 'display-panel',
+  viewGizmo: 'view-gizmo',
   /** Stage 5: the play-mode badge proves the viewport switched modes. */
   viewportBadge: 'viewport-badge',
   /** Stage 1-5: the hierarchy row is clicked to select an object. */
