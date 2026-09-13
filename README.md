@@ -26,7 +26,7 @@ rules.
 
 - `pnpm verify:stage0` — 14/14 checks (runtime, physics, teardown, WASM delivery)
 - `pnpm verify:stage1` — 12/12 checks (authoring loop end to end, pause and step)
-- `pnpm verify:stage2` — 15/15 checks (assets, clips, property controls, keyboard focus, drag cancellation)
+- `pnpm verify:stage2` — 17/17 checks (assets, clips, property controls, keyboard focus, drag cancellation)
 - `pnpm verify:stage3` — 14/14 checks (both demo games played end to end, wall contact, tuning editable)
 - `pnpm verify:stage4` — 17/17 checks (agent-built game, human edit, independence, management)
 - `pnpm verify:stage5` — 23/23 checks (compatibility, resource ownership, reference-scene

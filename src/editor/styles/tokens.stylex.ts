@@ -186,6 +186,24 @@ export const controlSize = stylex.defineVars({
 });
 
 /**
+ * The geometry the floating overlays on the stage share.
+ *
+ * `panel` is the display panel's width and `lane` is what it occupies once its gutter is counted,
+ * measured from the stage's trailing edge. The hint card centres itself in what is left rather than
+ * in the stage as a whole. Both were anchored to the stage's top with the same `zIndex`, so the
+ * card's centred 460px reached 223px under the panel and the panel — later in the DOM — painted
+ * over it, clipping the hint mid-sentence.
+ *
+ * The two are one token pair rather than two literals because they have to agree: a panel that
+ * changes width without its lane changing is the same bug again.
+ */
+export const overlay = stylex.defineVars({
+  panel: '248px',
+  lane: '272px',
+  card: '460px',
+});
+
+/**
  * Shared button treatments.
  *
  * Their `buttonVariants`, reduced to the four variants this editor actually uses. `primary` is the

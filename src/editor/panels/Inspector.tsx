@@ -680,7 +680,7 @@ function BehaviorSection({ entity, component, locked }: { entity: Entity; compon
       )}
       <ActionGroup>
         <ActionButton
-          label="Remove"
+          label={`Remove ${descriptor?.name ?? component.behaviorId}`}
           icon={<Trash2 size={control.iconSm} />}
           disabled={locked}
           onClick={() =>
@@ -764,13 +764,16 @@ function ComponentSection({
         </div>
       )}
       {/**
-       * The section's destructive action sits in a filled cluster rather than as a bare ghost link.
-       * Their `ActionButton` shape is what makes it read as the row's one button instead of a label
-       * that happens to be clickable.
+       * The label names the component it removes.
+       *
+       * Each of these read just "Remove", so an entity with four components rendered four identical
+       * full-width danger buttons stacked down the panel with nothing on screen saying which removed
+       * what. The section title above is the only context, and it is a collapsing header, so it is
+       * not reliably there to read.
        */}
       <ActionGroup>
         <ActionButton
-          label="Remove"
+          label={`Remove ${componentLabel(component)}`}
           icon={<Trash2 size={control.iconSm} />}
           danger
           disabled={locked}

@@ -422,6 +422,7 @@ function StudioShell(): JSX.Element {
                 onSnapChange={setSnap}
                 measurements={measurements}
                 onMeasurementsChange={setMeasurements}
+                visible={!editorLocked}
               />
               <MeasurementOverlay viewport={viewportRef} visible={!editorLocked && measurements} />
               <ToolDock

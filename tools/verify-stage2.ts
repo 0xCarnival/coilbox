@@ -488,8 +488,56 @@ async function main(): Promise<void> {
     });
     await page.screenshot({ path: join(evidenceDir, 'play-with-models.png') });
 
+    /**
+     * The display panel is a set of view controls — projection, grid, shadows, snapping — and none
+     * of them reach the play world, which is built fresh from a snapshot on its own canvas. It used
+     * to stay mounted through Play anyway, covering the game and the runtime HUD's own readout while
+     * offering switches that did nothing.
+     */
+    const panelsInPlay = await page.locator('.display-panel').count();
+    record({
+      id: 'display-panel-hidden-in-play',
+      title: 'The display panel is not mounted while a simulation runs',
+      passed: panelsInPlay === 0,
+      detail:
+        panelsInPlay === 0
+          ? 'the panel leaves the stage in Play, so it covers neither the game nor the runtime HUD'
+          : `${panelsInPlay} display panel(s) still mounted over the play canvas`,
+      observed: { panelsInPlay },
+    });
+
     await page.click('button[aria-label="Stop and discard the simulation"]');
     await page.waitForSelector('.viewport-badge', { state: 'detached', timeout: 15_000 });
+
+    /**
+     * Geometric, not textual: the two overlays share the top of the stage and the same `zIndex`, so
+     * paint order falls to DOM order and the assertion is simply that their boxes do not intersect.
+     * The hint card was centred on the whole stage, which put its right edge 223px underneath the
+     * panel's lane, and the panel painted over it — clipping the hint mid-sentence. Re-centring the
+     * card on the stage again is the regression this catches.
+     */
+    await page.waitForSelector('.display-panel', { timeout: 15_000 });
+    const hintCard = await page.locator('.hint-card').boundingBox();
+    const displayPanel = await page.locator('.display-panel').boundingBox();
+    const stageWidth = await page
+      .locator('.display-panel')
+      .evaluate((element) => Math.round(element.parentElement?.getBoundingClientRect().width ?? 0));
+    const overlap =
+      hintCard && displayPanel
+        ? Math.min(hintCard.x + hintCard.width, displayPanel.x + displayPanel.width) - Math.max(hintCard.x, displayPanel.x)
+        : null;
+    record({
+      id: 'overlays-do-not-overlap',
+      title: 'The hint card and the display panel do not overlap on the stage',
+      passed: overlap !== null && overlap <= 0,
+      detail:
+        overlap === null
+          ? `could not measure both overlays: hint card ${hintCard ? 'found' : 'missing'}, display panel ${displayPanel ? 'found' : 'missing'}`
+          : `on a ${stageWidth}px stage, hint card ends at ${Math.round((hintCard?.x ?? 0) + (hintCard?.width ?? 0))} and the panel starts at ${Math.round(displayPanel?.x ?? 0)}: ${
+              overlap <= 0 ? `${Math.round(-overlap)}px clear` : `${Math.round(overlap)}px of the hint is covered`
+            }`,
+      observed: { hintCard, displayPanel, overlap, stageWidth },
+    });
 
     // --- missing asset error is understandable -------------------------------------
     // Delete the file behind a manifest entry, then load the scene again: the entity must
