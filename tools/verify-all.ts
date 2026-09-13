@@ -1,5 +1,7 @@
 import { execFile } from 'node:child_process';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { existsSync, readFileSync } from 'node:fs';
 import { promisify } from 'node:util';
 
 /**
@@ -21,7 +23,8 @@ const fromIndex = args.indexOf('--from');
 const from = fromIndex >= 0 ? Number(String(args[fromIndex + 1] ?? '').replace('stage', '')) : 0;
 const extra = args.includes('--skip-build') ? ['--skip-build'] : [];
 
-const stages = [0, 1, 2, 3, 4, 5].filter((stage) => stage >= (Number.isFinite(from) ? from : 0));
+const ALL_STAGES = [0, 1, 2, 3, 4, 5];
+const stages = ALL_STAGES.filter((stage) => stage >= (Number.isFinite(from) ? from : 0));
 const results: Array<{ label: string; ok: boolean; summary: string; failures: string[] }> = [];
 
 /**
@@ -83,11 +86,89 @@ for (const stage of stages) {
   }
 }
 
+const GATE_TOTAL = 'the gate total';
+
+/**
+ * Every check count a document states, and what that count is a count of.
+ *
+ * A count is written three ways: beside the command in the summary table or README list, in a
+ * stage's `**Status:**` line, and as the total on the `pnpm verify` line. All three have been stale
+ * at once, so all three are read. Attribution comes from the text itself — the stage number in the
+ * command, or the enclosing `## Stage N` heading — rather than from a list here: a hardcoded
+ * expectation would drift in exactly the way this exists to catch.
+ */
+function documentedClaims(text: string): Array<{ what: string; count: string }> {
+  const claims: Array<{ what: string; count: string }> = [];
+  let section: string | undefined;
+  for (const line of text.split('\n')) {
+    const heading = /^##\s+Stage\s+(\d)\b/.exec(line);
+    if (heading) {
+      section = `stage ${heading[1]}`;
+      continue;
+    }
+    // "`pnpm verify:stage3` — 14/14 checks", and "`tools/verify-stage5.ts` passes 23/23 checks".
+    const beside = /verify[:-]stage(\d).*?(\d+)\/(\d+) checks/.exec(line);
+    if (beside) claims.push({ what: `stage ${beside[1]}`, count: `${beside[2]}/${beside[3]}` });
+    // "**Status:** all five demonstrated, 12/12 automated checks passing." — belongs to its section.
+    const status = /^\*\*Status:\*\*.*?(\d+)\/(\d+) automated checks/.exec(line);
+    if (status && section !== undefined) claims.push({ what: section, count: `${status[1]}/${status[2]}` });
+    // "reports 7/7 passing" and "7/7 gates pass".
+    const total = /verify\b.*?(\d+)\/(\d+) (?:gates|passing)/.exec(line);
+    if (total) claims.push({ what: GATE_TOTAL, count: `${total[1]}/${total[2]}` });
+  }
+  return claims;
+}
+
+/**
+ * Do the documents agree with the gates that just ran?
+ *
+ * `docs/status.md` is what `README.md` points at as the record of what each stage demonstrated, and
+ * a stale count there makes every other number in it worth doubting. The counts only exist in the
+ * gates' output, which this script already captured, so the comparison is free — it would be a poor
+ * trade to re-run eight minutes of gates to check seven integers.
+ *
+ * A partial run checks the counts it measured and nothing else: `--from 3` neither reports stages
+ * 0-2 as missing nor holds their documents to a total they were not run against.
+ */
+function documentationDrift(results: ReadonlyArray<{ label: string; ok: boolean; summary: string }>): string[] {
+  const actual = new Map(results.map((result) => [result.label, result.summary.replace(' checks passed', '')]));
+  // The documented total counts lint as well, so it only applies when lint and every stage ran.
+  const whole = results.length === stages.length + 1 && stages.length === ALL_STAGES.length;
+  const total = `${results.filter((result) => result.ok).length}/${results.length}`;
+  const problems: string[] = [];
+  for (const file of ['README.md', 'docs/status.md']) {
+    const path = join(root, file);
+    if (!existsSync(path)) continue;
+    for (const { what, count } of documentedClaims(readFileSync(path, 'utf8'))) {
+      if (what === GATE_TOTAL) {
+        if (whole && total !== count) problems.push(`${file} documents the gate total as ${count}; this run was ${total}`);
+        continue;
+      }
+      const measured = actual.get(what);
+      if (measured === undefined || measured === count) continue;
+      problems.push(`${file} documents ${what} as ${count} checks; the gate reported ${measured}`);
+    }
+  }
+  return problems;
+}
+
 process.stdout.write(`\n${'='.repeat(72)}\nSUMMARY\n${'='.repeat(72)}\n`);
 for (const result of results) {
   process.stdout.write(`${result.label}: ${result.ok ? 'PASS' : 'FAIL'} (${result.summary})\n`);
   for (const title of result.failures) process.stdout.write(`    - ${title}\n`);
 }
+/**
+ * The documented counts are checked here rather than as another gate, because they describe *these*
+ * results. A separate gate would have to re-run everything to learn what this already knows.
+ */
+const drift = documentationDrift(results);
+if (drift.length > 0) {
+  process.stdout.write(`\nDOCUMENTATION\n`);
+  for (const problem of drift) process.stdout.write(`  ${problem}\n`);
+}
+
 const failed = results.filter((result) => !result.ok);
-process.stdout.write(`\n${results.length - failed.length}/${results.length} gates passed\n`);
-if (failed.length > 0) process.exit(1);
+process.stdout.write(
+  `\n${results.length - failed.length}/${results.length} gates passed${drift.length > 0 ? '; documentation is out of date' : ''}\n`,
+);
+if (failed.length > 0 || drift.length > 0) process.exit(1);
