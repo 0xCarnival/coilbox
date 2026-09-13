@@ -556,6 +556,92 @@ async function main(): Promise<void> {
       observed: { wide, narrow },
     });
 
+    /**
+     * The gizmo must turn the view like a turntable, never like a trackball.
+     *
+     * A trackball rolls, and roll is what makes an orbit read as "the whole viewport is spinning".
+     * This project shipped one: after a tilt followed by a sideways drag the camera's right axis
+     * measured `[-0.201, -0.582, 0.788]` where it had been `[0.549, 0, 0.836]`, tilting the horizon
+     * 35°. The invariant is exact and cheap — the right axis stays horizontal — and it is checked
+     * after every step, because roll accumulates rather than appearing at once.
+     *
+     * `up` is deliberately not asserted: a camera looking down has a tilted up vector legitimately,
+     * so requiring `up = (0,1,0)` would fail on a perfectly good view. It is the *right* axis that
+     * says whether the horizon is level.
+     */
+    const rollAfterDrag = async (dx: number, dy: number): Promise<number> => {
+      const box = await page.locator('.view-gizmo').boundingBox();
+      if (!box) return Number.NaN;
+      const centre = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+      await page.mouse.move(centre.x, centre.y);
+      await page.mouse.down();
+      for (let step = 1; step <= 10; step += 1) {
+        await page.mouse.move(centre.x + (dx * step) / 10, centre.y + (dy * step) / 10);
+      }
+      await page.mouse.up();
+      await page.waitForTimeout(200);
+      return page.evaluate(() => Math.abs(window.__STUDIO__?.viewport?.()?.cameraBasis().right[1] ?? 1));
+    };
+
+    const afterTilt = await rollAfterDrag(0, -80);
+    const afterSideways = await rollAfterDrag(100, 0);
+    const afterBoth = await rollAfterDrag(-60, 40);
+    const rolls = [afterTilt, afterSideways, afterBoth];
+    record({
+      id: 'gizmo-orbit-does-not-roll',
+      title: 'Dragging the view gizmo turns the view without rolling the horizon',
+      passed: rolls.every((roll) => roll < 1e-3),
+      detail: `the camera's right axis stayed horizontal through a tilt and two sideways drags: |right.y| = ${rolls
+        .map((roll) => roll.toExponential(1))
+        .join(', ')}`,
+      observed: { rolls },
+    });
+
+    /**
+     * The numpad, which is the only way to reach some of these views.
+     *
+     * Checked with `page.keyboard.press('Numpad7')` rather than a synthetic event, because the bug
+     * this guards was a real one about real keyboards: with Num Lock off a numpad digit reports
+     * "Home" as its `key`, and the frame-everything shortcut was swallowing Numpad 7 — so the top view
+     * was unreachable for anyone who had Num Lock off. Reading `code` fixed it, and only a real key
+     * press exercises that path.
+     */
+    const readView = async (): Promise<{ projection: string; up: number[]; inCameraView: boolean }> =>
+      page.evaluate(() => {
+        const viewport = window.__STUDIO__?.viewport?.();
+        const basis = viewport?.cameraBasis();
+        return {
+          projection: viewport?.display().projection ?? 'unknown',
+          up: (basis?.up ?? [0, 0, 0]).map((value) => Number(value.toFixed(3))),
+          inCameraView: viewport?.inCameraView() ?? false,
+        };
+      });
+
+    await page.keyboard.press('Numpad7');
+    await page.waitForTimeout(400);
+    const topView = await readView();
+    await page.keyboard.press('Numpad5');
+    await page.waitForTimeout(400);
+    const afterToggle = await readView();
+    await page.keyboard.press('Numpad0');
+    await page.waitForTimeout(700);
+    const entered = await readView();
+    await page.keyboard.press('Numpad0');
+    await page.waitForTimeout(700);
+    const left = await readView();
+    record({
+      id: 'numpad-view-navigation',
+      title: 'The numpad drives the view: a face, the projection, and the game camera',
+      passed:
+        topView.projection === 'orthographic' &&
+        Math.abs((topView.up[2] ?? 0) + 1) < 1e-3 &&
+        afterToggle.projection === 'perspective' &&
+        entered.inCameraView &&
+        !left.inCameraView,
+      detail: `after Numpad7 the view was ${topView.projection} with up ${JSON.stringify(topView.up)} (a top view is orthographic with up (0, 0, -1)); Numpad5 then made it ${afterToggle.projection}; Numpad0 entered the game camera (${entered.inCameraView}) and left it (${!left.inCameraView})`,
+      observed: { topView, afterToggle, entered, left },
+    });
+
     // --- missing asset error is understandable -------------------------------------
     // Delete the file behind a manifest entry, then load the scene again: the entity must
     // report a failure rather than quietly rendering nothing.

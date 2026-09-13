@@ -133,6 +133,30 @@ const SCENE = {
 const FIELD_OF_VIEW = 55;
 const ORTHO_HEIGHT = 12;
 
+/**
+ * How far the camera turns per pixel dragged on the view gizmo.
+ *
+ * Close to `OrbitControls`' own `2π / elementHeight` for a typical stage, so a drag on the ball and a
+ * drag on the stage turn the view at a similar rate rather than the gizmo feeling like a different
+ * instrument.
+ */
+const ORBIT_RADIANS_PER_PIXEL = 0.01;
+
+/**
+ * How close to a pole the turntable may tilt.
+ *
+ * At the pole the view direction is parallel to the up vector and `lookAt` has no way to choose a
+ * roll — the view snaps to whatever orientation the arithmetic lands on. A third of a degree off is
+ * visually straight down and numerically safe.
+ */
+const MIN_POLAR = 0.006;
+
+/** How far ahead of a game camera its orbit target is placed, which is what reproduces its aim. */
+const CAMERA_VIEW_TARGET = 10;
+
+/** Within this many radians of a pole, "the opposite view" means the other pole, not a half turn. */
+const OPPOSITE_POLE_THRESHOLD = 0.05;
+
 /** Build a camera in the requested projection, at the editor's default framing. */
 function createCamera(projection: ProjectionKind): EditorCamera {
   if (projection === 'orthographic') {
@@ -237,6 +261,19 @@ export class EditorViewport {
   private transform: TransformControls;
   /** The projection currently in use, so a resize knows which camera to refit. */
   private project: ProjectionKind = 'perspective';
+  /**
+   * The framing to restore when the game camera's view is left, or null when not in it.
+   *
+   * Held here rather than in the shell because it is all camera state — position, up, target,
+   * projection, fov — and every one of those is the viewport's to own.
+   */
+  private cameraView: {
+    position: THREE.Vector3;
+    up: THREE.Vector3;
+    target: THREE.Vector3;
+    project: ProjectionKind;
+    fov: number | null;
+  } | null = null;
   private readonly raycaster = new THREE.Raycaster();
   private readonly pointer = new THREE.Vector2();
   private readonly root = new THREE.Group();
@@ -709,7 +746,18 @@ export class EditorViewport {
 
   focusSelection(): void {
     const object = this.selection.length === 1 ? this.projections.get(this.selection[0]!)?.object : this.root;
-    if (!object) return;
+    if (object) this.frame(object);
+  }
+
+  /**
+   * Frame an object: put the orbit target on it and stand back far enough to see all of it.
+   *
+   * Shared by `focusSelection` and `frameAll`, which differ only in what they pass — the selection,
+   * or the whole scene root. The distance formula is the part worth not duplicating, because it is
+   * the part with the trigonometry in it.
+   */
+  private frame(object: THREE.Object3D): void {
+    this.exitCameraView();
     const box = new THREE.Box3().setFromObject(object);
     if (box.isEmpty()) {
       this.orbit.target.set(0, 0.5, 0);
@@ -731,6 +779,7 @@ export class EditorViewport {
     this.orbit.target.copy(sphere.center);
     this.camera.position.copy(sphere.center).addScaledVector(direction, distance * 1.4);
     this.orbit.update();
+    this.renderNow();
   }
 
   getTool(): TransformTool {
@@ -1006,6 +1055,13 @@ export class EditorViewport {
    * still reads with +X to the right.
    */
   faceView(face: ViewFace): void {
+    /**
+     * A view command repositions the camera, so it leaves the game camera's view first — the same
+     * rule `orbitAround` and `frame` follow. Without it, clicking an axis while looking through the
+     * game camera moved the view but left the camera-view state set, so the next keypress restored a
+     * framing the user had already navigated away from.
+     */
+    this.exitCameraView();
     this.replaceCamera('orthographic');
 
     const distance = this.camera.position.distanceTo(this.orbit.target);
@@ -1024,13 +1080,46 @@ export class EditorViewport {
   }
 
   /**
-   * Rotate the camera around its target, in screen terms.
+   * Rotate the camera around its target: azimuth about world up, elevation clamped.
    *
-   * `deltaX` and `deltaY` are pixels dragged on the gizmo. Rotating about the camera's *own* axes
-   * rather than about a fixed world-up is what keeps the drag honest after a face view: from the top
-   * view there is no meaningful world yaw, and a world-up turntable would either refuse to move or
-   * snap. Rotating the up vector by the same quaternion keeps the frame rigid, so repeated drags
-   * accumulate orientation rather than roll.
+   * Both arguments are radians, and both follow a pointer drag's sign convention — positive
+   * `azimuth` is what dragging *right* does, positive `polar` what dragging *down* does — so the
+   * numpad steps and the gizmo share one implementation instead of two that drift apart.
+   *
+   * ## Why this is a turntable and not a trackball
+   *
+   * The first version rotated the camera about its own axes and carried `camera.up` through the same
+   * quaternion. That is a trackball, and a trackball rolls: after tilting the view and then dragging
+   * sideways, the camera's right vector measured `[-0.201, -0.582, 0.788]` where it had been
+   * `[0.549, 0, 0.836]` — level. That 35° of roll is the whole scene appearing to spin about the
+   * screen rather than swing around the model, which is not what any 3D editor does.
+   *
+   * A turntable keeps `up` at world up and clamps the polar angle, so the horizon is level *by
+   * construction* and cannot drift however the drags are sequenced. `OrbitControls` does exactly this
+   * for a drag on the stage itself, so the gizmo and the stage now feel the same.
+   *
+   * `camera.up` is set rather than preserved, which is what makes a face view a starting point rather
+   * than a trap: after looking straight down, `up` is `-Z`, and the first orbit would otherwise have
+   * to rotate about an axis parallel to the view direction.
+   */
+  orbitAround(azimuth: number, polar: number): void {
+    this.exitCameraView();
+    this.replaceCamera('perspective');
+    this.camera.up.set(0, 1, 0);
+
+    const offset = this.camera.position.clone().sub(this.orbit.target);
+    const spherical = new THREE.Spherical().setFromVector3(offset);
+    spherical.theta -= azimuth;
+    spherical.phi = Math.min(Math.max(spherical.phi - polar, MIN_POLAR), Math.PI - MIN_POLAR);
+    offset.setFromSpherical(spherical);
+
+    this.camera.position.copy(this.orbit.target).add(offset);
+    this.camera.lookAt(this.orbit.target);
+    this.renderNow();
+  }
+
+  /**
+   * Orbit by a pointer drag, in pixels.
    *
    * Orbiting also returns the view to perspective. That is Blender's auto-perspective, and it is what
    * stops a face view being a trap: a user who clicks Front and then drags away is asking for a 3D
@@ -1038,21 +1127,116 @@ export class EditorViewport {
    * them in a projection they never chose and have no visible way out of.
    */
   orbitBy(deltaX: number, deltaY: number): void {
-    this.replaceCamera('perspective');
-    const target = this.orbit.target;
-    const offset = this.camera.position.clone().sub(target);
-    const matrix = this.camera.matrixWorld;
-    const right = new THREE.Vector3().setFromMatrixColumn(matrix, 0).normalize();
-    const up = new THREE.Vector3().setFromMatrixColumn(matrix, 1).normalize();
+    this.orbitAround(deltaX * ORBIT_RADIANS_PER_PIXEL, deltaY * ORBIT_RADIANS_PER_PIXEL);
+  }
 
-    const rotation = new THREE.Quaternion()
-      .setFromAxisAngle(up, -deltaX)
-      .multiply(new THREE.Quaternion().setFromAxisAngle(right, -deltaY));
-    offset.applyQuaternion(rotation);
-    this.camera.up.applyQuaternion(rotation).normalize();
-    this.camera.position.copy(target).add(offset);
-    this.camera.lookAt(target);
+  /**
+   * Swap perspective and orthographic, returning whichever is now in force.
+   *
+   * Blender's numpad 5. The face views pick orthographic on their own, so without an explicit toggle
+   * the only way back to perspective would be to orbit — and lose the framing you squared up to.
+   */
+  toggleProjection(): ProjectionKind {
+    this.exitCameraView();
+    const next: ProjectionKind = this.project === 'perspective' ? 'orthographic' : 'perspective';
+    this.replaceCamera(next);
+    return next;
+  }
+
+  /**
+   * Look from the opposite side: half a turn about the vertical axis.
+   *
+   * Blender's numpad 9. Elevation is untouched, so it is the same view from behind rather than a
+   * mirror of it — and the projection is untouched too, because this is a *view* command and not an
+   * orbit. Routing it through `orbitAround` would have quietly dropped a face view back to
+   * perspective, which is exactly the surprise that made the gizmo's first version feel wrong.
+   *
+   * Straight down or straight up is the one case a half turn cannot express — the azimuth is
+   * meaningless on the pole, so the turn is spent going to the other pole instead.
+   */
+  oppositeView(): void {
+    this.exitCameraView();
+    const offset = this.camera.position.clone().sub(this.orbit.target);
+    const spherical = new THREE.Spherical().setFromVector3(offset);
+    if (spherical.phi < OPPOSITE_POLE_THRESHOLD || spherical.phi > Math.PI - OPPOSITE_POLE_THRESHOLD) {
+      spherical.phi = Math.PI - spherical.phi;
+    } else {
+      spherical.theta += Math.PI;
+    }
+    offset.setFromSpherical(spherical);
+    this.camera.position.copy(this.orbit.target).add(offset);
+    this.camera.lookAt(this.orbit.target);
     this.renderNow();
+  }
+
+  /**
+   * Look through the scene's active game camera.
+   *
+   * The editor camera is moved onto the entity's world transform and the orbit target is placed
+   * along its forward direction, which is what lets the ordinary `lookAt`-based controls reproduce
+   * the game camera's aim instead of fighting it. Input is switched off while the view is held: a
+   * camera you can orbit away from is not showing you what the game will show.
+   *
+   * Returns false when the entity has no projected object, so the caller can say so rather than
+   * leaving the user pressing a key that appears dead.
+   */
+  enterCameraView(entityId: string, fov: number): boolean {
+    const object = this.projections.get(entityId)?.object;
+    if (!object) return false;
+    this.exitCameraView();
+    this.replaceCamera('perspective');
+    this.camera.up.set(0, 1, 0);
+
+    this.cameraView = {
+      position: this.camera.position.clone(),
+      up: this.camera.up.clone(),
+      target: this.orbit.target.clone(),
+      project: this.project,
+      fov: this.camera instanceof THREE.PerspectiveCamera ? this.camera.fov : null,
+    };
+
+    object.updateWorldMatrix(true, false);
+    const position = new THREE.Vector3().setFromMatrixPosition(object.matrixWorld);
+    const rotation = new THREE.Quaternion().setFromRotationMatrix(object.matrixWorld);
+    const up = new THREE.Vector3(0, 1, 0).applyQuaternion(rotation).normalize();
+    const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(rotation).normalize();
+
+    this.camera.position.copy(position);
+    this.camera.up.copy(up);
+    this.orbit.target.copy(position).addScaledVector(forward, CAMERA_VIEW_TARGET);
+    if (this.camera instanceof THREE.PerspectiveCamera) this.camera.fov = fov;
+    this.camera.lookAt(this.orbit.target);
+    this.camera.updateProjectionMatrix();
+
+    this.orbit.enabled = false;
+    this.renderNow();
+    return true;
+  }
+
+  /** Leave the game camera's view, restoring the framing it was entered from. */
+  exitCameraView(): void {
+    const previous = this.cameraView;
+    if (!previous) return;
+    this.cameraView = null;
+    this.orbit.enabled = true;
+    /** Restores the projection it was entered from, so a face view survives a look through. */
+    this.replaceCamera(previous.project);
+    this.camera.position.copy(previous.position);
+    this.camera.up.copy(previous.up);
+    this.orbit.target.copy(previous.target);
+    if (previous.fov !== null && this.camera instanceof THREE.PerspectiveCamera) this.camera.fov = previous.fov;
+    this.camera.lookAt(this.orbit.target);
+    this.camera.updateProjectionMatrix();
+    this.renderNow();
+  }
+
+  inCameraView(): boolean {
+    return this.cameraView !== null;
+  }
+
+  /** Frame the whole scene. Blender's Home, and the counterpart to `focusSelection`. */
+  frameAll(): void {
+    this.frame(this.root);
   }
 
   /** Show or hide the ground grid. */

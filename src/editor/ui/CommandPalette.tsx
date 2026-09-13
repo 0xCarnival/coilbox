@@ -6,7 +6,7 @@ import { Search } from 'lucide-react';
 import { createEntity, CREATABLE_KINDS, CREATABLE_LABELS, type CreatableKind } from '../document/factory.js';
 import { color, control, fontSize, radius, space } from '../styles/tokens.stylex.js';
 import { useSession, useSessionSnapshot } from '../hooks.js';
-import type { TransformTool } from '../viewport/viewport-controller.js';
+import type { TransformTool, ViewFace } from '../viewport/viewport-controller.js';
 
 /**
  * The command palette.
@@ -174,6 +174,22 @@ export interface CommandPaletteProps {
     state: 'stopped' | 'running' | 'paused';
   };
   onExport(): void;
+  /**
+   * The view commands, so the numpad is discoverable rather than folklore.
+   *
+   * Every one of these has a key, and none of them has a button anywhere in the shell — the gizmo
+   * covers the faces and the overlays menu covers the switches, but "orthographic", "opposite" and
+   * "look through the game camera" are only reachable from the keyboard. A shortcut nobody can find
+   * is the same as no shortcut.
+   */
+  view: {
+    face(face: ViewFace): void;
+    opposite(): void;
+    toggleProjection(): void;
+    cameraView(): void;
+    frameAll(): void;
+    inCameraView: boolean;
+  };
 }
 
 export function CommandPalette({
@@ -183,6 +199,7 @@ export function CommandPalette({
   onFocusSelection,
   playback,
   onExport,
+  view,
 }: CommandPaletteProps): JSX.Element {
   const session = useSession();
   const snapshot = useSessionSnapshot();
@@ -225,6 +242,25 @@ export function CommandPalette({
       { id: 'tool:rotate', label: 'Tool: Rotate', group: 'Tools', shortcut: 'E', run: () => onToolChange('rotate') },
       { id: 'tool:scale', label: 'Tool: Scale', group: 'Tools', shortcut: 'R', run: () => onToolChange('scale') },
       { id: 'tool:focus', label: 'Focus the selection', group: 'Tools', shortcut: 'F', run: onFocusSelection },
+      { id: 'view:front', label: 'View: front', group: 'View', shortcut: '1', run: () => view.face({ axis: 'z', sign: 1 }) },
+      { id: 'view:right', label: 'View: right', group: 'View', shortcut: '3', run: () => view.face({ axis: 'x', sign: 1 }) },
+      { id: 'view:top', label: 'View: top', group: 'View', shortcut: '7', run: () => view.face({ axis: 'y', sign: 1 }) },
+      { id: 'view:opposite', label: 'View: opposite side', group: 'View', shortcut: '9', run: view.opposite },
+      {
+        id: 'view:projection',
+        label: 'Toggle perspective and orthographic',
+        group: 'View',
+        shortcut: '5',
+        run: view.toggleProjection,
+      },
+      {
+        id: 'view:camera',
+        label: view.inCameraView ? 'Leave the game camera' : 'Look through the game camera',
+        group: 'View',
+        shortcut: '0',
+        run: view.cameraView,
+      },
+      { id: 'view:frame-all', label: 'Frame everything', group: 'View', shortcut: 'Home', run: view.frameAll },
       {
         id: 'edit:undo',
         label: 'Undo',

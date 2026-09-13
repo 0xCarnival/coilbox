@@ -1,8 +1,8 @@
 {
   "stage": 2,
-  "generatedAt": "2026-09-13T13:49:23.663Z",
+  "generatedAt": "2026-09-13T15:26:14.004Z",
   "node": "v24.18.0",
-  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage2-HEXeaX",
+  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage2-KM3zeT",
   "steps": [
     {
       "name": "typecheck",
@@ -68,10 +68,10 @@
       "id": "clip-playback",
       "title": "The imported clip is discoverable and plays in the editor preview",
       "passed": true,
-      "detail": "clips offered: Hop; preview time advanced from 0.048200000286102294 to 0.6189000000953674",
+      "detail": "clips offered: Hop; preview time advanced from 0.041 to 0.6226999998092652",
       "observed": {
-        "before": 0.048200000286102294,
-        "after": 0.6189000000953674,
+        "before": 0.041,
+        "after": 0.6226999998092652,
         "clip": "Hop"
       }
     },
@@ -214,7 +214,7 @@
       "id": "play-animates",
       "title": "Play runs the runtime animation: clips advance inside the play world",
       "passed": true,
-      "detail": "Limb clip \"Wave\" advanced 0.117 -> 0.150 after 250 ms; 2 animated entities, 2 models loaded",
+      "detail": "Limb clip \"Wave\" advanced 0.133 -> 0.150 after 251 ms; 2 animated entities, 2 models loaded",
       "observed": {
         "ids": {
           "limbId": "box-2",
@@ -228,7 +228,7 @@
           "playing": true,
           "loop": true,
           "speed": 1,
-          "time": 0.11666666666666665,
+          "time": 0.13333333333333333,
           "duration": 1
         },
         "second": {
@@ -257,11 +257,11 @@
           "state": "running",
           "frames": 6,
           "steps": 9,
-          "fps": 5.890699369159112,
-          "frameTimeMs": 169.75913000000006,
-          "physicsTimeMs": 0.0817413991132293,
+          "fps": 5.89064003217703,
+          "frameTimeMs": 169.76084000000006,
+          "physicsTimeMs": 0.06391242088466026,
           "droppedTime": 0.16666666666666669,
-          "clampedTime": 0.2,
+          "clampedTime": 0.18329999999999996,
           "drawCalls": 6,
           "triangles": 1268,
           "geometries": 4,
@@ -289,7 +289,7 @@
           "inputListeners": 8,
           "audioActivated": true
         },
-        "waitedMs": 250
+        "waitedMs": 251
       }
     },
     {
@@ -338,6 +338,63 @@
           },
           "stage": 348,
           "gap": -16
+        }
+      }
+    },
+    {
+      "id": "gizmo-orbit-does-not-roll",
+      "title": "Dragging the view gizmo turns the view without rolling the horizon",
+      "passed": true,
+      "detail": "the camera's right axis stayed horizontal through a tilt and two sideways drags: |right.y| = 2.8e-17, 2.8e-17, 1.4e-17",
+      "observed": {
+        "rolls": [
+          2.775557561562892e-17,
+          2.7755575615628914e-17,
+          1.3877787807814457e-17
+        ]
+      }
+    },
+    {
+      "id": "numpad-view-navigation",
+      "title": "The numpad drives the view: a face, the projection, and the game camera",
+      "passed": true,
+      "detail": "after Numpad7 the view was orthographic with up [0,0,-1] (a top view is orthographic with up (0, 0, -1)); Numpad5 then made it perspective; Numpad0 entered the game camera (true) and left it (true)",
+      "observed": {
+        "topView": {
+          "projection": "orthographic",
+          "up": [
+            0,
+            0,
+            -1
+          ],
+          "inCameraView": false
+        },
+        "afterToggle": {
+          "projection": "perspective",
+          "up": [
+            0,
+            0,
+            -1
+          ],
+          "inCameraView": false
+        },
+        "entered": {
+          "projection": "perspective",
+          "up": [
+            0,
+            0.914,
+            -0.406
+          ],
+          "inCameraView": true
+        },
+        "left": {
+          "projection": "perspective",
+          "up": [
+            0,
+            0,
+            -1
+          ],
+          "inCameraView": false
         }
       }
     },

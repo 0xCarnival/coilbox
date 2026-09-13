@@ -69,8 +69,16 @@ const HANDLE = 22;
 /** Radians of rotation per pixel dragged. A drag across the ball is a little over a right angle. */
 const DRAG_SENSITIVITY = 0.011;
 
-/** Below this many pixels of movement, a pointer gesture is a click rather than an orbit. */
-const CLICK_SLOP = 4;
+/**
+ * Below this many pixels of movement, a pointer gesture is a click rather than an orbit.
+ *
+ * This was 4, which is inside the wobble of an ordinary press-and-drag: a user intending to orbit
+ * would move three or four pixels before the drag registered, the release was then read as a click on
+ * whichever handle was under the pointer, and the view snapped to an orthographic face. That is the
+ * "touching the gizmo makes it orthographic" report, and the answer is a threshold that a real drag
+ * cannot fall under rather than a cleverer guess.
+ */
+const CLICK_SLOP = 8;
 
 const styles = stylex.create({
   /** The column on the stage's trailing edge: the ball, then the overlays button beneath it. */
