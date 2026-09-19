@@ -161,7 +161,7 @@ export interface ViewportHandle {
    * They live on the viewport rather than in React state because each one mutates a Three object —
    * a camera, a grid helper, the renderer's shadow map — and a re-render would not touch any of
    * them. The control reads the current value back from here so the two cannot disagree.
-  */
+   */
   display(): ViewportDisplay;
   setDisplay(next: Partial<ViewportDisplay>): void;
   /**
@@ -227,8 +227,6 @@ export interface ViewportHandle {
   playEntityTransform(entityId: string): [number, number, number] | null;
   /** PNG data URL of the current editor view, for the project thumbnail. */
   captureThumbnail(width?: number): string | null;
-  /** PNG data URL for a model asset thumbnail. */
-  thumbnail(assetId: string): Promise<string | null>;
   /** Behavior instances of the running play world, for checks and debugging. */
   behaviorRuntime(): { size: number; list(): Array<{ entityId: string; behaviorId: string }> } | null;
 }
@@ -534,16 +532,6 @@ export function Viewport({ handleRef, tool, snap, onPlayStateChange, onStatus }:
         context.drawImage(canvas, 0, 0, target.width, target.height);
         return target.toDataURL('image/png');
       },
-      thumbnail: async (assetId: string) => {
-        const viewport = viewportRef.current;
-        if (!viewport) return null;
-        const instance = await assetCache.instantiate(assetId);
-        try {
-          return viewport.renderThumbnail(instance.object);
-        } finally {
-          disposeInstance(instance);
-        }
-      },
       playEntityTransform: (entityId: string) => {
         const world = sessionRef2.current?.current;
         if (!world) return null;
@@ -566,7 +554,10 @@ export function Viewport({ handleRef, tool, snap, onPlayStateChange, onStatus }:
         event.dataTransfer.dropEffect = 'copy';
         setDragging(true);
       }}
-      onDragLeave={() => setDragging(false)}
+      onDragLeave={(event) => {
+        if (event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget)) return;
+        setDragging(false);
+      }}
       onDrop={(event) => {
         event.preventDefault();
         setDragging(false);

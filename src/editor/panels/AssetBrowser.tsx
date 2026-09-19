@@ -337,18 +337,33 @@ function AssetRow({
   useEffect(() => {
     if (asset.kind === 'model') session.requestThumbnail(asset);
   }, [asset, session]);
+  useEffect(() => {
+    if (asset.kind !== 'audio') return;
+    const audio = new Audio();
+    audio.preload = 'metadata';
+    audio.src = `${session.assetResolver.resolveUrl(asset.id) ?? ''}?v=${encodeURIComponent(asset.hash)}`;
+    const onLoadedMetadata = () => setDuration(audio.duration);
+    const onPause = () => setPlaying(false);
+    const onEnded = () => setPlaying(false);
+    audio.addEventListener('loadedmetadata', onLoadedMetadata);
+    audio.addEventListener('pause', onPause);
+    audio.addEventListener('ended', onEnded);
+    audioRef.current = audio;
+    return () => {
+      audio.pause();
+      if (activeAudio === audio) activeAudio = null;
+      audio.removeEventListener('loadedmetadata', onLoadedMetadata);
+      audio.removeEventListener('pause', onPause);
+      audio.removeEventListener('ended', onEnded);
+      audio.src = '';
+      audioRef.current = null;
+    };
+  }, [asset, session]);
   const toggleAudio = () => {
-    if (!audioRef.current) {
-      const audio = new Audio(session.assetResolver.resolveUrl(asset.id) ?? '');
-      audio.addEventListener('loadedmetadata', () => setDuration(audio.duration));
-      audio.addEventListener('ended', () => setPlaying(false));
-      audioRef.current = audio;
-    }
     const audio = audioRef.current;
     if (!audio) return;
     if (playing) {
       audio.pause();
-      setPlaying(false);
     } else {
       activeAudio?.pause();
       activeAudio = audio;

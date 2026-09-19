@@ -144,6 +144,13 @@ describe('model loading', () => {
     await cache.dispose();
   });
 
+  it('refuses to load a non-image as a texture', async () => {
+    const cache = cacheFor([crateEntry]);
+    await expect(cache.loadTexture('crate', { colorSpace: 'srgb' })).rejects.toThrow(UnsupportedAssetError);
+    await expect(cache.loadTexture('crate', { colorSpace: 'srgb' })).rejects.toThrow(/not an image/);
+    await cache.dispose();
+  });
+
   it('reports a missing asset id distinctly from a broken file', async () => {
     const cache = cacheFor([]);
     await expect(cache.loadModel('ghost')).rejects.toThrow(MissingAssetError);

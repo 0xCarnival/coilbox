@@ -26,7 +26,7 @@ import { DOM, DOM_STATE, withDomClass } from '../dom-contract.js';
 import { useSession, useSessionSnapshot } from '../hooks.js';
 import { createEntity, reparentPreservingWorldTransform } from '../document/factory.js';
 import { createEntityId, subtreeOf } from '../document/commands.js';
-import { applyAssetDrop, hasAssetDrag, readAssetDrag } from '../assets/asset-drop.js';
+import { applyAssetDrop, hasAssetDrag, readAssetDrag, type AssetDropTarget } from '../assets/asset-drop.js';
 
 
 /**
@@ -453,15 +453,13 @@ export function Hierarchy({ locked }: { locked: boolean }): JSX.Element {
         aria-label="Scene hierarchy"
         onDragOver={(event) => {
           if (locked || !hasAssetDrag(event.dataTransfer)) return;
-          const payload = readAssetDrag(event.dataTransfer);
-          if (!payload || payload.kind !== 'model') return;
           event.preventDefault();
           event.dataTransfer.dropEffect = 'copy';
         }}
         onDrop={(event) => {
           if (locked) return;
           const payload = readAssetDrag(event.dataTransfer);
-          if (!payload || payload.kind !== 'model') return;
+          if (!payload) return;
           event.preventDefault();
           const result = applyAssetDrop(session, payload, { entityId: null, point: [0, 0, 0] });
           session.log(result.ok ? 'info' : 'warning', result.message);
@@ -489,16 +487,18 @@ export function Hierarchy({ locked }: { locked: boolean }): JSX.Element {
               onMouseEnter={() => setHovered(entity.id)}
               onMouseLeave={() => setHovered((current) => (current === entity.id ? null : current))}
               onDragOver={(event) => {
-                const payload = readAssetDrag(event.dataTransfer);
-                if (locked || !payload || payload.kind === 'model') return;
+                if (locked || !hasAssetDrag(event.dataTransfer)) return;
                 event.preventDefault();
                 event.dataTransfer.dropEffect = 'copy';
               }}
               onDrop={(event) => {
                 const payload = readAssetDrag(event.dataTransfer);
-                if (locked || !payload || payload.kind === 'model') return;
+                if (locked || !payload) return;
                 event.preventDefault();
-                const result = applyAssetDrop(session, payload, { entityId: entity.id, point: [0, 0, 0] });
+                event.stopPropagation();
+                const target: AssetDropTarget =
+                  payload.kind === 'model' ? { entityId: null, point: [0, 0, 0] } : { entityId: entity.id, point: [0, 0, 0] };
+                const result = applyAssetDrop(session, payload, target);
                 session.log(result.ok ? 'info' : 'warning', result.message);
               }}
               data-entity-id={entity.id}
