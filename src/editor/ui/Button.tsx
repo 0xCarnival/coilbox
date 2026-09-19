@@ -1,6 +1,6 @@
 import * as React from 'react';
 import * as stylex from '@stylexjs/stylex';
-import { button, control, space } from '../styles/tokens.stylex.js';
+import { button, color, control, space } from '../styles/tokens.stylex.js';
 
 /**
  * The two button shapes, on the pattern left behind by the Radix investigation.
@@ -16,7 +16,17 @@ import { button, control, space } from '../styles/tokens.stylex.js';
  * rejects.
  */
 
-export type ButtonVariant = 'primary' | 'outline' | 'secondary' | 'ghost' | 'link';
+export type ButtonVariant = 'primary' | 'outline' | 'secondary' | 'ghost' | 'link' | 'danger';
+
+const danger = stylex.create({
+  icon: {
+    color: color.danger,
+    ':hover': {
+      backgroundColor: 'rgba(255, 100, 103, 0.15)',
+      color: color.danger,
+    },
+  },
+});
 
 const variantStyles = {
   primary: button.primary,
@@ -24,6 +34,7 @@ const variantStyles = {
   secondary: button.secondary,
   ghost: button.ghost,
   link: button.link,
+  danger: danger.icon,
 } as const;
 
 const sizeStyles = stylex.create({

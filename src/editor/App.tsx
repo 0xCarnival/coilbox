@@ -129,11 +129,30 @@ const styles = stylex.create({
     gridColumn: '2 / -1',
     minHeight: 0,
     minWidth: 0,
+    position: 'relative',
   },
   /** The left column anchors the resize handle to its leading edge. */
   leftColumn: {
     position: 'relative',
     minHeight: 0,
+  },
+  inspectorHost: {
+    position: 'relative',
+    minHeight: 0,
+  },
+  resizeLeading: {
+    position: 'absolute',
+    insetBlockStart: 0,
+    insetBlockEnd: 0,
+    insetInlineStart: 0,
+    display: 'flex',
+  },
+  resizeTop: {
+    position: 'absolute',
+    insetBlockStart: 0,
+    insetInlineStart: 0,
+    insetInlineEnd: 0,
+    display: 'flex',
   },
   /** The rail spans both rows, so it is a full-height spine down the left edge. */
   railHost: {
@@ -591,7 +610,7 @@ function StudioShell(): JSX.Element {
                  */}
                 <ResizeHandle
                   label="Resize the scene panel"
-                  width={layout.left}
+                  size={layout.left}
                   min={220}
                   max={520}
                   collapseBelow={200}
@@ -642,8 +661,18 @@ function StudioShell(): JSX.Element {
                 visible={!editorLocked}
               />
             </div>
-            <div {...stylex.props(surface.panel, surface.edgeStart, surface.edgeBottom)}>
+            <div {...stylex.props(styles.inspectorHost, surface.panel, surface.edgeStart, surface.edgeBottom)}>
               <Inspector locked={editorLocked} />
+              <div {...stylex.props(styles.resizeLeading)}>
+                <ResizeHandle
+                  label="Resize the properties panel"
+                  size={layout.right}
+                  min={220}
+                  max={620}
+                  direction={-1}
+                  onResize={(next) => setLayout((current) => ({ ...current, right: next }))}
+                />
+              </div>
             </div>
             <div {...stylex.props(styles.bottomHost, surface.panel, surface.edgeBottom)}>
               <BottomPanel
@@ -651,6 +680,17 @@ function StudioShell(): JSX.Element {
                 tab={bottomTab}
                 onTabChange={setBottomTab}
               />
+              <div {...stylex.props(styles.resizeTop)}>
+                <ResizeHandle
+                  axis="y"
+                  direction={-1}
+                  label="Resize the bottom panel"
+                  size={layout.bottom}
+                  min={90}
+                  max={420}
+                  onResize={(next) => setLayout((current) => ({ ...current, bottom: next }))}
+                />
+              </div>
             </div>
           </div>
           {/**
