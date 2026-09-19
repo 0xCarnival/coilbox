@@ -4,6 +4,7 @@ import * as stylex from '@stylexjs/stylex';
 import { color, fontSize, radius, space } from '../styles/tokens.stylex.js';
 import { DOM, DOM_STATE, withDomClass } from '../dom-contract.js';import { useSession, useSessionSnapshot } from '../hooks.js';
 import { AssetBrowser } from './AssetBrowser.js';
+import { HistoryPanel } from './HistoryPanel.js';
 
 /**
  * Bottom panel (plan §3): assets, scenes, and errors/console as tabs.
@@ -13,9 +14,16 @@ import { AssetBrowser } from './AssetBrowser.js';
  * on. Unsupported or missing content must be understandable here rather than silent.
  */
 
-export type BottomTab = 'assets' | 'scenes' | 'console';
+export type BottomTab = 'assets' | 'scenes' | 'history' | 'console';
 
-const BOTTOM_TABS: BottomTab[] = ['assets', 'scenes', 'console'];
+const BOTTOM_TABS: BottomTab[] = ['assets', 'scenes', 'history', 'console'];
+
+const TAB_LABELS: Record<BottomTab, string> = {
+  assets: 'Assets',
+  scenes: 'Scenes',
+  history: 'History',
+  console: 'Console',
+};
 
 const styles = stylex.create({
   bottomPanel: {
@@ -272,7 +280,7 @@ export function BottomPanel({
               if (candidate === 'assets') void session.refreshAssets();
             }}
           >
-              {candidate === 'assets' ? 'Assets' : candidate === 'scenes' ? 'Scenes' : 'Console'}
+              {TAB_LABELS[candidate]}
               {/**
                * The error count rides as a badge rather than inside the label: it is a state of the
                * console, not part of its name, and a check reading the tab by text would otherwise
@@ -334,6 +342,7 @@ export function BottomPanel({
             ))}
           </ul>
         )}
+        {tab === 'history' && <HistoryPanel />}
         {tab === 'console' && (
           <ul {...withDomClass(styles.logList, DOM.logList)}>
             {[...snapshot.logs].reverse().map((entry) => (

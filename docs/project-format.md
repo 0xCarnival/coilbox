@@ -46,7 +46,8 @@ Two optional top-level keys, both read from disk with nothing trusted:
 }
 ```
 
-A panel entry names a panel this build provides; `label` optionally overrides its name. An id the
+A panel entry names a panel this build provides (`objects`, `assets`, `scenes`, `history`,
+`console`); `label` optionally overrides its name. An id the
 build does not have is skipped, and a `panels` array where *nothing* resolves falls back to showing
 every panel — an empty rail would leave no way to open anything, which matters more than honouring a
 declaration that cannot be satisfied.

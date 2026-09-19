@@ -209,7 +209,7 @@ const styles = stylex.create({
  * arrived from a click handler.
  */
 function isBottomTab(id: string): id is BottomTab {
-  return id === 'assets' || id === 'scenes' || id === 'console';
+  return id === 'assets' || id === 'scenes' || id === 'history' || id === 'console';
 }
 
 

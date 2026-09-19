@@ -1,4 +1,4 @@
-import { Boxes, FolderTree, ListTree, ScrollText } from 'lucide-react';
+import { Boxes, FolderTree, History, ListTree, ScrollText } from 'lucide-react';
 import type { JsonValue } from '@schema/index.js';
 import { isJsonObject, isJsonString, jsonField } from '../json-values.js';
 
@@ -57,6 +57,7 @@ const BUILT_IN: readonly RailPanel[] = [
   { id: 'objects', label: 'Scene objects', Icon: ListTree },
   { id: 'assets', label: 'Assets', Icon: Boxes },
   { id: 'scenes', label: 'Scenes', Icon: FolderTree },
+  { id: 'history', label: 'History', Icon: History },
   { id: 'console', label: 'Console', Icon: ScrollText },
 ];
 

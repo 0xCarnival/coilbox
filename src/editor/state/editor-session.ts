@@ -1,6 +1,6 @@
 import type { AssetEntry, BehaviorComponent, GameDocument, JsonValue, SceneDocument, ValidationIssue } from '@schema/index.js';
 import type { EditorCommand } from '../document/commands.js';
-import { SceneDocumentStore, type SaveState } from '../document/store.js';
+import { SceneDocumentStore, type HistoryItem, type SaveState } from '../document/store.js';
 import { SelectionStore } from '../document/selection.js';
 import { duplicateEntities } from '../document/duplicate.js';
 import { WorkspaceClient, WorkspaceClientError, type ProjectDetail, type ProjectSummary } from '../api/client.js';
@@ -92,6 +92,8 @@ function declaredOptions(value: JsonValue): string[] | undefined {
   return Array.isArray(value) ? value.filter(isJsonString) : undefined;
 }
 
+const EMPTY_HISTORY: readonly HistoryItem[] = [];
+
 const isBehaviorPropertyType = (value: JsonValue): value is BehaviorPropertyType =>
   value === 'number' || value === 'boolean' || value === 'text' || value === 'enum' || value === 'entity' || value === 'asset';
 
@@ -124,6 +126,10 @@ export interface SessionSnapshot {
   canRedo: boolean;
   undoLabel: string | null;
   redoLabel: string | null;
+  /** Undo steps since the scene was opened, oldest first. */
+  history: readonly HistoryItem[];
+  /** How many of `history` are applied; the rest are redoable. */
+  historyPosition: number;
   dirty: boolean;
   selectedIds: readonly string[];
   primarySelection: string | null;
@@ -212,6 +218,7 @@ export class EditorSession {
 
   snapshot(): SessionSnapshot {
     if (this.cachedSnapshot) return this.cachedSnapshot;
+    const store = this.store?.snapshot();
     const snapshot: SessionSnapshot = {
       projects: this.projects,
       project: this.project,
@@ -223,6 +230,8 @@ export class EditorSession {
       canRedo: this.store?.canRedo ?? false,
       undoLabel: this.store?.undoLabel() ?? null,
       redoLabel: this.store?.redoLabel() ?? null,
+      history: store?.historyEntries ?? EMPTY_HISTORY,
+      historyPosition: store?.historyPosition ?? 0,
       dirty: this.store?.isDirty ?? false,
       selectedIds: this.selection.selectedIds,
       primarySelection: this.selection.primary,
@@ -705,6 +714,11 @@ export class EditorSession {
 
   redo(): void {
     if (this.store?.redo()) this.selection.prune(this.store.scene.entities.map((entity) => entity.id));
+  }
+
+  /** Undo or redo to the state with exactly `position` history entries applied. */
+  jumpHistory(position: number): void {
+    if (this.store?.jumpTo(position)) this.selection.prune(this.store.scene.entities.map((entity) => entity.id));
   }
 
   select(entityId: string | null, options: { additive?: boolean } = {}): void {
