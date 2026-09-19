@@ -1,9 +1,19 @@
-import { cp, mkdir, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { cp, mkdir, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { assetReferencesOf, type AssetEntry, type AssetKind, type AssetManifest } from '@schema/index.js';
+import {
+  assetReferencesOf,
+  parseGame,
+  parseScene,
+  type AssetEntry,
+  type AssetKind,
+  type AssetManifest,
+  type GameDocument,
+} from '@schema/index.js';
 import { box3dWasmPlugin } from '../tools/vite-plugin-box3d-wasm.js';
+import { parseJson } from './json.js';
+import { assertProjectRelative, resolveInside } from './paths.js';
 import { Workspace, WorkspaceError } from './workspace.js';
 
 /**
@@ -24,6 +34,11 @@ import { Workspace, WorkspaceError } from './workspace.js';
  * import that was tried and abandoned should not be what makes a published game slow to load. The
  * result reports every asset's size and whether it shipped, so the author can see what the export
  * weighs and why.
+ *
+ * The project documents are captured once, before anything is written, and the export is derived
+ * from that one capture: the scenes it ships are the bytes that were read, and the assets it ships
+ * are the ones those bytes reference. A save landing mid-build (the editor and the filesystem may
+ * both write) therefore cannot leave a shipped scene pointing at a pruned asset.
  *
  * The exported game must run with the editor and the workspace service switched off, which
  * is what `tools/verify-stage1.ts` checks.
@@ -111,6 +126,9 @@ export async function buildGame(options: BuildOptions): Promise<BuildResult> {
     );
   }
 
+  const snapshot = await captureProject(options.workspace, options.projectId, projectRoot);
+  const plan = planAssetExport(snapshot.manifest, snapshot.referencedAssets);
+
   const outDir = join(projectRoot, options.outSubdirectory ?? join('.coilbox', 'export'));
   await rm(outDir, { recursive: true, force: true });
   await mkdir(outDir, { recursive: true });
@@ -156,23 +174,8 @@ export async function buildGame(options: BuildOptions): Promise<BuildResult> {
   write('player bundle compiled');
 
   await copyIcons(outDir);
-  await copyProjectDocuments(projectRoot, join(outDir, 'project'), write);
-
-  const detail = await options.workspace.readProject(options.projectId);
-  const manifest = await options.workspace.readAssetManifest(projectRoot, detail.game);
-  // Every scene is read outright: a scene that fails to parse must fail the export, not quietly
-  // drop the assets it references.
-  const referenced = new Set<string>();
-  for (const sceneEntry of detail.game.scenes) {
-    const scene = await options.workspace.readScene(options.projectId, sceneEntry.id);
-    for (const entity of scene.entities) {
-      for (const component of entity.components) {
-        for (const reference of assetReferencesOf(component)) referenced.add(reference.assetId);
-      }
-    }
-  }
-  const plan = planAssetExport(manifest, referenced);
-  await copyAssets(projectRoot, join(outDir, 'project'), detail.game.assetManifest, plan.manifest);
+  await writeProjectDocuments(projectRoot, join(outDir, 'project'), snapshot, write);
+  await copyAssets(projectRoot, join(outDir, 'project'), snapshot.game.assetManifest, plan.manifest);
   const shipped = plan.assets.filter((asset) => asset.included);
   const shippedBytes = shipped.reduce((sum, asset) => sum + asset.bytes, 0);
   write(
@@ -225,10 +228,56 @@ function formatBytes(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(2)} MiB`;
 }
 
-/** Assets are copied one by one from the pruned manifest, never as a folder. */
-const PROJECT_DOCUMENT_FOLDERS = ['scenes', 'scripts'];
+/** One read of everything the export derives from; see the module comment. */
+export interface ProjectSnapshot {
+  game: GameDocument;
+  /** `game.json` exactly as read, so the export ships what was parsed. */
+  gameBytes: Uint8Array;
+  /** Each scene file's bytes at its project-relative path. */
+  scenes: Array<{ path: string; bytes: Uint8Array }>;
+  manifest: AssetManifest;
+  referencedAssets: Set<string>;
+}
 
-const PROJECT_DOCUMENT_FILES = ['game.json', 'README.md'];
+export async function captureProject(workspace: Workspace, projectId: string, projectRoot: string): Promise<ProjectSnapshot> {
+  const gameBytes = await readFile(join(projectRoot, 'game.json'));
+  const parsedGame = parseGame(parseJson(Buffer.from(gameBytes).toString('utf8')));
+  if (!parsedGame.value) {
+    throw new WorkspaceError('invalid-project', `game.json in "${projectId}" is not valid`, 422, parsedGame.issues);
+  }
+  const game = parsedGame.value;
+  const manifest = await workspace.readAssetManifest(projectRoot, game);
+  const context = {
+    assetIds: new Set(manifest.assets.map((asset) => asset.id)),
+    assetKinds: new Map(manifest.assets.map((asset) => [asset.id, asset.kind])),
+  };
+  const scenes: ProjectSnapshot['scenes'] = [];
+  const referencedAssets = new Set<string>();
+  for (const entry of game.scenes) {
+    const path = assertProjectRelative(entry.path);
+    const bytes = await readFile(await resolveInside(projectRoot, path.split('/'), { allowMissing: false })).catch(() => {
+      throw new WorkspaceError('scene-not-found', `scene file "${entry.path}" is missing`, 404);
+    });
+    // The scene that ships is parsed from these very bytes: an invalid one fails the export, and
+    // the assets kept are exactly the ones this copy references.
+    const parsed = parseScene(parseJson(Buffer.from(bytes).toString('utf8')), context);
+    if (!parsed.ok || !parsed.value) {
+      throw new WorkspaceError('invalid-scene', `scene "${entry.id}" is not valid`, 422, parsed.issues);
+    }
+    for (const entity of parsed.value.entities) {
+      for (const component of entity.components) {
+        for (const reference of assetReferencesOf(component)) referencedAssets.add(reference.assetId);
+      }
+    }
+    scenes.push({ path, bytes });
+  }
+  return { game, gameBytes, scenes, manifest, referencedAssets };
+}
+
+/** Folders copied as they are: nothing in them decides what else the export contains. */
+const PROJECT_DOCUMENT_FOLDERS = ['scripts'];
+
+const PROJECT_DOCUMENT_FILES = ['README.md'];
 /** Icons the HTML pages link, copied into every export. */
 const ICON_FILES = ['favicon-32.png', 'favicon-192.png', 'apple-touch-icon.png'];
 
@@ -246,8 +295,19 @@ async function copyIcons(outDir: string): Promise<void> {
   }
 }
 
-async function copyProjectDocuments(projectRoot: string, target: string, write: (message: string) => void): Promise<void> {
+async function writeProjectDocuments(
+  projectRoot: string,
+  target: string,
+  snapshot: ProjectSnapshot,
+  write: (message: string) => void,
+): Promise<void> {
   await mkdir(target, { recursive: true });
+  await writeFile(join(target, 'game.json'), snapshot.gameBytes);
+  for (const scene of snapshot.scenes) {
+    const destination = join(target, ...scene.path.split('/'));
+    await mkdir(dirname(destination), { recursive: true });
+    await writeFile(destination, scene.bytes);
+  }
   for (const file of PROJECT_DOCUMENT_FILES) {
     const source = join(projectRoot, file);
     if (!existsSync(source)) continue;

@@ -1,10 +1,10 @@
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { AssetService } from '../../server/assets.js';
-import { planAssetExport } from '../../server/build.js';
+import { captureProject, planAssetExport } from '../../server/build.js';
 import { Workspace } from '../../server/workspace.js';
 import { parseAssetManifest } from '@schema/index.js';
 
@@ -223,6 +223,55 @@ describe('export asset plan', () => {
     expect(plan.manifest.assets.map((asset) => asset.id)).toEqual(['big']);
     expect(plan.manifest.schemaVersion).toBe(1);
     expect(plan.prunedBytes).toBe(310);
+  });
+
+  it('captures the scenes it ships and their references in one read, unaffected by later saves', async () => {
+    const imported = await importFixture('models/spinning-crate.glb');
+    const scene = await workspace.readScene('g', 'main');
+    scene.entities.push({
+      id: 'crate',
+      name: 'Crate',
+      parentId: null,
+      order: 9,
+      enabled: true,
+      transform: { position: [0, 1, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] },
+      components: [{ type: 'model', assetId: imported.entry.id, castShadow: true, receiveShadow: true }],
+      editor: { visible: true, locked: false, color: null, helper: false },
+    });
+    await workspace.writeScene('g', 'main', scene, { expectedRevision: scene.revision });
+    const projectRoot = join(workspaceRoot, 'g');
+    const shippedBytes = await readFile(join(projectRoot, 'scenes', 'main.scene.json'));
+
+    const snapshot = await captureProject(workspace, 'g', projectRoot);
+
+    // A save that lands after the capture must not change what the export derives from.
+    const later = await workspace.readScene('g', 'main');
+    later.entities = later.entities.filter((entity) => entity.id !== 'crate');
+    await workspace.writeScene('g', 'main', later, { expectedRevision: later.revision });
+
+    expect(snapshot.referencedAssets).toEqual(new Set([imported.entry.id]));
+    expect(snapshot.scenes.map((scene) => scene.path)).toEqual(['scenes/main.scene.json']);
+    expect(Buffer.from(snapshot.scenes[0]!.bytes).equals(shippedBytes)).toBe(true);
+    expect(planAssetExport(snapshot.manifest, snapshot.referencedAssets).manifest.assets.map((asset) => asset.id)).toEqual([
+      imported.entry.id,
+    ]);
+  });
+
+  it('refuses to capture a scene that references an asset the manifest does not have', async () => {
+    const projectRoot = join(workspaceRoot, 'g');
+    const raw = JSON.parse(await readFile(join(projectRoot, 'scenes', 'main.scene.json'), 'utf8'));
+    raw.entities.push({
+      id: 'ghost',
+      name: 'Ghost',
+      parentId: null,
+      order: 9,
+      enabled: true,
+      transform: { position: [0, 1, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] },
+      components: [{ type: 'model', assetId: 'missing', castShadow: true, receiveShadow: true }],
+      editor: { visible: true, locked: false, color: null, helper: false },
+    });
+    await writeFile(join(projectRoot, 'scenes', 'main.scene.json'), JSON.stringify(raw));
+    await expect(captureProject(workspace, 'g', projectRoot)).rejects.toThrow(/not valid/);
   });
 
   it('reports nothing pruned when every asset is used or there are none', () => {
