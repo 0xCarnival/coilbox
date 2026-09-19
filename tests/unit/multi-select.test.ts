@@ -4,6 +4,7 @@ import { createStarterScene, createEntity } from '@editor/document/factory.js';
 import { duplicateEntities } from '@editor/document/duplicate.js';
 import { SelectionStore } from '@editor/document/selection.js';
 import { applyPivotDelta, pointsInRect, selectionRoots } from '@editor/viewport/group-transform.js';
+import { cameraFollow } from '@runtime/behaviors/library.js';
 
 describe('multi-selection', () => {
   it('selectMany unions additively, replaces non-additively, and skips no-ops', () => {
@@ -62,5 +63,47 @@ describe('multi-selection', () => {
     expect(copiedRoot).toBeDefined();
     expect(result.selectIds).toEqual([copiedRoot?.id]);
     expect(result.entities.find((entity) => entity.name === 'Child')?.parentId).toBe(copiedRoot?.id);
+  });
+
+  it('remaps camera targets inside a duplicated subtree but preserves outside targets', () => {
+    const scene = createStarterScene('camera-copy', 'Camera Copy');
+    const root = createEntity('group', { id: 'root', name: 'Root' });
+    const target = createEntity('box', { id: 'target', name: 'Target', parentId: 'root' });
+    const outside = createEntity('box', { id: 'outside', name: 'Outside' });
+    const camera = createEntity('camera', { id: 'camera', name: 'Camera', parentId: 'root' });
+    camera.components = camera.components.map((component) =>
+      component.type === 'camera' ? { ...component, targetId: 'target' } : component,
+    );
+    scene.entities.push(root, target, camera, outside);
+    const insideCopy = duplicateEntities(scene, ['root']);
+    const copiedCamera = insideCopy.entities.find((entity) => entity.name === 'Camera');
+    const copiedTarget = insideCopy.entities.find((entity) => entity.name === 'Target');
+    expect(copiedCamera?.components.find((component) => component.type === 'camera')).toMatchObject({ targetId: copiedTarget?.id });
+
+    const outsideCamera = { ...camera, components: camera.components.map((component) =>
+      component.type === 'camera' ? { ...component, targetId: 'outside' } : component,
+    ) };
+    const outsideScene = { ...scene, entities: [...scene.entities.filter((entity) => entity.id !== 'camera'), outsideCamera] };
+    const outsideCopy = duplicateEntities(outsideScene, ['root']);
+    expect(outsideCopy.entities.find((entity) => entity.name === 'Camera')?.components.find((component) => component.type === 'camera')).toMatchObject({ targetId: 'outside' });
+  });
+
+  it('remaps behavior entity properties using declared metadata', () => {
+    const scene = createStarterScene('behavior-copy', 'Behavior Copy');
+    const root = createEntity('group', { id: 'root', name: 'Root' });
+    const target = createEntity('box', { id: 'target', name: 'Target', parentId: 'root' });
+    const camera = createEntity('group', { id: 'camera', name: 'Camera', parentId: 'root' });
+    camera.components.push({ type: 'behavior', behaviorId: 'camera.follow', properties: { target: 'target' } });
+    scene.entities.push(root, target, camera);
+    const result = duplicateEntities(
+      scene,
+      ['root'],
+      (behaviorId) =>
+        behaviorId === cameraFollow.id
+          ? cameraFollow.properties.filter((property) => property.type === 'entity').map((property) => property.key)
+          : [],
+    );
+    const copiedCamera = result.entities.find((entity) => entity.name === 'Camera');
+    expect(copiedCamera?.components.find((component) => component.type === 'behavior')).toMatchObject({ properties: { target: result.entities.find((entity) => entity.name === 'Target')?.id } });
   });
 });

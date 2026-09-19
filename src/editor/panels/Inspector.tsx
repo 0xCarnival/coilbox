@@ -468,7 +468,11 @@ export function Inspector({ locked }: { locked: boolean }): JSX.Element {
           (patch.scale !== undefined && !sameTuple(candidate.transform.scale, patch.scale)),
         )
         .map((candidate) => ({ kind: 'setTransform' as const, entityId: candidate.id, transform: patch }));
-      if (commands.length > 0) session.transaction(label, commands);
+      if (commands.length > 0) {
+        session.transaction(label, commands, {
+          coalesceKey: `transform:${selectedEntities.map((candidate) => candidate.id).join(',')}`,
+        });
+      }
     };
     return (
       <div {...withDomClass(styles.inspector, DOM.inspector)}>

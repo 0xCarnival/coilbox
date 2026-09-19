@@ -689,9 +689,9 @@ export class EditorSession {
     return true;
   }
 
-  transaction(label: string, commands: EditorCommand[]): boolean {
+  transaction(label: string, commands: EditorCommand[], options?: { coalesceKey?: string }): boolean {
     if (!this.store) return false;
-    const result = this.store.transaction(label, commands);
+    const result = this.store.transaction(label, commands, options);
     if (!result.ok) {
       this.log('warning', `Rejected: ${describeIssues(result.issues)}`);
       return false;
@@ -718,7 +718,15 @@ export class EditorSession {
   duplicateSelection(entityIds: string[] = [...this.selection.selectedIds]): boolean {
     const scene = this.scene;
     if (!scene || entityIds.length === 0) return false;
-    const duplicate = duplicateEntities(scene, entityIds);
+    const duplicate = duplicateEntities(
+      scene,
+      entityIds,
+      (behaviorId) =>
+        this.behaviorRegistry
+          .get(behaviorId)
+          ?.properties.filter((property) => property.type === 'entity')
+          .map((property) => property.key) ?? [],
+    );
     if (duplicate.entities.length === 0) return false;
     const primary = scene.entities.find((entity) => entity.id === entityIds[0]);
     if (!this.execute({

@@ -1161,8 +1161,24 @@ export class EditorViewport {
       const start = { x: marqueeStart.x - bounds.left, y: marqueeStart.y - bounds.top };
       const projected = new Map<string, { x: number; y: number }>();
       for (const [id, projection] of this.projections) {
-        if (projection.object.userData[EDITOR_ONLY] === true || !projection.entity.editor.visible || projection.entity.editor.locked) continue;
-        const center = new THREE.Box3().setFromObject(projection.object).getCenter(new THREE.Vector3()).project(this.camera);
+        if (
+          projection.object.userData[EDITOR_ONLY] === true ||
+          !projection.entity.editor.visible ||
+          projection.entity.editor.locked ||
+          !projection.entity.enabled ||
+          !projection.object.visible
+        ) continue;
+        let visible = true;
+        for (let object: THREE.Object3D | null = projection.object.parent; object && object !== this.scene; object = object.parent) {
+          if (!object.visible) {
+            visible = false;
+            break;
+          }
+        }
+        if (!visible) continue;
+        const box = new THREE.Box3().setFromObject(projection.object);
+        if (box.isEmpty()) continue;
+        const center = box.getCenter(new THREE.Vector3()).project(this.camera);
         if (center.z > 1) continue;
         projected.set(id, {
           x: ((center.x + 1) / 2) * bounds.width,
