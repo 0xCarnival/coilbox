@@ -8,6 +8,17 @@ import { PanelSection, SegmentedControl, type SegmentedOption } from '../ui/Cont
 import { DOM, withDomClass } from '../dom-contract.js';
 import { useSession, useSessionSnapshot } from '../hooks.js';
 import { ASSET_DRAG_MIME, hasAssetDrag } from '../assets/asset-drop.js';
+import { DECODER_EXTENSIONS, type DecoderExtension } from '@runtime/assets/decoders.js';
+
+/** How a model's compression shows in the browser: the codec name, not the extension id. */
+const CODEC_LABELS: Record<DecoderExtension, string> = {
+  KHR_draco_mesh_compression: 'Draco',
+  EXT_meshopt_compression: 'meshopt',
+  KHR_texture_basisu: 'KTX2',
+};
+
+const isDecoderExtension = (extension: string): extension is DecoderExtension =>
+  DECODER_EXTENSIONS.some((candidate) => candidate === extension);
 
 /**
  * Asset browser (plan §3, §4): import, inspect, and remove the project's assets.
@@ -61,10 +72,6 @@ const styles = stylex.create({
   },
   mono: {
     fontFamily: fontFamily.mono,
-    fontSize: fontSize.xs,
-  },
-  warn: {
-    color: color.warn,
     fontSize: fontSize.xs,
   },
   empty: {
@@ -328,9 +335,7 @@ function AssetRow({
   const [dimensions, setDimensions] = useState<[number, number] | null>(null);
   const [imageFailed, setImageFailed] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const unsupported = asset.requires.filter((extension) =>
-    ['KHR_draco_mesh_compression', 'EXT_meshopt_compression', 'KHR_texture_basisu'].includes(extension),
-  );
+  const codecs = asset.requires.filter(isDecoderExtension).map((extension) => CODEC_LABELS[extension]);
   const cell = [styles.cell, hovered && styles.cellHovered] as const;
   const thumbnailKey = `${asset.id}@${asset.hash}`;
   const thumbnail = snapshot.thumbnails[thumbnailKey];
@@ -420,8 +425,10 @@ function AssetRow({
         )}
       </td>
       <td {...stylex.props(...cell)}>
-        {unsupported.length > 0 ? (
-          <span {...stylex.props(styles.warn)}>needs {unsupported.join(', ')} — this version cannot decode it</span>
+        {codecs.length > 0 ? (
+          <span {...stylex.props(styles.muted)} title={asset.requires.join(', ')}>
+            {codecs.join(' + ')}
+          </span>
         ) : (
           <span {...stylex.props(styles.muted, styles.mono)} title={asset.hash}>
             {asset.hash.slice(0, 15)}…

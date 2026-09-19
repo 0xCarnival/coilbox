@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import * as THREE from 'three';
 import { describe, expect, it, vi } from 'vitest';
 import { AssetCache, MissingAssetError, UnsupportedAssetError } from '@runtime/assets/loader.js';
+import { GltfDecoders } from '@runtime/assets/decoders.js';
 import type { AssetResolver } from '@runtime/assets/resolver.js';
 import type { AssetEntry } from '@schema/index.js';
 
@@ -46,13 +47,25 @@ function entry(id: string, path: string, requires: string[] = []): AssetEntry {
 const limbEntry = entry('limb', 'models/animated-limb.glb');
 const crateEntry = entry('crate', 'models/spinning-crate.glb');
 
-function cacheFor(entries: AssetEntry[], warnings: string[] = []): AssetCache {
+function cacheFor(entries: AssetEntry[], warnings: string[] = [], decoders?: GltfDecoders): AssetCache {
   return new AssetCache({
     resolver: resolverFor(entries),
     describe: (assetId) => entries.find((candidate) => candidate.id === assetId),
     fetchImpl: fixtureFetch(),
     onWarning: (message) => warnings.push(message),
+    decoders,
   });
+}
+
+function triangles(object: THREE.Object3D): number {
+  let total = 0;
+  object.traverse((child) => {
+    if (child instanceof THREE.Mesh) {
+      const geometry = child.geometry as THREE.BufferGeometry;
+      total += (geometry.index ? geometry.index.count : geometry.attributes.position.count) / 3;
+    }
+  });
+  return total;
 }
 
 describe('model loading', () => {
@@ -156,12 +169,44 @@ describe('model loading', () => {
     await cache.dispose();
   });
 
-  it('refuses a model that declares a codec this version cannot decode', async () => {
+  it('refuses a model that declares a codec no decoder was supplied for', async () => {
     const draco = entry('draco', 'models/draco-required.glb', ['KHR_draco_mesh_compression']);
     const cache = cacheFor([draco]);
+    expect(cache.canDecode('KHR_draco_mesh_compression')).toBe(false);
     await expect(cache.loadModel('draco')).rejects.toThrow(UnsupportedAssetError);
     await expect(cache.loadModel('draco')).rejects.toThrow(/Draco decoder/);
     await cache.dispose();
+  });
+
+  it('refuses a meshopt model when only the Draco decoder is configured', async () => {
+    const compressed = entry('meshopt', 'models/meshopt-crate.glb', ['EXT_meshopt_compression']);
+    const decoders = new GltfDecoders({ draco: true });
+    const cache = cacheFor([compressed], [], decoders);
+    expect(cache.canDecode('KHR_draco_mesh_compression')).toBe(true);
+    expect(cache.canDecode('EXT_meshopt_compression')).toBe(false);
+    await expect(cache.loadModel('meshopt')).rejects.toThrow(/meshopt decoder/);
+    await cache.dispose();
+    decoders.dispose();
+  });
+
+  it('decodes meshopt-compressed geometry to the same mesh as the plain export', async () => {
+    const compressed = entry('meshopt', 'models/meshopt-crate.glb', ['EXT_meshopt_compression']);
+    const decoders = new GltfDecoders({ meshopt: true });
+    const cache = cacheFor([crateEntry, compressed], [], decoders);
+    const plain = await cache.loadModel('crate');
+    const model = await cache.loadModel('meshopt');
+    expect(triangles(model.source)).toBe(triangles(plain.source));
+    expect(triangles(model.source)).toBeGreaterThan(0);
+    expect(model.clipNames).toEqual(plain.clipNames);
+    await cache.dispose();
+    decoders.dispose();
+  });
+
+  it('does not claim KTX2 support until a renderer has been bound', () => {
+    const decoders = new GltfDecoders({ ktx2: true });
+    expect(decoders.supports('KHR_texture_basisu')).toBe(false);
+    expect(decoders.supports('KHR_draco_mesh_compression')).toBe(false);
+    decoders.dispose();
   });
 
   it('refuses to load a non-image as a texture', async () => {

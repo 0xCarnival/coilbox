@@ -4,6 +4,11 @@ import { fileURLToPath } from 'node:url';
 import { deflateSync } from 'node:zlib';
 import * as THREE from 'three';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+import { NodeIO } from '@gltf-transform/core';
+import { EXTMeshoptCompression, KHRDracoMeshCompression } from '@gltf-transform/extensions';
+import { draco, meshopt } from '@gltf-transform/functions';
+import draco3d from 'draco3d';
+import { MeshoptDecoder, MeshoptEncoder } from 'meshoptimizer';
 
 /**
  * Writes the binary fixtures the asset tests need. Generating them from code keeps the
@@ -15,7 +20,9 @@ import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
  * Fixtures:
  *   models/animated-limb.glb  - skinned mesh with a one-second clip (independent instances)
  *   models/spinning-crate.glb - plain mesh with a node-transform clip
- *   models/draco-required.glb - a valid GLB that declares a codec we do not bundle
+ *   models/draco-required.glb - a valid GLB that merely declares Draco (its geometry is plain)
+ *   models/draco-crate.glb    - the crate with its geometry really Draco-compressed
+ *   models/meshopt-crate.glb  - the crate with its geometry really meshopt-compressed
  *   models/not-a-model.glb    - bytes that are not a GLB at all
  *   images/swatch.png         - a small opaque image
  *   audio/beep.wav            - a short 16-bit PCM tone
@@ -225,9 +232,23 @@ function buildWav(): Uint8Array {
   return new Uint8Array(Buffer.concat([header, data]));
 }
 
+/** Re-encode a GLB's geometry with a real compression codec, so the decoders have work to do. */
+async function compressGlb(glb: Uint8Array, codec: 'draco' | 'meshopt'): Promise<Uint8Array> {
+  const io = new NodeIO()
+    .registerExtensions([KHRDracoMeshCompression, EXTMeshoptCompression])
+    .registerDependencies({
+      'draco3d.encoder': await draco3d.createEncoderModule(),
+      'meshopt.encoder': MeshoptEncoder,
+      'meshopt.decoder': MeshoptDecoder,
+    });
+  const document = await io.readBinary(glb);
+  await document.transform(codec === 'draco' ? draco() : meshopt({ encoder: MeshoptEncoder }));
+  return io.writeBinary(document);
+}
+
 /**
  * Rebuild a GLB with an extra required extension declared, so the loader path for a codec
- * we do not bundle can be tested. Parse both chunks and reassemble: patching in place only
+ * no decoder was supplied for can be tested. Parse both chunks and reassemble: patching in place only
  * works while the JSON stays the same length, which it does not.
  */
 function declareRequiredExtension(glb: Uint8Array, extension: string): Uint8Array {
@@ -277,6 +298,8 @@ const crate = buildSpinningCrate();
 const crateGlb = await exportGlb(crate.scene, [crate.clip]);
 await write('models/spinning-crate.glb', crateGlb);
 await write('models/draco-required.glb', declareRequiredExtension(crateGlb, 'KHR_draco_mesh_compression'));
+await write('models/draco-crate.glb', await compressGlb(crateGlb, 'draco'));
+await write('models/meshopt-crate.glb', await compressGlb(crateGlb, 'meshopt'));
 await write('models/not-a-model.glb', new Uint8Array([0x6e, 0x6f, 0x74, 0x20, 0x61, 0x20, 0x67, 0x6c, 0x62]));
 
 await write('images/swatch.png', buildPng());
