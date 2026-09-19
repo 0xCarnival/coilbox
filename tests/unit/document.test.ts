@@ -205,6 +205,21 @@ describe('history', () => {
     expect(position()).toEqual([3, 4, 0]);
   });
 
+  it('reports how many entries were dropped past the history limit', () => {
+    const documentStore = new SceneDocumentStore(probeGame, freshScene(), { history: new CommandHistory({ limit: 2 }) });
+    expect(documentStore.snapshot().historyTrimmed).toBe(0);
+    for (const x of [1, 2, 3, 4]) {
+      documentStore.execute({ kind: 'setTransform', entityId: 'falling-box', transform: { position: [x, 4, 0] } });
+    }
+    expect(documentStore.snapshot().historyEntries).toHaveLength(2);
+    expect(documentStore.snapshot().historyTrimmed).toBe(2);
+    documentStore.jumpTo(0);
+    // The two dropped edits stay applied: position 0 is the oldest kept state, not the opened scene.
+    expect(documentStore.scene.entities.find((e) => e.id === 'falling-box')?.transform.position).toEqual([2, 4, 0]);
+    documentStore.reset(probeGame, freshScene());
+    expect(documentStore.snapshot().historyTrimmed).toBe(0);
+  });
+
   it('coalesces consecutive edits that share a coalesce key into one entry', () => {
     const documentStore = store();
     for (const x of [1, 2, 3, 4]) {

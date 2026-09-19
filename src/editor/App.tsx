@@ -688,6 +688,7 @@ function StudioShell(): JSX.Element {
                 onReloadScene={() => void session.reloadScene()}
                 tab={bottomTab}
                 onTabChange={setBottomTab}
+                locked={editorLocked}
               />
               <div {...stylex.props(styles.resizeTop)}>
                 <ResizeHandle

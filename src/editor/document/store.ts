@@ -39,6 +39,8 @@ export interface StoreSnapshot {
   historyEntries: readonly HistoryItem[];
   /** How many of `historyEntries` are currently applied. */
   historyPosition: number;
+  /** Older entries dropped past the history limit; their changes are applied but not undoable. */
+  historyTrimmed: number;
 }
 
 /** A history entry as panels see it: the label and time, never the commands. */
@@ -126,6 +128,7 @@ export class SceneDocumentStore {
       historySize: this.history.size,
       historyEntries: this.history.entriesFromOldest().map(({ id, label, timestamp }) => ({ id, label, timestamp })),
       historyPosition: this.history.position,
+      historyTrimmed: this.history.trimmedCount,
     };
   }
 

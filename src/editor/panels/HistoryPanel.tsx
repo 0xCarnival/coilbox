@@ -42,6 +42,11 @@ const styles = stylex.create({
     ':hover': {
       backgroundColor: color.wash,
     },
+    ':disabled': {
+      cursor: 'default',
+      opacity: 0.6,
+      backgroundColor: 'transparent',
+    },
   },
   rowCurrent: {
     backgroundColor: color.surface,
@@ -83,11 +88,27 @@ function formatTime(timestamp: number): string {
   return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
 
-export function HistoryPanel(): JSX.Element {
+/**
+ * `locked` is Play: the runtime owns a snapshot of the scene, and a jump behind its back would
+ * surface as a silent change when Play stops. Undo and redo in the toolbar disable for the same reason.
+ */
+export function HistoryPanel({ locked = false }: { locked?: boolean }): JSX.Element {
   const session = useSession();
-  const { history, historyPosition } = useSessionSnapshot();
+  const { history, historyPosition, historyTrimmed } = useSessionSnapshot();
 
   const rows = history.map((entry, index) => ({ entry, position: index + 1 })).reverse();
+  const atOrigin = historyPosition === 0;
+  /**
+   * Once the history has dropped entries past its limit, position 0 is the oldest *retained* state,
+   * not the opened scene — those older edits stay applied. The row says so rather than promising a
+   * restoration it cannot make.
+   */
+  const originLabel = historyTrimmed > 0 ? `Oldest kept step (${historyTrimmed} earlier ${historyTrimmed === 1 ? 'edit' : 'edits'} no longer undoable)` : 'Scene opened';
+  const originTitle = atOrigin
+    ? 'Current state'
+    : historyTrimmed > 0
+      ? 'Undo every step still in the history'
+      : 'Undo everything since the scene was opened';
 
   return (
     <ul {...withDomClass(styles.list, DOM.historyList)} aria-label="Undo history">
@@ -101,6 +122,7 @@ export function HistoryPanel(): JSX.Element {
               type="button"
               aria-current={current ? 'step' : undefined}
               title={undone ? `Redo to "${entry.label}"` : current ? 'Current state' : `Undo back to "${entry.label}"`}
+              disabled={locked}
               onClick={() => session.jumpHistory(position)}
             >
               {current ? (
@@ -116,18 +138,19 @@ export function HistoryPanel(): JSX.Element {
       })}
       <li key="origin">
         <button
-          {...withDomClass(styles.row, historyPosition === 0 && styles.rowCurrent, historyPosition === 0 && DOM_STATE.active)}
+          {...withDomClass(styles.row, atOrigin && styles.rowCurrent, atOrigin && DOM_STATE.active)}
           type="button"
-          aria-current={historyPosition === 0 ? 'step' : undefined}
-          title={historyPosition === 0 ? 'Current state' : 'Undo everything since the scene was opened'}
+          aria-current={atOrigin ? 'step' : undefined}
+          title={originTitle}
+          disabled={locked}
           onClick={() => session.jumpHistory(0)}
         >
-          {historyPosition === 0 ? (
+          {atOrigin ? (
             <Check {...stylex.props(styles.marker, styles.markerCurrent)} aria-hidden />
           ) : (
             <Circle {...stylex.props(styles.marker)} aria-hidden />
           )}
-          <span {...stylex.props(styles.label)}>Scene opened</span>
+          <span {...stylex.props(styles.label)}>{originLabel}</span>
         </button>
       </li>
       {history.length === 0 && <li {...withDomClass(styles.empty, DOM.panelEmpty)}>No edits yet. Changes you make appear here and can be jumped back to.</li>}

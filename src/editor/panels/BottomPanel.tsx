@@ -235,6 +235,7 @@ export function BottomPanel({
   onReloadScene,
   tab: controlledTab,
   onTabChange,
+  locked = false,
 }: {
   onReloadScene(): void;
   /**
@@ -246,6 +247,8 @@ export function BottomPanel({
    */
   tab?: BottomTab;
   onTabChange?(tab: BottomTab): void;
+  /** True while Play owns the scene: panels that edit the authored document disable their controls. */
+  locked?: boolean;
 }): JSX.Element {
   const session = useSession();
   const snapshot = useSessionSnapshot();
@@ -342,7 +345,7 @@ export function BottomPanel({
             ))}
           </ul>
         )}
-        {tab === 'history' && <HistoryPanel />}
+        {tab === 'history' && <HistoryPanel locked={locked} />}
         {tab === 'console' && (
           <ul {...withDomClass(styles.logList, DOM.logList)}>
             {[...snapshot.logs].reverse().map((entry) => (

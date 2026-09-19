@@ -130,6 +130,8 @@ export interface SessionSnapshot {
   history: readonly HistoryItem[];
   /** How many of `history` are applied; the rest are redoable. */
   historyPosition: number;
+  /** Edits older than the history limit: still applied, no longer undoable. */
+  historyTrimmed: number;
   dirty: boolean;
   selectedIds: readonly string[];
   primarySelection: string | null;
@@ -232,6 +234,7 @@ export class EditorSession {
       redoLabel: this.store?.redoLabel() ?? null,
       history: store?.historyEntries ?? EMPTY_HISTORY,
       historyPosition: store?.historyPosition ?? 0,
+      historyTrimmed: store?.historyTrimmed ?? 0,
       dirty: this.store?.isDirty ?? false,
       selectedIds: this.selection.selectedIds,
       primarySelection: this.selection.primary,
