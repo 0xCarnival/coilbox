@@ -171,9 +171,9 @@ export function componentsFor(kind: CreatableKind): Component[] {
 /** Whether a component is the primitive a created shape always carries. */
 const isPrimitiveComponent = (component: Component): component is PrimitiveComponent => component.type === 'primitive';
 
-/** Small starter scene used when a project is created without a template. */
-export function createStarterScene(sceneId: string, name: string): SceneDocument {
-  const used = new Set<string>();
+/** The entities of the starter scene: ground, player, game camera, and sun, in that order. */
+export function createStarterEntities(usedIds: Iterable<string> = []): Entity[] {
+  const used = new Set(usedIds);
   // Ground visual and collider are the same 10 x 0.4 x 10 box sitting just below y = 0, so
   // what the author sees is what the physics world uses.
   const ground = createEntity('box', { id: 'ground', name: 'Ground', usedIds: used });
@@ -225,18 +225,24 @@ export function createStarterScene(sceneId: string, name: string): SceneDocument
   used.add(sun.id);
   sun.transform.rotation = lookAt([6, 9, 5], [0, 0, 0]);
 
+  return [ground, player, camera, sun];
+}
+
+/** Small starter scene used when a project is created without a template. */
+export function createStarterScene(sceneId: string, name: string): SceneDocument {
+  const entities = createStarterEntities();
   return {
     schemaVersion: 1,
     revision: 0,
     id: sceneId,
     name,
-    activeCameraId: camera.id,
+    activeCameraId: entities.find((entity) => entity.components.some((component) => component.type === 'camera'))?.id ?? null,
     environment: {
       background: { type: 'color', color: '#202431' },
       fog: { type: 'none' },
       gravity: [0, -9.81, 0],
     },
-    entities: [ground, player, camera, sun],
+    entities,
   };
 }
 

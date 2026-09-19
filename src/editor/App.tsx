@@ -18,6 +18,7 @@ import { isFiniteJsonNumber, isJsonString, jsonField } from './json-values.js';
 import { IconRail } from './ui/IconRail.js';
 import { ResizeHandle } from './ui/ResizeHandle.js';
 import { HintCard } from './ui/HintCard.js';
+import { StarterCard } from './ui/StarterCard.js';
 import { ViewGizmo } from './ui/ViewGizmo.js';
 import { MeasurementOverlay } from './ui/MeasurementOverlay.js';
 /**
@@ -650,6 +651,13 @@ function StudioShell(): JSX.Element {
                * carries both facts.
                */}
               <HintCard tool={tool} visible={!editorLocked} />
+              <StarterCard visible={!editorLocked} />
+              {/**
+               * Toasts float over the stage, not the window, so they never cover the inspector's
+               * fields or the status bar; they are suppressed while the console tab is showing,
+               * since repeating the line the user is already looking at is noise.
+               */}
+              <Toasts enabled={bottomTab !== 'console'} />
               <ViewGizmo
                 viewport={viewportRef}
                 visible={!editorLocked}
@@ -702,11 +710,6 @@ function StudioShell(): JSX.Element {
               </div>
             </div>
           </div>
-          {/**
-           * Toasts float over the workspace and are suppressed while the console tab is showing:
-           * repeating the line the user is already looking at is noise, not a notification.
-           */}
-          <Toasts enabled={bottomTab !== 'console'} />
           <Suspense fallback={null}>
           <CommandPalette
             open={paletteOpen}
