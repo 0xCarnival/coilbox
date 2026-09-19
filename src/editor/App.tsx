@@ -474,15 +474,21 @@ function StudioShell(): JSX.Element {
         void session.save();
         return;
       }
-      if (meta && event.key.toLowerCase() === 'd') {
+      if (!meta && !event.altKey && event.shiftKey && event.key.toLowerCase() === 'd') {
         if (session.duplicateSelection()) event.preventDefault();
         return;
       }
-      if (event.key === 'Delete' || event.key === 'Backspace') {
+      if (event.key === 'Delete' || event.key === 'Backspace' || (!meta && !event.altKey && event.key.toLowerCase() === 'x')) {
         const selection = session.selection.selectedIds;
         if (selection.length === 0) return;
         event.preventDefault();
         session.execute({ kind: 'deleteEntities', entityIds: [...selection] });
+        return;
+      }
+      if (!meta && event.key.toLowerCase() === 'a') {
+        event.preventDefault();
+        if (event.altKey) session.select(null);
+        else if (session.scene) session.selectMany(session.scene.entities.map((entity) => entity.id));
         return;
       }
       if (event.key === 'Escape') {
@@ -497,9 +503,9 @@ function StudioShell(): JSX.Element {
         viewportRef.current?.focusSelection();
         return;
       }
-      if (event.key === 'w' || event.key === 'W') setTool('translate');
-      if (event.key === 'e' || event.key === 'E') setTool('rotate');
-      if (event.key === 'r' || event.key === 'R') setTool('scale');
+      if (event.key === 'g' || event.key === 'G' || event.key === 'w' || event.key === 'W') setTool('translate');
+      if (event.key === 'r' || event.key === 'R' || event.key === 'e' || event.key === 'E') setTool('rotate');
+      if (event.key === 's' || event.key === 'S') setTool('scale');
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);

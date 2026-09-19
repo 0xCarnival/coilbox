@@ -45,7 +45,7 @@ The viewport should occupy most of the screen. Use readable labels such as “Mo
 
 Separate editor-only visibility/locking from whether an object is enabled in the actual game. Do not silently make a hidden editor helper into disabled gameplay content.
 
-Essential interactions are click selection, orbit/pan/zoom, focus selection, drag to place, numeric transforms, duplicate, delete, and keyboard undo/redo. Use W/E/R for transform tools only while the viewport has authoring focus; text fields and Play mode must not trigger editor shortcuts. Include trackpad-friendly camera navigation.
+Essential interactions are click selection, orbit/pan/zoom, focus selection, drag to place, numeric transforms, duplicate, delete, and keyboard undo/redo. Use G/R/S (Blender-style; W/E remain aliases) for transform tools only while the viewport has authoring focus; text fields and Play mode must not trigger editor shortcuts. Include trackpad-friendly camera navigation.
 
 Support single-object and multi-selection transforms. Parent/group movement provides a simple way to move assemblies, while multi-selection uses an editor-only centroid pivot and preserves authored local transforms.
 

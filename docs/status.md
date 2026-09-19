@@ -204,7 +204,7 @@ pnpm fixtures          # regenerate the binary test fixtures from code
 | Snapping | The snap toggle reaches the transform controls |
 | Save/reopen | The scene with two model entities saves at revision 1 and reloads after a full page reload |
 | Runtime animation | Play advances both clips inside the play world (≥2 animated entities, models loaded) |
-| Keyboard focus | Typing `wer` into the name field left the tool on Move and the entity alive: text fields own the keyboard, so W/E/R and Delete do not reach the editor's shortcuts |
+| Keyboard focus | Typing transform and edit shortcuts into the name field left the tool on Move and the entity alive: text fields own the keyboard, so G/R/S, W/E, X, A, Shift+D, and Delete do not reach the editor's shortcuts |
 | Drag cancellation | A real gizmo drag moved the projection to `[-0.5, 1, 0]` while the document stayed at `[0, 1, 0]`; Escape put the projection back, ended the drag, and left the undo label unchanged |
 | Missing asset | Deleting the file behind a manifest entry makes the entity report `failed` with a fetch error in the console instead of rendering nothing |
 | Console | No unexpected page errors while building and revising the scene |
