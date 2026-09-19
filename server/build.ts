@@ -4,6 +4,7 @@ import { dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   assetReferencesOf,
+  behaviorAssetIdsOf,
   parseGame,
   parseScene,
   type AssetEntry,
@@ -14,7 +15,7 @@ import {
 import { box3dWasmPlugin } from '../tools/vite-plugin-box3d-wasm.js';
 import { parseJson } from './json.js';
 import { assertProjectRelative, resolveInside } from './paths.js';
-import { Workspace, WorkspaceError } from './workspace.js';
+import { behaviorAssetProperties, behaviorValidationContext, Workspace, WorkspaceError } from './workspace.js';
 
 /**
  * Export Game: a standalone web player plus the project documents it needs (plan §14).
@@ -35,10 +36,11 @@ import { Workspace, WorkspaceError } from './workspace.js';
  * result reports every asset's size and whether it shipped, so the author can see what the export
  * weighs and why.
  *
- * The project documents are captured once, before anything is written, and the export is derived
- * from that one capture: the scenes it ships are the bytes that were read, and the assets it ships
- * are the ones those bytes reference. A save landing mid-build (the editor and the filesystem may
- * both write) therefore cannot leave a shipped scene pointing at a pruned asset.
+ * The project is captured once, before anything is written, and the export is derived from that
+ * one capture: the scenes it ships are the bytes that were read, the assets it ships are the ones
+ * those bytes reference, and their file bytes are read in the same pass. A save or an asset
+ * replacement landing during the build (the editor and the filesystem may both write) therefore
+ * cannot leave a shipped scene pointing at a pruned asset or at a file that has since been archived.
  *
  * The exported game must run with the editor and the workspace service switched off, which
  * is what `tools/verify-stage1.ts` checks.
@@ -126,12 +128,14 @@ export async function buildGame(options: BuildOptions): Promise<BuildResult> {
     );
   }
 
-  const snapshot = await captureProject(options.workspace, options.projectId, projectRoot);
-  const plan = planAssetExport(snapshot.manifest, snapshot.referencedAssets);
-
   const outDir = join(projectRoot, options.outSubdirectory ?? join('.coilbox', 'export'));
   await rm(outDir, { recursive: true, force: true });
   await mkdir(outDir, { recursive: true });
+
+  const snapshot = await captureProject(options.workspace, options.projectId, projectRoot);
+  const plan = planAssetExport(snapshot.manifest, snapshot.referencedAssets);
+  await writeProjectDocuments(projectRoot, join(outDir, 'project'), snapshot, write);
+  await writeAssets(join(outDir, 'project'), snapshot.game.assetManifest, plan.manifest, snapshot.assets);
 
   write(`building player for "${options.projectId}" into ${outDir}`);
 
@@ -174,8 +178,6 @@ export async function buildGame(options: BuildOptions): Promise<BuildResult> {
   write('player bundle compiled');
 
   await copyIcons(outDir);
-  await writeProjectDocuments(projectRoot, join(outDir, 'project'), snapshot, write);
-  await copyAssets(projectRoot, join(outDir, 'project'), snapshot.game.assetManifest, plan.manifest);
   const shipped = plan.assets.filter((asset) => asset.included);
   const shippedBytes = shipped.reduce((sum, asset) => sum + asset.bytes, 0);
   write(
@@ -237,6 +239,8 @@ export interface ProjectSnapshot {
   scenes: Array<{ path: string; bytes: Uint8Array }>;
   manifest: AssetManifest;
   referencedAssets: Set<string>;
+  /** The file bytes of every referenced asset, read in the same pass as the scenes that reference it. */
+  assets: Array<{ entry: AssetEntry; bytes: Uint8Array }>;
 }
 
 export async function captureProject(workspace: Workspace, projectId: string, projectRoot: string): Promise<ProjectSnapshot> {
@@ -247,9 +251,12 @@ export async function captureProject(workspace: Workspace, projectId: string, pr
   }
   const game = parsedGame.value;
   const manifest = await workspace.readAssetManifest(projectRoot, game);
+  const behaviors = behaviorValidationContext(await workspace.readBehaviorRegistry(projectId));
+  const assetProperties = behaviorAssetProperties(behaviors);
   const context = {
     assetIds: new Set(manifest.assets.map((asset) => asset.id)),
     assetKinds: new Map(manifest.assets.map((asset) => [asset.id, asset.kind])),
+    ...behaviors,
   };
   const scenes: ProjectSnapshot['scenes'] = [];
   const referencedAssets = new Set<string>();
@@ -267,11 +274,26 @@ export async function captureProject(workspace: Workspace, projectId: string, pr
     for (const entity of parsed.value.entities) {
       for (const component of entity.components) {
         for (const reference of assetReferencesOf(component)) referencedAssets.add(reference.assetId);
+        if (component.type !== 'behavior') continue;
+        for (const assetId of behaviorAssetIdsOf(component, assetProperties)) {
+          if (!context.assetIds.has(assetId)) {
+            throw new WorkspaceError(
+              'invalid-scene',
+              `scene "${entry.id}" gives behavior "${component.behaviorId}" the asset "${assetId}", which is not in the manifest`,
+              422,
+            );
+          }
+          referencedAssets.add(assetId);
+        }
       }
     }
     scenes.push({ path, bytes });
   }
-  return { game, gameBytes, scenes, manifest, referencedAssets };
+  const assets: ProjectSnapshot['assets'] = [];
+  for (const entry of manifest.assets) {
+    if (referencedAssets.has(entry.id)) assets.push({ entry, bytes: await readAssetBytes(projectRoot, entry) });
+  }
+  return { game, gameBytes, scenes, manifest, referencedAssets, assets };
 }
 
 /** Folders copied as they are: nothing in them decides what else the export contains. */
@@ -321,18 +343,26 @@ async function writeProjectDocuments(
   write('project documents copied next to the player');
 }
 
-async function copyAssets(projectRoot: string, target: string, manifestPath: string, manifest: AssetManifest): Promise<void> {
+async function writeAssets(
+  target: string,
+  manifestPath: string,
+  manifest: AssetManifest,
+  assets: ProjectSnapshot['assets'],
+): Promise<void> {
   const manifestTarget = join(target, ...manifestPath.split('/'));
   await mkdir(dirname(manifestTarget), { recursive: true });
   await writeFile(manifestTarget, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
-  for (const entry of manifest.assets) {
-    await copyAsset(projectRoot, target, entry);
+  for (const asset of assets) {
+    await writeAsset(target, asset.entry, asset.bytes);
   }
 }
 
-async function copyAsset(projectRoot: string, target: string, entry: AssetEntry): Promise<void> {
-  const segments = entry.path.split('/');
-  const source = join(projectRoot, ...segments);
+// The manifest is an authored file: its paths are checked to stay inside the project before they
+// are read from, and inside the export before they are written to.
+
+export async function readAssetBytes(projectRoot: string, entry: AssetEntry): Promise<Uint8Array> {
+  const segments = assertProjectRelative(entry.path).split('/');
+  const source = await resolveInside(projectRoot, segments, { allowMissing: true });
   if (!existsSync(source)) {
     throw new WorkspaceError(
       'asset-missing',
@@ -340,9 +370,13 @@ async function copyAsset(projectRoot: string, target: string, entry: AssetEntry)
       422,
     );
   }
-  const destination = join(target, ...segments);
+  return readFile(source);
+}
+
+export async function writeAsset(target: string, entry: AssetEntry, bytes: Uint8Array): Promise<void> {
+  const destination = await resolveInside(target, assertProjectRelative(entry.path).split('/'), { allowMissing: true });
   await mkdir(dirname(destination), { recursive: true });
-  await cp(source, destination);
+  await writeFile(destination, bytes);
 }
 
 async function listFiles(root: string): Promise<string[]> {

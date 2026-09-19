@@ -481,7 +481,7 @@ export interface BehaviorValidationContext {
  * `studio validate` catches an unregistered behavior or a mistyped property instead of leaving it
  * for the runtime to discover.
  */
-function behaviorValidationContext(registry: BehaviorRegistryDocument): BehaviorValidationContext {
+export function behaviorValidationContext(registry: BehaviorRegistryDocument): BehaviorValidationContext {
   const behaviorIds = new Set<string>();
   const behaviorProperties = new Map<string, Map<string, BehaviorPropertyType>>();
   for (const entry of registry.behaviors) {
@@ -499,6 +499,17 @@ function behaviorValidationContext(registry: BehaviorRegistryDocument): Behavior
     behaviorProperties.set(id, descriptors);
   }
   return { behaviorIds, behaviorProperties };
+}
+
+/** Per behavior id, the property keys the registry declares as `asset`. */
+export function behaviorAssetProperties(context: BehaviorValidationContext): Map<string, Set<string>> {
+  const result = new Map<string, Set<string>>();
+  for (const [behaviorId, descriptors] of context.behaviorProperties) {
+    const keys = new Set<string>();
+    for (const [key, type] of descriptors) if (type === 'asset') keys.add(key);
+    if (keys.size > 0) result.set(behaviorId, keys);
+  }
+  return result;
 }
 
 function isBehaviorPropertyType(value: unknown): value is BehaviorPropertyType {

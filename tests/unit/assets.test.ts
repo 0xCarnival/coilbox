@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { AssetService } from '../../server/assets.js';
-import { captureProject, planAssetExport } from '../../server/build.js';
+import { captureProject, planAssetExport, readAssetBytes, writeAsset } from '../../server/build.js';
 import { Workspace } from '../../server/workspace.js';
 import { parseAssetManifest } from '@schema/index.js';
 
@@ -255,6 +255,73 @@ describe('export asset plan', () => {
     expect(planAssetExport(snapshot.manifest, snapshot.referencedAssets).manifest.assets.map((asset) => asset.id)).toEqual([
       imported.entry.id,
     ]);
+  });
+
+  it('ships the asset bytes it captured even when the asset is replaced afterwards', async () => {
+    const imported = await importFixture('models/spinning-crate.glb');
+    const scene = await workspace.readScene('g', 'main');
+    scene.entities.push({
+      id: 'crate',
+      name: 'Crate',
+      parentId: null,
+      order: 9,
+      enabled: true,
+      transform: { position: [0, 1, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] },
+      components: [{ type: 'model', assetId: imported.entry.id, castShadow: true, receiveShadow: true }],
+      editor: { visible: true, locked: false, color: null, helper: false },
+    });
+    await workspace.writeScene('g', 'main', scene, { expectedRevision: scene.revision });
+    const projectRoot = join(workspaceRoot, 'g');
+    const original = await readFile(fixture('models/spinning-crate.glb'));
+
+    const snapshot = await captureProject(workspace, 'g', projectRoot);
+    await importFixture('models/animated-limb.glb', { replaceAssetId: imported.entry.id });
+    expect(existsSync(join(projectRoot, imported.entry.path))).toBe(false);
+
+    expect(snapshot.assets.map((asset) => asset.entry.path)).toEqual([imported.entry.path]);
+    expect(Buffer.from(snapshot.assets[0]!.bytes).equals(original)).toBe(true);
+    const target = join(projectRoot, '.coilbox', 'export', 'project');
+    await writeAsset(target, snapshot.assets[0]!.entry, snapshot.assets[0]!.bytes);
+    expect((await readFile(join(target, imported.entry.path))).equals(original)).toBe(true);
+  });
+
+  it('keeps assets that behaviors reference through registry-declared asset properties', async () => {
+    const imported = await importFixture('images/swatch.png');
+    const projectRoot = join(workspaceRoot, 'g');
+    await writeFile(
+      join(projectRoot, 'scripts', 'registry.json'),
+      JSON.stringify({
+        schemaVersion: 1,
+        behaviors: [{ id: 'badge', name: 'Badge', properties: [{ key: 'icon', type: 'asset' }, { key: 'label', type: 'text' }] }],
+      }),
+    );
+    const scene = await workspace.readScene('g', 'main');
+    scene.entities.push({
+      id: 'goal',
+      name: 'Goal',
+      parentId: null,
+      order: 9,
+      enabled: true,
+      transform: { position: [0, 1, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] },
+      components: [{ type: 'behavior', behaviorId: 'badge', properties: { icon: imported.entry.id, label: 'swatch' } }],
+      editor: { visible: true, locked: false, color: null, helper: false },
+    });
+    await workspace.writeScene('g', 'main', scene, { expectedRevision: scene.revision });
+
+    const snapshot = await captureProject(workspace, 'g', projectRoot);
+    expect(snapshot.referencedAssets).toEqual(new Set([imported.entry.id]));
+    const usage = await assets.usageIndex('g');
+    expect(usage[imported.entry.id]).toEqual([{ sceneId: 'main', entityId: 'goal', entityName: 'Goal' }]);
+  });
+
+  it('refuses a manifest path that leaves the project or the export', async () => {
+    const projectRoot = join(workspaceRoot, 'g');
+    const target = join(projectRoot, '.coilbox', 'export', 'project');
+    const evil = (path: string) => ({ ...entry('evil', 'image', 1), path });
+    await expect(readAssetBytes(projectRoot, evil('assets/../../game.json'))).rejects.toThrow(/traverse upward/);
+    await expect(readAssetBytes(projectRoot, evil('/etc/hostname'))).rejects.toThrow(/relative/);
+    await expect(writeAsset(target, evil('../../game.json'), new Uint8Array([1]))).rejects.toThrow(/traverse upward/);
+    expect(existsSync(join(projectRoot, '.coilbox', 'game.json'))).toBe(false);
   });
 
   it('refuses to capture a scene that references an asset the manifest does not have', async () => {

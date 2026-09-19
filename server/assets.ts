@@ -4,12 +4,20 @@ import { existsSync } from 'node:fs';
 import { extname, join } from 'node:path';
 import {
   assetReferencesOf,
+  behaviorAssetIdsOf,
   parseAssetManifest,
   type AssetEntry,
   type AssetKind,
   type AssetManifest,
 } from '@schema/index.js';
-import { PROJECT_FILES, Workspace, WorkspaceError, writeFileAtomic } from './workspace.js';
+import {
+  behaviorAssetProperties,
+  behaviorValidationContext,
+  PROJECT_FILES,
+  Workspace,
+  WorkspaceError,
+  writeFileAtomic,
+} from './workspace.js';
 import { isJsonString, jsonArray, parseJson } from './json.js';
 
 /**
@@ -281,17 +289,18 @@ export class AssetService {
   async usageIndex(projectId: string): Promise<Record<string, Array<{ sceneId: string; entityId: string; entityName: string }>>> {
     const project = await this.workspace.readProject(projectId);
     const index: Record<string, Array<{ sceneId: string; entityId: string; entityName: string }>> = {};
+    const assetProperties = behaviorAssetProperties(behaviorValidationContext(await this.workspace.readBehaviorRegistry(projectId)));
     for (const sceneEntry of project.scenes) {
       const scene = await this.workspace.readScene(projectId, sceneEntry.id).catch(() => null);
       if (!scene) continue;
       for (const entity of scene.entities) {
         for (const component of entity.components) {
-          for (const reference of assetReferencesOf(component)) {
-            (index[reference.assetId] ??= []).push({
-              sceneId: sceneEntry.id,
-              entityId: entity.id,
-              entityName: entity.name,
-            });
+          const ids = [
+            ...assetReferencesOf(component).map((reference) => reference.assetId),
+            ...behaviorAssetIdsOf(component, assetProperties),
+          ];
+          for (const assetId of ids) {
+            (index[assetId] ??= []).push({ sceneId: sceneEntry.id, entityId: entity.id, entityName: entity.name });
           }
         }
       }
