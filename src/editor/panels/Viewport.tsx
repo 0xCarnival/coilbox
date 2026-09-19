@@ -314,9 +314,13 @@ export function Viewport({ handleRef, tool, snap, onPlayStateChange, onStatus }:
     if (scene) viewport.sync(scene);
 
     return () => {
+      void sessionRef2.current?.dispose();
+      sessionRef2.current = null;
       viewport.dispose();
       sessionRef.current.setThumbnailRenderer(null);
       unsubscribeAssetReplaced();
+      void assetCache.dispose();
+      assetCacheRef.current = null;
       viewportRef.current = null;
     };
     // The viewport is created once; document changes flow through the sync effect below.
