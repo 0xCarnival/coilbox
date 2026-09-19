@@ -5,6 +5,7 @@ import { FixedStepLoop, type LoopStats } from './loop.js';
 import { RuntimeViewport, disposeSceneResources } from './render/viewport.js';
 import { createBox3DBackend } from './physics/box3d-adapter.js';
 import { AssetCache, disposeInstance, loadMaterialTextures, type MaterialTextures, type ModelInstance } from './assets/loader.js';
+import type { GltfDecoders } from './assets/decoders.js';
 import type { AnimationController } from './animation.js';
 import { BehaviorRegistry } from './behaviors/registry.js';
 import { BehaviorRuntime, type BehaviorHost } from './behaviors/runtime.js';
@@ -47,6 +48,8 @@ export interface RuntimeWorldOptions {
   assets?: AssetResolver;
   /** Reuse a warm asset cache across Play/Stop cycles. */
   assetCache?: AssetCache;
+  /** Decoders for compressed glTF, used when this world creates its own cache. */
+  decoders?: GltfDecoders;
   /** Registered behaviors available to this world. Without one, behavior components error. */
   registry?: BehaviorRegistry;
   /** Where the HUD mounts. Omit to use a fresh overlay in `document.body`. */
@@ -267,7 +270,18 @@ export class RuntimeWorld {
         resolver: assets,
         describe: (assetId) => assets.getEntry(assetId),
         onWarning: (message) => assetWarnings.push(message),
+        decoders: options.decoders,
       });
+
+    // The renderer exists before any asset loads: compressed textures transcode to whatever
+    // formats its GPU accepts, so the cache has to know it first.
+    const viewport = new RuntimeViewport({
+      canvas: options.canvas,
+      render: options.game.settings.render,
+      environment: options.scene.environment,
+      label: options.label ?? 'play',
+    });
+    assetCache.bindRenderer(viewport.renderer);
 
     // Load every referenced model before building the graph, so a missing or unsupported
     // asset produces one clear error instead of half a scene.
@@ -310,12 +324,6 @@ export class RuntimeWorld {
     }
 
     const graph = buildSceneGraph(options.scene, { models: modelInstances, materialTextures });
-    const viewport = new RuntimeViewport({
-      canvas: options.canvas,
-      render: options.game.settings.render,
-      environment: options.scene.environment,
-      label: options.label ?? 'play',
-    });
     viewport.scene.add(graph.root);
 
     const physics = backend.createWorld({

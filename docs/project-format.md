@@ -197,8 +197,10 @@ Rules the runtime enforces:
 
 - Scenes and behaviors reference `assetId`. Stored file names carry a content hash, so replacing an
   asset never changes the reference and moving a file never breaks a scene.
-- `requires` lists glTF extensions the file declares. A model that needs a codec this build does not
-  bundle (Draco, meshopt, Basis) is recorded at import and refused at load with an explanation.
+- `requires` lists glTF extensions the file declares. Draco, meshopt, and KTX2/Basis Universal
+  compressed models decode in the editor, the player, and exports; the asset list labels them with
+  their codec. A model that needs a codec the running host did not configure is refused at load with
+  an explanation.
 - Supported today: self-contained `.glb` models, PNG/JPEG/WebP images, MP3/OGG/WAV audio. Images are
   referenced by material texture slots on primitive entities. Everything
   else is refused at import with a message that says what to do instead.

@@ -1,5 +1,6 @@
 import wasmUrl from 'virtual:box3d-wasm-url';
 import { RuntimeSession } from '@runtime/session.js';
+import { GltfDecoders } from '@runtime/assets/decoders.js';
 import { loadProjectFromUrl, ProjectLoadError } from '@runtime/project/loader.js';
 import { formatIssues, parseScene, type GameDocument, type JsonValue, type SceneDocument } from '@schema/index.js';
 import type { RuntimeStats } from '@runtime/world.js';
@@ -77,6 +78,7 @@ export async function startPlayer(options: PlayerOptions): Promise<PlayerHandle>
           return parsed.value;
         },
         assets: project.resolver,
+        decoders: new GltfDecoders(),
         wasmLocateFile: () => wasmUrl,
         hudRoot: options.hudRoot ?? null,
         autoStart: options.autoStart !== false,

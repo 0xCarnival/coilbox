@@ -304,7 +304,7 @@ export class EditorViewport {
   private readonly canvas: HTMLCanvasElement;
   private readonly container: HTMLElement;
   private readonly callbacks: ViewportCallbacks;
-  private readonly renderer: THREE.WebGLRenderer;
+  readonly renderer: THREE.WebGLRenderer;
   private orbit: OrbitControls;
   private transform: TransformControls;
   /** The projection currently in use, so a resize knows which camera to refit. */
