@@ -185,6 +185,7 @@ export class EditorSession {
   private thumbnailRenderer: ((assetId: string) => Promise<string | null>) | null = null;
   private readonly thumbnailRequests = new Set<string>();
   private listeners = new Set<(snapshot: SessionSnapshot) => void>();
+  private readonly assetReplacedListeners = new Set<(assetId: string) => void>();
   private unsubscribes: Array<() => void> = [];
   private cachedSnapshot: SessionSnapshot | null = null;
   private events: EventSource | null = null;
@@ -248,6 +249,11 @@ export class EditorSession {
   subscribe(listener: (snapshot: SessionSnapshot) => void): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
+  }
+
+  onAssetReplaced(listener: (assetId: string) => void): () => void {
+    this.assetReplacedListeners.add(listener);
+    return () => this.assetReplacedListeners.delete(listener);
   }
 
   private emit(): void {
@@ -545,8 +551,8 @@ export class EditorSession {
     }
   }
 
-  async refreshAssets(): Promise<void> {
-    if (!this.project) return;
+  async refreshAssets(): Promise<boolean> {
+    if (!this.project) return false;
     try {
       const { manifest, usage } = await this.client.listAssets(this.project.id);
       this.assets = manifest.assets;
@@ -554,8 +560,10 @@ export class EditorSession {
       this.assetResolver.setProject(this.project.id, manifest.assets);
     } catch (error) {
       this.log('error', 'Could not read the asset manifest', describeError(error));
+      return false;
     }
     this.emit();
+    return true;
   }
 
   /**
@@ -597,7 +605,10 @@ export class EditorSession {
       const result = await this.client.importAsset(this.project.id, { name: file.name, bytes, type: file.type }, { replaceAssetId: assetId });
       this.log('info', `Replaced "${assetId}" with ${file.name}`);
       for (const warning of result.warnings) this.log('warning', `${assetId}: ${warning}`);
-      await this.refreshAssets();
+      const refreshed = await this.refreshAssets();
+      if (refreshed) {
+        for (const listener of this.assetReplacedListeners) listener(assetId);
+      }
       return true;
     } catch (error) {
       this.log('error', `Could not replace "${assetId}"`, describeError(error));

@@ -137,6 +137,15 @@ export class AssetCache {
     this.onWarning = options.onWarning ?? (() => {});
   }
 
+  /** Forget cached bytes without disposing resources still used by live projections. */
+  invalidate(assetId: AssetId): void {
+    this.models.delete(assetId);
+    const prefix = `${assetId}:`;
+    for (const key of this.textures.keys()) {
+      if (key.startsWith(prefix)) this.textures.delete(key);
+    }
+  }
+
   /** Load (once) and cache a model asset. Concurrent callers share one load. */
   loadModel(assetId: AssetId): Promise<LoadedModel> {
     const cached = this.models.get(assetId);

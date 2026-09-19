@@ -84,6 +84,23 @@ describe('model loading', () => {
     await cache.dispose();
   });
 
+  it('refetches a model after invalidation', async () => {
+    let fetches = 0;
+    const cache = new AssetCache({
+      resolver: resolverFor([crateEntry]),
+      describe: () => crateEntry,
+      fetchImpl: (async (input: string | URL | Request) => {
+        fetches += 1;
+        return fixtureFetch()(input as never);
+      }) as typeof fetch,
+    });
+    await cache.instantiate('crate');
+    cache.invalidate('crate');
+    await cache.instantiate('crate');
+    expect(fetches).toBe(2);
+    await cache.dispose();
+  });
+
   it('clones skinned models with independent skeletons and animation state', async () => {
     const cache = cacheFor([limbEntry]);
     const a = await cache.instantiate('limb');

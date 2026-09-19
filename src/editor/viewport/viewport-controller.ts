@@ -340,13 +340,15 @@ export class EditorViewport {
   private snap: SnapSettings = { enabled: false, translate: 0.5, rotateDegrees: 15, scale: 0.25 };
   private pointerDownAt: { x: number; y: number } | null = null;
   private disposed = false;
+  private lastSyncedScene: SceneDocument | null = null;
   private resizeObserver: ResizeObserver | null = null;
   /** The last canvas size, so a render can set its own viewport without measuring the DOM. */
   private width = 1;
   private height = 1;
   private assetProvider: ViewportAssetProvider | null = null;
   private readonly clock = new THREE.Clock();
-  private readonly pendingLoads = new Set<string>();
+  private readonly pendingLoads = new Map<string, number>();
+  private nextLoadToken = 0;
 
   constructor(options: ViewportOptions) {
     this.canvas = options.canvas;
@@ -465,6 +467,7 @@ export class EditorViewport {
 
   /** Project the authored scene into the viewport, creating/updating/removing as needed. */
   sync(scene: SceneDocument): void {
+    this.lastSyncedScene = scene;
     const seen = new Set<string>();
     for (const entity of scene.entities) {
       seen.add(entity.id);
@@ -650,18 +653,50 @@ export class EditorViewport {
     this.assetProvider = provider;
   }
 
+  invalidateAsset(assetId: string): void {
+    if (this.disposed) return;
+    for (const projection of this.projections.values()) {
+      const hasModel = projection.entity.components.some(
+        (component) => component.type === 'model' && component.assetId === assetId,
+      );
+      const hasTexture = projection.entity.components.some(
+        (component) =>
+          component.type === 'material' &&
+          (component.map === assetId || component.normalMap === assetId || component.emissiveMap === assetId),
+      );
+      if (!hasModel && !hasTexture) continue;
+      if (hasModel) this.pendingLoads.delete(`${projection.entity.id}:${assetId}`);
+      if (hasTexture && projection.textureKey) this.pendingLoads.delete(`${projection.entity.id}:${projection.textureKey}`);
+      if (hasModel) this.disposeProjectionModel(projection);
+      projection.pendingAssetId = null;
+      projection.failed = false;
+      projection.textures = {};
+      projection.textureKey = '';
+      projection.signature = '';
+    }
+    if (this.lastSyncedScene) this.sync(this.lastSyncedScene);
+  }
+
   private async loadModelFor(projection: EntityProjection, assetId: string): Promise<void> {
     const provider = this.assetProvider;
     projection.pendingAssetId = assetId;
     if (!provider) return;
     const key = `${projection.entity.id}:${assetId}`;
     if (this.pendingLoads.has(key)) return;
-    this.pendingLoads.add(key);
+    const loadToken = ++this.nextLoadToken;
+    this.pendingLoads.set(key, loadToken);
     try {
       const instance = await provider.instantiate(assetId);
       // The projection may have been rebuilt or removed while the load was in flight.
       const current = this.projections.get(projection.entity.id);
-      if (!current || current !== projection || current.pendingAssetId !== assetId || this.disposed) return;
+      if (
+        this.pendingLoads.get(key) !== loadToken ||
+        !current ||
+        current !== projection ||
+        current.pendingAssetId !== assetId ||
+        this.disposed
+      )
+        return;
       this.disposeProjectionModel(current);
       current.model = instance;
       current.object.add(instance.object);
@@ -670,12 +705,13 @@ export class EditorViewport {
       this.syncProjectionAnimation(current, current.entity);
     } catch (error) {
       const current = this.projections.get(projection.entity.id);
+      if (this.pendingLoads.get(key) !== loadToken) return;
       if (current && current === projection) current.failed = true;
       const message = error instanceof Error ? error.message : String(error);
       this.callbacks.onModelFailed?.(projection.entity.id, message);
       this.callbacks.onWarning?.(message);
     } finally {
-      this.pendingLoads.delete(key);
+      if (this.pendingLoads.get(key) === loadToken) this.pendingLoads.delete(key);
     }
   }
 
@@ -685,11 +721,19 @@ export class EditorViewport {
     if (!provider) return;
     const pendingKey = `${projection.entity.id}:${key}`;
     if (this.pendingLoads.has(pendingKey)) return;
-    this.pendingLoads.add(pendingKey);
+    const loadToken = ++this.nextLoadToken;
+    this.pendingLoads.set(pendingKey, loadToken);
     try {
       const textures = await loadMaterialTextures(provider, component);
       const current = this.projections.get(projection.entity.id);
-      if (!current || current !== projection || this.disposed || materialTextureKey(component) !== key) return;
+      if (
+        this.pendingLoads.get(pendingKey) !== loadToken ||
+        !current ||
+        current !== projection ||
+        this.disposed ||
+        current.textureKey !== key
+      )
+        return;
       current.textures = textures;
       const mesh = current.object.children.find(isMesh);
       const material = current.entity.components.find((candidate) => candidate.type === 'material');
@@ -699,7 +743,7 @@ export class EditorViewport {
     } catch (error) {
       this.callbacks.onWarning?.(error instanceof Error ? error.message : String(error));
     } finally {
-      this.pendingLoads.delete(pendingKey);
+      if (this.pendingLoads.get(pendingKey) === loadToken) this.pendingLoads.delete(pendingKey);
     }
   }
 

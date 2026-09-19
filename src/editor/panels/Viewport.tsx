@@ -302,6 +302,10 @@ export function Viewport({ handleRef, tool, snap, onPlayStateChange, onStatus }:
         disposeInstance(instance);
       }
     });
+    const unsubscribeAssetReplaced = sessionRef.current.onAssetReplaced((assetId) => {
+      assetCache.invalidate(assetId);
+      viewport.invalidateAsset(assetId);
+    });
     viewport.start();
     viewport.setTool(tool);
     viewport.setSnap(snap);
@@ -312,6 +316,7 @@ export function Viewport({ handleRef, tool, snap, onPlayStateChange, onStatus }:
     return () => {
       viewport.dispose();
       sessionRef.current.setThumbnailRenderer(null);
+      unsubscribeAssetReplaced();
       viewportRef.current = null;
     };
     // The viewport is created once; document changes flow through the sync effect below.
