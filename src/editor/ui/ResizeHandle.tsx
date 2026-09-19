@@ -1,7 +1,10 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { JSX } from 'react';
 import * as stylex from '@stylexjs/stylex';
 import { color } from '../styles/tokens.stylex.js';
+import { nextSize } from './resize-math.js';
+
+export { nextSize } from './resize-math.js';
 
 /**
  * A draggable divider for a resizable column.
@@ -43,6 +46,21 @@ const styles = stylex.create({
       backgroundColor: color['border-strong'],
     },
   },
+  handleY: {
+    width: 'auto',
+    height: '7px',
+    marginInline: 0,
+    marginBlock: 0,
+    cursor: 'row-resize',
+    '::after': {
+      insetBlockStart: 0,
+      bottom: 'auto',
+      insetInlineStart: 0,
+      insetInlineEnd: 0,
+      width: 'auto',
+      height: '1px',
+    },
+  },
   dragging: {
     backgroundColor: color.wash,
   },
@@ -52,10 +70,10 @@ const styles = stylex.create({
 });
 
 export interface ResizeHandleProps {
-  /** The current width of the column being resized, in pixels. */
-  width: number;
-  /** Called with the clamped width as the pointer moves. */
-  onResize(width: number): void;
+  /** The current size of the panel being resized, in pixels. */
+  size: number;
+  /** Called with the clamped size as the pointer moves. */
+  onResize(size: number): void;
   min: number;
   max: number;
   /**
@@ -67,10 +85,12 @@ export interface ResizeHandleProps {
   /** Restores a stored width when the drag ends, so layout is persisted once, not per frame. */
   onCommit?(): void;
   label: string;
+  axis?: 'x' | 'y';
+  direction?: 1 | -1;
 }
 
 export function ResizeHandle({
-  width,
+  size,
   onResize,
   min,
   max,
@@ -78,51 +98,98 @@ export function ResizeHandle({
   collapseBelow,
   onCommit,
   label,
+  axis = 'x',
+  direction = 1,
 }: ResizeHandleProps): JSX.Element {
   const [dragging, setDragging] = useState(false);
   const active = useRef(false);
-
-  const onPointerDown = useCallback(
-    (event: React.PointerEvent<HTMLDivElement>) => {
-      event.preventDefault();
-      active.current = true;
-      setDragging(true);
-      event.currentTarget.setPointerCapture(event.pointerId);
-      document.body.style.cursor = 'col-resize';
-      document.body.style.userSelect = 'none';
-    },
-    [],
-  );
-
-  const onPointerMove = useCallback(
-    (event: React.PointerEvent<HTMLDivElement>) => {
-      if (!active.current) return;
-      const next = event.clientX - 56;
-      if (onCollapse && collapseBelow !== undefined && next < collapseBelow) {
-        onCollapse();
-        return;
-      }
-      onResize(Math.max(min, Math.min(next, max)));
-    },
-    [collapseBelow, max, min, onCollapse, onResize],
-  );
-
-  const end = useCallback(() => {
+  const startPointer = useRef(0);
+  const startSize = useRef(size);
+  const release = useCallback(() => {
     if (!active.current) return;
     active.current = false;
     setDragging(false);
     document.body.style.cursor = '';
     document.body.style.userSelect = '';
+  }, []);
+
+  const onPointerDown = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      event.preventDefault();
+      active.current = true;
+      startPointer.current = axis === 'x' ? event.clientX : event.clientY;
+      startSize.current = size;
+      setDragging(true);
+      event.currentTarget.setPointerCapture(event.pointerId);
+      document.body.style.cursor = axis === 'x' ? 'col-resize' : 'row-resize';
+      document.body.style.userSelect = 'none';
+    },
+    [axis, size],
+  );
+
+  const onPointerMove = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      if (!active.current) return;
+      const pointer = axis === 'x' ? event.clientX : event.clientY;
+      const raw = startSize.current + direction * (pointer - startPointer.current);
+      if (onCollapse && collapseBelow !== undefined && raw < collapseBelow) {
+        release();
+        onCollapse();
+        return;
+      }
+      onResize(nextSize({
+        startSize: startSize.current,
+        startPointer: startPointer.current,
+        pointer,
+        direction,
+        min,
+        max,
+      }));
+    },
+    [axis, collapseBelow, direction, max, min, onCollapse, onResize, release],
+  );
+
+  const onKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      const positive = axis === 'x' ? event.key === 'ArrowRight' : event.key === 'ArrowDown';
+      const negative = axis === 'x' ? event.key === 'ArrowLeft' : event.key === 'ArrowUp';
+      if (!positive && !negative) return;
+      event.preventDefault();
+      const pointer = positive ? 16 : -16;
+      const raw = size + direction * pointer;
+      if (onCollapse && collapseBelow !== undefined && raw < collapseBelow) {
+        release();
+        onCollapse();
+        return;
+      }
+      onResize(nextSize({ startSize: size, startPointer: 0, pointer, direction, min, max }));
+    },
+    [axis, collapseBelow, direction, max, min, onCollapse, onResize, release, size],
+  );
+
+  const end = useCallback(() => {
+    if (!active.current) return;
+    release();
     onCommit?.();
-  }, [onCommit]);
+  }, [onCommit, release]);
+
+  useEffect(
+    () => () => {
+      if (!active.current) return;
+      active.current = false;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    },
+    [],
+  );
 
   return (
     <div
-      {...stylex.props(styles.handle, styles.draggable, dragging && styles.dragging)}
+      {...stylex.props(styles.handle, axis === 'y' && styles.handleY, styles.draggable, dragging && styles.dragging)}
       role="separator"
-      aria-orientation="vertical"
+      aria-orientation={axis === 'x' ? 'vertical' : 'horizontal'}
       aria-label={label}
-      aria-valuenow={width}
+      aria-valuenow={size}
       aria-valuemin={min}
       aria-valuemax={max}
       tabIndex={0}
@@ -130,6 +197,7 @@ export function ResizeHandle({
       onPointerMove={onPointerMove}
       onPointerUp={end}
       onPointerCancel={end}
+      onKeyDown={onKeyDown}
     />
   );
 }

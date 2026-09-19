@@ -18,11 +18,10 @@ import type { BehaviorPropertyDescriptor } from '@runtime/behaviors/types.js';
 import { componentsFor, type CreatableKind } from '../document/factory.js';
 import { isFiniteJsonNumber, isJsonString, jsonQuaternion, jsonVec2, jsonVec3 } from '../json-values.js';
 import { ChevronRight, Plus, Trash2 } from 'lucide-react';
-import { ActionButton, ActionGroup } from '../ui/Controls.js';
 import { useScrub } from '../ui/useScrub.js';
 import { FieldShell, ScrubLabel, Select } from '../ui/Field.js';
 import { Switch } from '../ui/Field.js';
-import { Button } from '../ui/Button.js';
+import { Button, IconButton } from '../ui/Button.js';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -103,8 +102,10 @@ const styles = stylex.create({
     display: 'flex',
     flexDirection: 'column',
   },
-  /** The hairline under a header, separating this section from the next. */
-  sectionHeaderRule: {
+  sectionHeaderRow: {
+    display: 'flex',
+    alignItems: 'center',
+    width: '100%',
     borderBlockEndWidth: '1px',
     borderBlockEndStyle: 'solid',
     borderBlockEndColor: color.border,
@@ -146,6 +147,14 @@ const styles = stylex.create({
       backgroundColor: color.wash,
       color: color.text,
     },
+  },
+  sectionHeaderToggle: {
+    flex: 1,
+    minWidth: 0,
+  },
+  sectionAction: {
+    flexShrink: 0,
+    marginInlineEnd: space.sm,
   },
   /** An open section's header sits on a faint fill: the title belongs to what it opened. */
   sectionHeaderOpen: {
@@ -711,7 +720,24 @@ function BehaviorSection({ entity, component, locked }: { entity: Entity; compon
     );
 
   return (
-    <Section title={descriptor?.name ?? component.behaviorId} subtitle={component.behaviorId} defaultOpen>
+    <Section
+      title={descriptor?.name ?? component.behaviorId}
+      subtitle={component.behaviorId}
+      defaultOpen
+      actions={
+        <IconButton
+          label={`Remove ${descriptor?.name ?? component.behaviorId}`}
+          variant="danger"
+          size="row"
+          disabled={locked}
+          onClick={() =>
+            session.execute({ kind: 'removeComponent', entityId: entity.id, componentType: 'behavior' })
+          }
+        >
+          <Trash2 size={control.iconSm} />
+        </IconButton>
+      }
+    >
       {!descriptor && (
         <p {...stylex.props(styles.warn)}>
           “{component.behaviorId}” is not declared in scripts/registry.json, so its properties cannot be edited here.
@@ -765,16 +791,6 @@ function BehaviorSection({ entity, component, locked }: { entity: Entity; compon
             ))}
         </div>
       )}
-      <ActionGroup>
-        <ActionButton
-          label={`Remove ${descriptor?.name ?? component.behaviorId}`}
-          icon={<Trash2 size={control.iconSm} />}
-          disabled={locked}
-          onClick={() =>
-            session.execute({ kind: 'removeComponent', entityId: entity.id, componentType: 'behavior' })
-          }
-        />
-      </ActionGroup>
     </Section>
   );
 }
@@ -820,7 +836,24 @@ function ComponentSection({
   const values: Record<string, JsonValue> = component;
 
   return (
-    <Section title={componentLabel(component)} subtitle={descriptor.summary(component)} defaultOpen>
+    <Section
+      title={componentLabel(component)}
+      subtitle={descriptor.summary(component)}
+      defaultOpen
+      actions={
+        <IconButton
+          label={`Remove ${componentLabel(component)}`}
+          variant="danger"
+          size="row"
+          disabled={locked}
+          onClick={() =>
+            session.execute({ kind: 'removeComponent', entityId: entity.id, componentType: component.type })
+          }
+        >
+          <Trash2 size={control.iconSm} />
+        </IconButton>
+      }
+    >
       {basic.map((field) => (
         <Field
           key={field.key}
@@ -850,25 +883,6 @@ function ComponentSection({
             ))}
         </div>
       )}
-      {/**
-       * The label names the component it removes.
-       *
-       * Each of these read just "Remove", so an entity with four components rendered four identical
-       * full-width danger buttons stacked down the panel with nothing on screen saying which removed
-       * what. The section title above is the only context, and it is a collapsing header, so it is
-       * not reliably there to read.
-       */}
-      <ActionGroup>
-        <ActionButton
-          label={`Remove ${componentLabel(component)}`}
-          icon={<Trash2 size={control.iconSm} />}
-          danger
-          disabled={locked}
-          onClick={() =>
-            session.execute({ kind: 'removeComponent', entityId: entity.id, componentType: component.type })
-          }
-        />
-      </ActionGroup>
     </Section>
   );
 }
@@ -1364,33 +1378,38 @@ function Section({
   title,
   subtitle,
   defaultOpen,
+  actions,
   children,
 }: {
   title: string;
   subtitle?: string;
   defaultOpen?: boolean;
+  actions?: React.ReactNode;
   children: React.ReactNode;
 }): JSX.Element {
   const [open, setOpen] = useState(Boolean(defaultOpen));
   return (
     <section {...withDomClass(styles.section, DOM.section)}>
-      <button
-        {...stylex.props(styles.sectionHeader, styles.sectionHeaderRule, open && styles.sectionHeaderOpen)}
-        type="button"
-        onClick={() => setOpen((value) => !value)}
-        aria-expanded={open}
-      >
-        <span {...withDomClass(styles.sectionTitle, DOM.sectionTitle)}>{title}</span>
-        {subtitle && <span {...stylex.props(styles.sectionSubtitle)}>{subtitle}</span>}
-        {/**
-         * The disclosure sits after the subtitle, not before the title. A leading chevron indents
-         * every heading by its own width, which breaks the left edge the labels below depend on;
-         * trailing it keeps one alignment line down the whole panel.
-         */}
-        <span {...stylex.props(subtitle ? undefined : styles.chevronTrailing)}>
-          <ChevronRight size={14} style={{ transform: open ? 'rotate(90deg)' : undefined, transition: 'transform 120ms ease' }} />
-        </span>
-      </button>
+      <div {...stylex.props(styles.sectionHeaderRow)} role="presentation">
+        <button
+          {...stylex.props(styles.sectionHeader, styles.sectionHeaderToggle, open && styles.sectionHeaderOpen)}
+          type="button"
+          onClick={() => setOpen((value) => !value)}
+          aria-expanded={open}
+        >
+          <span {...withDomClass(styles.sectionTitle, DOM.sectionTitle)}>{title}</span>
+          {subtitle && <span {...stylex.props(styles.sectionSubtitle)}>{subtitle}</span>}
+          {/**
+           * The disclosure sits after the subtitle, not before the title. A leading chevron indents
+           * every heading by its own width, which breaks the left edge the labels below depend on;
+           * trailing it keeps one alignment line down the whole panel.
+           */}
+          <span {...stylex.props(subtitle ? undefined : styles.chevronTrailing)}>
+            <ChevronRight size={14} style={{ transform: open ? 'rotate(90deg)' : undefined, transition: 'transform 120ms ease' }} />
+          </span>
+        </button>
+        {actions && <span {...stylex.props(styles.sectionAction)}>{actions}</span>}
+      </div>
       {open && <div {...stylex.props(styles.sectionBody)}>{children}</div>}
     </section>
   );
