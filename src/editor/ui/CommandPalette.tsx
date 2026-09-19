@@ -7,6 +7,7 @@ import { createEntity, CREATABLE_KINDS, CREATABLE_LABELS, type CreatableKind } f
 import { color, control, fontSize, radius, space } from '../styles/tokens.stylex.js';
 import { useSession, useSessionSnapshot } from '../hooks.js';
 import type { TransformTool, ViewFace } from '../viewport/viewport-controller.js';
+import type { PlayState } from '../panels/Viewport.js';
 
 /**
  * The command palette.
@@ -171,7 +172,7 @@ export interface CommandPaletteProps {
     pause(): void;
     step(): void;
     stop(): void;
-    state: 'stopped' | 'running' | 'paused';
+    state: PlayState;
   };
   onExport(): void;
   /**

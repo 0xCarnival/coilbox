@@ -328,10 +328,14 @@ export function Toolbar({
       <span {...withDomClass(styles.spacer, DOM.toolbarSpacer)} />
 
       <div {...withDomClass(styles.group, DOM.toolbarGroup)} role="group" aria-label="Playback">
-        {playState === 'stopped' ? (
-          <Button variant="primary" onClick={() => void viewport.current?.play()}>
+        {playState === 'stopped' || playState === 'starting' ? (
+          <Button
+            variant="primary"
+            disabled={playState === 'starting'}
+            onClick={() => void viewport.current?.play()}
+          >
             <Play size={control.icon} />
-            Play
+            {playState === 'starting' ? 'Starting…' : 'Play'}
           </Button>
         ) : (
           <Button variant="primary" onClick={() => viewport.current?.pause()}>
@@ -348,7 +352,7 @@ export function Toolbar({
         </IconButton>
         <IconButton
           label="Stop and discard the simulation"
-          disabled={playState === 'stopped'}
+          disabled={playState === 'stopped' || playState === 'starting'}
           onClick={() => viewport.current?.stop()}
         >
           <Square size={control.icon} />
