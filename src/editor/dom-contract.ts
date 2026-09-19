@@ -83,6 +83,10 @@ export const DOM = {
    */
   hintCard: 'hint-card',
   viewGizmo: 'view-gizmo',
+  /** The empty-scene card and its first-move actions. */
+  starterCard: 'starter-card',
+  /** A floating notification; `data-count` carries how many identical messages it stands for. */
+  toast: 'toast',
   /** Stage 5: the play-mode badge proves the viewport switched modes. */
   viewportBadge: 'viewport-badge',
   /** Stage 1-5: the hierarchy row is clicked to select an object. */

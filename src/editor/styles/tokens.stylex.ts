@@ -204,6 +204,8 @@ export const overlay = stylex.defineVars({
   gizmo: '92px',
   lane: '116px',
   card: '460px',
+  /** The tool dock's height plus its bottom inset: what a bottom overlay must clear to stay off it. */
+  dockLane: '64px',
 });
 
 /**

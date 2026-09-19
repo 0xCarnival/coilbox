@@ -110,12 +110,25 @@ Types are `label` (`text`, `bind`, `position`, `color`, `size`), `counter` (`lab
   "activeCameraId": "game-camera",
   "environment": {
     "background": { "type": "color", "color": "#181d29" },
+    "sky": { "elevation": 20, "azimuth": 180, "turbidity": 6, "rayleigh": 1.5 },
+    "lighting": { "type": "none" },
     "fog": { "type": "linear", "color": "#181d29", "near": 26, "far": 60 },
     "gravity": [0, -20, 0]
   },
   "entities": []
 }
 ```
+
+The environment is edited in the inspector when nothing is selected:
+
+- `background` is `color`, `sky` (the procedural sky, optionally blurred with `blur` 0–1), or
+  `none` (transparent canvas).
+- `sky` describes the procedural sky by sun `elevation`/`azimuth` in degrees, `turbidity` (haze)
+  and `rayleigh` (blue scattering). It is only rendered when the background or the lighting uses it.
+- `lighting` is the image-based light applied to every PBR material: `none` (only the scene's own
+  light entities), `studio` (a neutral light box) or `sky` (lit from the sky above), each with an
+  `intensity`. Every field has a default, so older documents without `sky`/`lighting` still load.
+- `fog` is `none`, `linear` (`near`/`far` in metres) or `exponential` (`density`).
 
 Each entity:
 
@@ -198,8 +211,10 @@ Rules the runtime enforces:
 
 - Scenes and behaviors reference `assetId`. Stored file names carry a content hash, so replacing an
   asset never changes the reference and moving a file never breaks a scene.
-- `requires` lists glTF extensions the file declares. A model that needs a codec this build does not
-  bundle (Draco, meshopt, Basis) is recorded at import and refused at load with an explanation.
+- `requires` lists glTF extensions the file declares. Draco, meshopt, and KTX2/Basis Universal
+  compressed models decode in the editor, the player, and exports; the asset list labels them with
+  their codec. A model that needs a codec the running host did not configure is refused at load with
+  an explanation.
 - Supported today: self-contained `.glb` models, PNG/JPEG/WebP images, MP3/OGG/WAV audio. Images are
   referenced by material texture slots on primitive entities. Everything
   else is refused at import with a message that says what to do instead.

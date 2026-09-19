@@ -195,7 +195,7 @@ pnpm fixtures          # regenerate the binary test fixtures from code
 | Requirement | Observed |
 |---|---|
 | Declared asset subset | `.glb`/`.gltf` models, PNG/JPEG/WebP images, MP3/OGG/WAV audio import; `.fbx` is refused with "FBX is not supported in this version. Export a self-contained .glb…" |
-| Compression detection | A GLB requiring `KHR_draco_mesh_compression` imports with that requirement recorded, and the asset list marks it "this version cannot decode it" |
+| Compression detection | A GLB requiring `KHR_draco_mesh_compression` imports with that requirement recorded, and the asset list labels it "Draco" |
 | Import through the editor | Four files import through the UI and appear in the manifest with `sha256:` hashes |
 | Model in the viewport | Choosing a model asset loads it into the viewport through the same loader the runtime uses |
 | Clip discovery and playback | The animation component lists the model's clips (`Hop`, `Wave`) and the editor preview advances the chosen clip |

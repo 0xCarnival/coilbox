@@ -3,7 +3,7 @@ import { parseScene, type SceneDocument } from '@schema/index.js';
 import { createEntityId, planCommand, subtreeOf } from '@editor/document/commands.js';
 import { CommandHistory } from '@editor/document/history.js';
 import { SceneDocumentStore } from '@editor/document/store.js';
-import { createEntity, createStarterScene, reparentPreservingWorldTransform, worldMatrix } from '@editor/document/factory.js';
+import { createEntity, createStarterEntities, createStarterScene, reparentPreservingWorldTransform, worldMatrix } from '@editor/document/factory.js';
 import { probeGame, probeScene } from '@runtime/probe/scene.js';
 
 /**
@@ -25,6 +25,17 @@ function freshScene(): SceneDocument {
 function store(): SceneDocumentStore {
   return new SceneDocumentStore(probeGame, freshScene());
 }
+
+describe('starter entities', () => {
+  it('keeps the canonical ids for a fresh scene and renames around reserved ones', () => {
+    expect(createStarterEntities().map((entity) => entity.id)).toEqual(['ground', 'player', 'game-camera', 'sun']);
+    const renamed = createStarterEntities(['ground', 'sun']);
+    expect(renamed.map((entity) => entity.id)).toEqual(['ground-2', 'player', 'game-camera', 'sun-2']);
+    const scene = freshScene();
+    const result = planCommand(scene, { kind: 'insertEntities', entities: createStarterEntities(scene.entities.map((entity) => entity.id)) });
+    expect(result.ok).toBe(true);
+  });
+});
 
 describe('commands', () => {
   it('plans a transform change with an inverse that restores the previous value', () => {
@@ -218,6 +229,24 @@ describe('history', () => {
     expect(documentStore.scene.entities.find((e) => e.id === 'falling-box')?.transform.position).toEqual([2, 4, 0]);
     documentStore.reset(probeGame, freshScene());
     expect(documentStore.snapshot().historyTrimmed).toBe(0);
+  });
+
+  it('edits the scene environment as one undoable, coalesced step', () => {
+    const documentStore = store();
+    const before = documentStore.scene.environment;
+    for (const elevation of [30, 40, 50]) {
+      documentStore.execute(
+        { kind: 'setSceneEnvironment', patch: { sky: { ...before.sky, elevation }, lighting: { type: 'sky', intensity: 1 } } },
+        { coalesceKey: 'environment:sky' },
+      );
+    }
+    expect(documentStore.currentHistory.size).toBe(1);
+    expect(documentStore.scene.environment.sky.elevation).toBe(50);
+    expect(documentStore.scene.environment.lighting).toEqual({ type: 'sky', intensity: 1 });
+    expect(documentStore.scene.environment.background).toEqual(before.background);
+
+    documentStore.undo();
+    expect(documentStore.scene.environment).toEqual(before);
   });
 
   it('coalesces consecutive edits that share a coalesce key into one entry', () => {

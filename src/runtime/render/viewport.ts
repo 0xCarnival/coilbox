@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import type { Fog, RenderSettings, SceneDocument } from '@schema/index.js';
+import type { RenderSettings, SceneDocument } from '@schema/index.js';
+import { EnvironmentProjection } from './environment.js';
 
 /**
  * Runtime viewport: owns the WebGL renderer, the scene, and the active camera.
@@ -74,6 +75,7 @@ export class RuntimeViewport {
 
   private readonly canvas: HTMLCanvasElement;
   private readonly pixelRatioCap: number;
+  private readonly environment: EnvironmentProjection;
   private disposed = false;
 
   constructor(options: ViewportOptions) {
@@ -106,6 +108,7 @@ export class RuntimeViewport {
     this.renderer.toneMappingExposure = render.exposure;
 
     this.scene = new THREE.Scene();
+    this.environment = new EnvironmentProjection(this.renderer, this.scene);
     this.applyEnvironment(environment);
 
     this.camera = new THREE.PerspectiveCamera(60, 1, 0.1, 1000);
@@ -114,12 +117,7 @@ export class RuntimeViewport {
   }
 
   applyEnvironment(environment: SceneDocument['environment']): void {
-    if (environment.background.type === 'color') {
-      this.scene.background = new THREE.Color(environment.background.color);
-    } else {
-      this.scene.background = null;
-    }
-    this.scene.fog = fogFromDocument(environment.fog);
+    this.environment.apply(environment);
   }
 
   /** Size the drawing buffer from CSS pixels; returns the applied device pixel ratio. */
@@ -161,21 +159,11 @@ export class RuntimeViewport {
   dispose(options: { releaseContext?: boolean } = {}): void {
     if (this.disposed) return;
     this.disposed = true;
+    this.environment.dispose();
     disposeSceneResources(this.scene);
     this.scene.clear();
     this.renderer.dispose();
     if (options.releaseContext) this.renderer.forceContextLoss();
-  }
-}
-
-export function fogFromDocument(fog: Fog): THREE.Fog | THREE.FogExp2 | null {
-  switch (fog.type) {
-    case 'linear':
-      return new THREE.Fog(new THREE.Color(fog.color), fog.near, fog.far);
-    case 'exponential':
-      return new THREE.FogExp2(new THREE.Color(fog.color), fog.density);
-    default:
-      return null;
   }
 }
 

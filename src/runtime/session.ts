@@ -5,6 +5,7 @@ import { BEHAVIOR_LIBRARY } from './behaviors/library.js';
 import type { AssetResolver } from './assets/resolver.js';
 import { EmptyAssetResolver } from './assets/resolver.js';
 import type { AssetCache } from './assets/loader.js';
+import type { GltfDecoders } from './assets/decoders.js';
 
 /**
  * Runtime session: the host helper that owns one world at a time and rebuilds it for scene
@@ -25,6 +26,11 @@ export interface RuntimeSessionOptions {
   assets?: AssetResolver;
   /** Reuse loaded models across scene changes. */
   assetCache?: AssetCache;
+  /**
+   * Decoders for compressed glTF, used when the session's worlds create their own cache. The
+   * session owns them: they outlive scene changes and are released by `dispose()`.
+   */
+  decoders?: GltfDecoders;
   registry?: BehaviorRegistry;
   hudRoot?: HTMLElement | null;
   inputTarget?: EventTarget;
@@ -104,6 +110,7 @@ export class RuntimeSession {
     if (this.disposed) return;
     this.disposed = true;
     await this.stop();
+    this.options.decoders?.dispose();
   }
 
   /** Load a scene by id, replacing the running world. */
@@ -140,6 +147,7 @@ export class RuntimeSession {
       scene,
       assets: this.options.assets ?? new EmptyAssetResolver(),
       assetCache: this.options.assetCache,
+      decoders: this.options.decoders,
       registry: this.registry,
       hudRoot: this.options.hudRoot,
       inputTarget: this.options.inputTarget,

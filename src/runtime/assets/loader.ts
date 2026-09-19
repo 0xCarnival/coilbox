@@ -3,6 +3,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkeletonAware } from 'three/addons/utils/SkeletonUtils.js';
 import type { AssetEntry, AssetId, MaterialComponent } from '@schema/index.js';
 import type { AssetResolver } from './resolver.js';
+import type { GltfDecoders } from './decoders.js';
 
 /**
  * Runtime asset loading (plan §9).
@@ -13,8 +14,8 @@ import type { AssetResolver } from './resolver.js';
  *   skeletons and independent animation state.
  * - Materials are cloned per instance, so recolouring one object does not recolour every
  *   instance.
- * - A model whose manifest entry declares an unsupported codec fails with the recorded
- *   message instead of a loader stack trace.
+ * - A model whose manifest entry declares a codec the supplied decoders cannot handle fails
+ *   with the recorded message instead of a loader stack trace.
  */
 
 export class UnsupportedAssetError extends Error {
@@ -94,16 +95,18 @@ export interface AssetCacheOptions {
   describe?: (assetId: AssetId) => AssetEntry | undefined;
   fetchImpl?: typeof fetch;
   onWarning?: (message: string) => void;
+  /** Compression decoders; without them every compressed model is refused with a message. */
+  decoders?: GltfDecoders;
 }
 
-/** glTF extensions this version cannot decode, with the message the user is shown. */
+/** glTF extensions that need a decoder, with the message shown when none is available. */
 const UNSUPPORTED_EXTENSION_MESSAGES = {
   KHR_draco_mesh_compression:
-    'Draco-compressed geometry needs the Draco decoder, which this version does not bundle. Re-export without Draco compression.',
+    'Draco-compressed geometry needs the Draco decoder, which is not available here. Re-export without Draco compression.',
   EXT_meshopt_compression:
-    'meshopt-compressed geometry needs the meshopt decoder, which this version does not bundle. Re-export without meshopt compression.',
+    'meshopt-compressed geometry needs the meshopt decoder, which is not available here. Re-export without meshopt compression.',
   KHR_texture_basisu:
-    'Basis Universal textures need the KTX2 decoder, which this version does not bundle. Re-export with PNG or JPEG textures.',
+    'Basis Universal textures need the KTX2 decoder, which is not available here. Re-export with PNG or JPEG textures.',
 };
 
 type UnsupportedExtension = keyof typeof UNSUPPORTED_EXTENSION_MESSAGES;
@@ -124,6 +127,7 @@ export class AssetCache {
   private readonly describeEntry: ((assetId: AssetId) => AssetEntry | undefined) | undefined;
   private readonly fetchImpl: typeof fetch;
   private readonly onWarning: (message: string) => void;
+  private readonly decoders: GltfDecoders | null;
   private readonly models = new Map<AssetId, Promise<LoadedModel>>();
   private readonly textures = new Map<string, Promise<THREE.Texture>>();
   private readonly retiredModels: Array<Promise<LoadedModel>> = [];
@@ -137,6 +141,17 @@ export class AssetCache {
     // A supplied implementation is used as-is so tests can inject their own.
     this.fetchImpl = options.fetchImpl ?? ((input: RequestInfo | URL, init?: RequestInit) => globalThis.fetch(input, init));
     this.onWarning = options.onWarning ?? (() => {});
+    this.decoders = options.decoders ?? null;
+  }
+
+  /** Let texture transcoding target this renderer's GPU formats; a no-op without a KTX2 decoder. */
+  bindRenderer(renderer: THREE.WebGLRenderer): void {
+    this.decoders?.bindRenderer(renderer);
+  }
+
+  /** Whether a model declaring `extension` can be decoded by this cache. */
+  canDecode(extension: string): boolean {
+    return !isUnsupportedExtension(extension) || this.decoders?.supports(extension) === true;
   }
 
   /** Forget cached bytes without disposing resources still used by live projections. */
@@ -171,7 +186,7 @@ export class AssetCache {
     const entry = this.describeEntry?.(assetId);
     if (entry) {
       for (const extension of entry.requires) {
-        if (isUnsupportedExtension(extension)) {
+        if (isUnsupportedExtension(extension) && !this.canDecode(extension)) {
           throw new UnsupportedAssetError(assetId, `"${assetId}": ${UNSUPPORTED_EXTENSION_MESSAGES[extension]}`);
         }
       }
@@ -201,6 +216,7 @@ export class AssetCache {
     }
 
     const loader = new GLTFLoader();
+    this.decoders?.configure(loader);
     // `GLTF` carries the two fields the runtime keeps (a scene root and its clips) plus loader
     // internals this module never touches, so the promise asks for exactly the part it uses.
     const gltf = await new Promise<{ scene: THREE.Group; animations: THREE.AnimationClip[] }>((resolve, reject) => {

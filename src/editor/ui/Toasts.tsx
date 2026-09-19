@@ -2,9 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import type { JSX } from 'react';
 import * as stylex from '@stylexjs/stylex';
 import { AlertTriangle, Check, Info, X } from 'lucide-react';
-import { color, control, fontSize, radius, space } from '../styles/tokens.stylex.js';
+import { color, control, fontSize, overlay, radius, space } from '../styles/tokens.stylex.js';
 import { useSessionSnapshot } from '../hooks.js';
+import { DOM, withDomClass } from '../dom-contract.js';
 import { IconButton } from './Button.js';
+import { expireToasts, nextExpiry, pushToast, type Toast } from './toast-queue.js';
 
 /**
  * Transient notifications for things that happened *to* the user.
@@ -22,6 +24,16 @@ import { IconButton } from './Button.js';
  *
  * - Not while the console tab is already open. A toast repeating the line the user is looking at is
  *   noise, and the reference does not do it either.
+ * - Not twice for the same text. A repeated entry bumps a counter on the toast that is already
+ *   showing (`toast-queue.ts`), so a save spammed five times reads "Saved ×5", not five cards.
+ *
+ * ## Where it sits
+ *
+ * Over the stage, in its bottom-right corner, rather than over the window's. The workspace corner
+ * put the stack on top of the inspector's fields and the status bar — the two places the eye goes
+ * right after an action to see what changed. The stage corner is the render, which has nothing to
+ * read there. The stack starts above the tool dock's lane, since on a laptop-width stage the corner
+ * and the centred dock are close enough to meet.
  *
  * `LogLevel` is `info | warning | error`, so there is no level to filter out — every entry is worth
  * surfacing. A `debug` tier was the first thing written here and the type checker was right to
@@ -31,19 +43,18 @@ import { IconButton } from './Button.js';
  * anything: the console still has every entry, so a missed toast is not a missed message.
  */
 
-const TOAST_MS = 4200;
-
 const styles = stylex.create({
   region: {
     position: 'absolute',
     insetInlineEnd: space.lg,
-    insetBlockEnd: space.lg,
+    insetBlockEnd: overlay.dockLane,
     display: 'flex',
     flexDirection: 'column',
     gap: space.sm,
     zIndex: 60,
     pointerEvents: 'none',
-    maxWidth: '380px',
+    width: '340px',
+    maxWidth: 'calc(100% - 32px)',
   },
   toast: {
     display: 'flex',
@@ -93,19 +104,23 @@ const styles = stylex.create({
     color: color.dim,
     overflowWrap: 'anywhere',
   },
+  count: {
+    flexShrink: 0,
+    alignSelf: 'flex-start',
+    paddingBlock: '1px',
+    paddingInline: space.sm,
+    borderRadius: radius.md,
+    backgroundColor: color.wash,
+    color: color.muted,
+    fontSize: fontSize.xs,
+    fontVariantNumeric: 'tabular-nums',
+  },
   dismiss: {
     flexShrink: 0,
     marginBlock: '-4px',
     marginInlineEnd: '-6px',
   },
 });
-
-interface Toast {
-  id: number;
-  level: string;
-  message: string;
-  detail?: string;
-}
 
 const GLYPHS = {
   info: { Icon: Info, style: styles.glyphInfo },
@@ -139,25 +154,35 @@ function glyphFor(level: string): { Icon: typeof Info; style: stylex.StyleXStyle
 export function Toasts({ enabled }: { enabled: boolean }): JSX.Element | null {
   const snapshot = useSessionSnapshot();
   const [visible, setVisible] = useState<readonly Toast[]>([]);
-  /** The highest log id already seen, so only genuinely new entries raise a toast. */
-  const seen = useRef(0);
+  const { logs } = snapshot;
+  /**
+   * The highest log id already seen, so only genuinely new entries raise a toast. On mount everything
+   * but the newest entry counts as seen: the stage mounts after the project has already logged its
+   * opening, and a stack of three stale lines is not news.
+   */
+  const seen = useRef(logs.length > 1 ? (logs[logs.length - 2]?.id ?? 0) : 0);
 
-  const latest = snapshot.logs.length > 0 ? snapshot.logs[snapshot.logs.length - 1] : undefined;
+  /**
+   * Every unseen entry is queued, not just the newest: React batches store notifications, so one
+   * continuation that logs two warnings and a success reaches this effect once, with all three new.
+   */
+  useEffect(() => {
+    const fresh = logs.filter((entry) => entry.id > seen.current);
+    const last = fresh[fresh.length - 1];
+    if (!last) return;
+    seen.current = last.id;
+    if (!enabled) return;
+    const now = Date.now();
+    setVisible((current) => fresh.reduce((queue, entry) => pushToast(queue, entry, now), current));
+  }, [enabled, logs]);
 
   useEffect(() => {
-    if (!enabled || !latest) return;
-    if (latest.id <= seen.current) return;
-    seen.current = latest.id;
-    setVisible((current) => [...current.slice(-2), { ...latest }]);
-  }, [enabled, latest]);
-
-  useEffect(() => {
-    if (visible.length === 0) return undefined;
-    const oldest = visible[0];
-    if (!oldest) return undefined;
+    const due = nextExpiry(visible);
+    if (due === null) return undefined;
     const handle = setTimeout(() => {
-      setVisible((current) => current.filter((toast) => toast.id !== oldest.id));
-    }, TOAST_MS);
+      const now = Date.now();
+      setVisible((current) => expireToasts(current, now));
+    }, Math.max(0, due - Date.now()));
     return () => clearTimeout(handle);
   }, [visible]);
 
@@ -177,7 +202,7 @@ export function Toasts({ enabled }: { enabled: boolean }): JSX.Element | null {
       {visible.map((toast) => {
         const { Icon, style } = glyphFor(toast.level);
         return (
-          <div key={toast.id} {...stylex.props(styles.toast)}>
+          <div key={`${toast.level}:${toast.message}:${toast.detail ?? ''}`} {...withDomClass(styles.toast, DOM.toast)} data-count={toast.count}>
             <span {...stylex.props(styles.glyph, style)}>
               <Icon size={control.iconSm} />
             </span>
@@ -185,6 +210,11 @@ export function Toasts({ enabled }: { enabled: boolean }): JSX.Element | null {
               <span {...stylex.props(styles.message)}>{toast.message}</span>
               {toast.detail ? <span {...stylex.props(styles.detail)}>{toast.detail}</span> : null}
             </span>
+            {toast.count > 1 ? (
+              <span {...stylex.props(styles.count)} aria-label={`${toast.count} times`}>
+                ×{toast.count}
+              </span>
+            ) : null}
             <span {...stylex.props(styles.dismiss)}>
               <IconButton
                 size="row"

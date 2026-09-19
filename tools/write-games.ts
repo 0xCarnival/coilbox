@@ -309,6 +309,8 @@ function collectRoom(): BuiltGame {
     activeCameraId: 'game-camera',
     environment: {
       background: { type: 'color', color: '#181d29' },
+      sky: { elevation: 20, azimuth: 180, turbidity: 6, rayleigh: 1.5 },
+      lighting: { type: 'none' },
       fog: { type: 'linear', color: '#181d29', near: 26, far: 60 },
       gravity: [0, -20, 0],
     },
@@ -483,6 +485,8 @@ function physicsTargets(): BuiltGame {
     activeCameraId: 'game-camera',
     environment: {
       background: { type: 'color', color: '#141a25' },
+      sky: { elevation: 20, azimuth: 180, turbidity: 6, rayleigh: 1.5 },
+      lighting: { type: 'none' },
       fog: { type: 'none' },
       gravity: [0, -18, 0],
     },

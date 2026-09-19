@@ -5,6 +5,7 @@ import type { JsonValue, SceneDocument } from '@schema/index.js';
 import { RuntimeWorldError, type RuntimeStats } from '@runtime/world.js';
 import { RuntimeSession } from '@runtime/session.js';
 import { AssetCache, disposeInstance } from '@runtime/assets/loader.js';
+import { GltfDecoders } from '@runtime/assets/decoders.js';
 import wasmUrl from 'virtual:box3d-wasm-url';
 import { color, fontSize, radius, space } from '../styles/tokens.stylex.js';
 import { DOM, DOM_ID, withDomClass } from '../dom-contract.js';
@@ -274,12 +275,15 @@ export function Viewport({ handleRef, tool, snap, onPlayStateChange, onStatus }:
   sessionRef.current = session;
 
   /** One asset cache per editor session: models stay loaded across Play/Stop cycles. */
+  const decodersRef = useRef<GltfDecoders | null>(null);
   const assetCache = (() => {
     if (!assetCacheRef.current) {
+      decodersRef.current = new GltfDecoders();
       assetCacheRef.current = new AssetCache({
         resolver: session.assetResolver,
         describe: (assetId) => session.assetResolver.getEntry(assetId),
         onWarning: (message) => setError((current) => current ?? message),
+        decoders: decodersRef.current,
       });
     }
     return assetCacheRef.current;
@@ -331,6 +335,7 @@ export function Viewport({ handleRef, tool, snap, onPlayStateChange, onStatus }:
       assetCache.invalidate(assetId);
       viewport.invalidateAsset(assetId);
     });
+    assetCache.bindRenderer(viewport.renderer);
     viewport.start();
     viewport.setTool(tool);
     viewport.setSnap(snap);
@@ -346,6 +351,7 @@ export function Viewport({ handleRef, tool, snap, onPlayStateChange, onStatus }:
       sessionRef.current.setThumbnailRenderer(null);
       unsubscribeAssetReplaced();
       void assetCache.dispose();
+      decodersRef.current?.dispose();
       viewportRef.current = null;
     };
     // The viewport is created once; document changes flow through the sync effect below.

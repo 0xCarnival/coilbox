@@ -70,17 +70,6 @@ export const ASSET_KINDS: AssetKindSpec[] = [
   },
 ];
 
-/** Extensions a GLB may require that this build cannot decode, and what to do instead. */
-interface UnsupportedExtensionMessages {
-  readonly [extension: string]: string;
-}
-
-const UNSUPPORTED_MODEL_EXTENSIONS: UnsupportedExtensionMessages = {
-  KHR_draco_mesh_compression: 'Draco-compressed geometry needs the Draco decoder, which this version does not bundle. Re-export without Draco compression.',
-  EXT_meshopt_compression: 'meshopt-compressed geometry needs the meshopt decoder, which this version does not bundle. Re-export without meshopt compression.',
-  KHR_texture_basisu: 'Basis Universal textures need the KTX2 decoder, which this version does not bundle. Re-export with PNG or JPEG textures.',
-};
-
 export interface ImportAssetOptions {
   projectId: string;
   filename: string;
@@ -385,16 +374,4 @@ function detectRequirements(bytes: Uint8Array, kind: AssetKind, warnings: string
     warnings.push('the GLB JSON chunk could not be parsed');
     return [];
   }
-}
-
-export function describeRequirement(extension: string): string | null {
-  return UNSUPPORTED_MODEL_EXTENSIONS[extension] ?? null;
-}
-
-export function unsupportedRequirement(requires: readonly string[]): string | null {
-  for (const extension of requires) {
-    const message = UNSUPPORTED_MODEL_EXTENSIONS[extension];
-    if (message) return message;
-  }
-  return null;
 }
