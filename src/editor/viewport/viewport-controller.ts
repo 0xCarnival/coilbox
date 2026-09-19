@@ -889,7 +889,7 @@ export class EditorViewport {
     for (const id of this.selection) {
       const object = this.projections.get(id)?.object;
       if (!object) continue;
-      this.selectionBox.union(new THREE.Box3().setFromObject(object));
+      this.selectionBox.union(this.entityBounds(object));
     }
     if (this.selectionBox.isEmpty()) {
       this.boxHelper.visible = false;
@@ -930,7 +930,7 @@ export class EditorViewport {
       const box = new THREE.Box3();
       for (const id of this.selection) {
         const object = this.projections.get(id)?.object;
-        if (object) box.union(new THREE.Box3().setFromObject(object));
+        if (object) box.union(this.entityBounds(object));
       }
       this.frameBox(box);
       return;
@@ -946,10 +946,14 @@ export class EditorViewport {
    * the part with the trigonometry in it.
    */
   private frame(object: THREE.Object3D): void {
-    object.updateWorldMatrix(false, true);
+    this.frameBox(this.entityBounds(object));
+  }
+
+  private entityBounds(object: THREE.Object3D): THREE.Box3 {
+    object.updateWorldMatrix(true, true);
     const box = new THREE.Box3();
     expandContentBounds(object, box);
-    this.frameBox(box);
+    return box;
   }
 
   private frameBox(box: THREE.Box3): void {
@@ -1176,7 +1180,7 @@ export class EditorViewport {
           }
         }
         if (!visible) continue;
-        const box = new THREE.Box3().setFromObject(projection.object);
+        const box = this.entityBounds(projection.object);
         if (box.isEmpty()) continue;
         const center = box.getCenter(new THREE.Vector3()).project(this.camera);
         if (center.z > 1) continue;
