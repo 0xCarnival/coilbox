@@ -44,6 +44,12 @@ export function jsonVec3(value: JsonValue | undefined): [number, number, number]
   return isFiniteJsonNumber(x) && isFiniteJsonNumber(y) && isFiniteJsonNumber(z) ? [x, y, z] : null;
 }
 
+export function jsonVec2(value: JsonValue | undefined): [number, number] | null {
+  if (!Array.isArray(value)) return null;
+  const [x, y] = value;
+  return isFiniteJsonNumber(x) && isFiniteJsonNumber(y) ? [x, y] : null;
+}
+
 /** A normalised quaternion read from a property bag; anything else yields null. */
 export function jsonQuaternion(value: JsonValue | undefined): [number, number, number, number] | null {
   if (!Array.isArray(value)) return null;

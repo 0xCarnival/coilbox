@@ -140,6 +140,7 @@ export interface SessionSnapshot {
   importing: boolean;
   /** Clip names per entity, reported as models finish loading. */
   modelClips: Record<string, string[]>;
+  thumbnails: Record<string, string>;
   /** Behavior metadata declared by the project's scripts/registry.json. */
   behaviors: Array<{ id: string; name: string; description: string; properties: BehaviorPropertyDescriptor[] }>;
   /**
@@ -180,7 +181,11 @@ export class EditorSession {
   private assetUsage: SessionSnapshot['assetUsage'] = {};
   private importing = false;
   private modelClips: Record<string, string[]> = {};
+  private thumbnails: Record<string, string> = {};
+  private thumbnailRenderer: ((assetId: string) => Promise<string | null>) | null = null;
+  private readonly thumbnailRequests = new Set<string>();
   private listeners = new Set<(snapshot: SessionSnapshot) => void>();
+  private readonly assetReplacedListeners = new Set<(assetId: string) => void>();
   private unsubscribes: Array<() => void> = [];
   private cachedSnapshot: SessionSnapshot | null = null;
   private events: EventSource | null = null;
@@ -228,6 +233,7 @@ export class EditorSession {
       assetUsage: this.assetUsage,
       importing: this.importing,
       modelClips: this.modelClips,
+      thumbnails: this.thumbnails,
       panels: this.panels,
       behaviors: this.behaviorRegistry.list().map((entry) => ({
         id: entry.id,
@@ -243,6 +249,11 @@ export class EditorSession {
   subscribe(listener: (snapshot: SessionSnapshot) => void): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
+  }
+
+  onAssetReplaced(listener: (assetId: string) => void): () => void {
+    this.assetReplacedListeners.add(listener);
+    return () => this.assetReplacedListeners.delete(listener);
   }
 
   private emit(): void {
@@ -540,7 +551,7 @@ export class EditorSession {
     }
   }
 
-  async refreshAssets(): Promise<void> {
+  async refreshAssets(options: { beforeEmit?: () => void } = {}): Promise<void> {
     if (!this.project) return;
     try {
       const { manifest, usage } = await this.client.listAssets(this.project.id);
@@ -549,7 +560,9 @@ export class EditorSession {
       this.assetResolver.setProject(this.project.id, manifest.assets);
     } catch (error) {
       this.log('error', 'Could not read the asset manifest', describeError(error));
+      return;
     }
+    options.beforeEmit?.();
     this.emit();
   }
 
@@ -592,7 +605,14 @@ export class EditorSession {
       const result = await this.client.importAsset(this.project.id, { name: file.name, bytes, type: file.type }, { replaceAssetId: assetId });
       this.log('info', `Replaced "${assetId}" with ${file.name}`);
       for (const warning of result.warnings) this.log('warning', `${assetId}: ${warning}`);
-      await this.refreshAssets();
+      for (const key of Object.keys(this.thumbnails)) {
+        if (key.startsWith(`${assetId}@`)) delete this.thumbnails[key];
+      }
+      await this.refreshAssets({
+        beforeEmit: () => {
+          for (const listener of this.assetReplacedListeners) listener(assetId);
+        },
+      });
       return true;
     } catch (error) {
       this.log('error', `Could not replace "${assetId}"`, describeError(error));
@@ -688,6 +708,26 @@ export class EditorSession {
 
   select(entityId: string | null, options: { additive?: boolean } = {}): void {
     this.selection.select(entityId, options);
+  }
+
+  setThumbnailRenderer(render: ((assetId: string) => Promise<string | null>) | null): void {
+    this.thumbnailRenderer = render;
+  }
+
+  requestThumbnail(asset: AssetEntry): void {
+    const key = `${asset.id}@${asset.hash}`;
+    if (Object.hasOwn(this.thumbnails, key) || this.thumbnailRequests.has(key) || !this.thumbnailRenderer) return;
+    this.thumbnailRequests.add(key);
+    void this.thumbnailRenderer(asset.id)
+      .then((result) => {
+        this.thumbnails = { ...this.thumbnails, [key]: result ?? '' };
+        this.emit();
+      })
+      .catch(() => {
+        this.thumbnails = { ...this.thumbnails, [key]: '' };
+        this.emit();
+      })
+      .finally(() => this.thumbnailRequests.delete(key));
   }
 
   // ------------------------------------------------------------------ saving

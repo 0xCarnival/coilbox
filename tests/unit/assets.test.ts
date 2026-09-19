@@ -143,6 +143,46 @@ describe('asset import', () => {
     expect(removed.removed.id).toBe(imported.entry.id);
   });
 
+  it('indexes material texture references', async () => {
+    const imported = await importFixture('images/swatch.png');
+    const scene = await workspace.readScene('g', 'main');
+    scene.entities.push({
+      id: 'textured-ground',
+      name: 'Textured Ground',
+      parentId: null,
+      order: 1,
+      enabled: true,
+      transform: { position: [0, 0, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] },
+      components: [
+        { type: 'primitive', shape: 'box', size: [1, 1, 1], castShadow: true, receiveShadow: true },
+        {
+          type: 'material',
+          color: '#cccccc',
+          roughness: 0.8,
+          metalness: 0,
+          emissive: '#000000',
+          emissiveIntensity: 1,
+          opacity: 1,
+          map: imported.entry.id,
+          normalMap: null,
+          emissiveMap: null,
+          textureRepeat: [1, 1],
+          textureOffset: [0, 0],
+          transparent: false,
+          doubleSided: false,
+          flatShading: false,
+          visible: true,
+        },
+      ],
+      editor: { visible: true, locked: false, color: null, helper: false },
+    });
+    await workspace.writeScene('g', 'main', scene, { expectedRevision: scene.revision });
+
+    const usage = await assets.usageIndex('g');
+    expect(usage[imported.entry.id]).toEqual([{ sceneId: 'main', entityId: 'textured-ground', entityName: 'Textured Ground' }]);
+    expect(await assets.findReferences('g', imported.entry.id)).toEqual(['main']);
+  });
+
   it('serves the stored bytes and reports a missing file distinctly', async () => {
     const imported = await importFixture('images/swatch.png');
     const { path, entry } = await assets.assetFilePath('g', imported.entry.id);

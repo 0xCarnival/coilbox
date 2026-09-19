@@ -9,6 +9,7 @@ import {
   validateSceneRelationships,
   type JsonValue,
   type SceneDocument,
+  assetReferencesOf,
 } from '@schema/index.js';
 import { probeScene } from '@runtime/probe/scene.js';
 
@@ -42,6 +43,38 @@ const minimalEntity = (id: string, rest: Record<string, JsonValue> = {}) => ({
 });
 
 describe('scene schema', () => {
+  it('enumerates model, audio, and material asset references', () => {
+    expect(assetReferencesOf({ type: 'model', assetId: 'crate', castShadow: true, receiveShadow: true })).toEqual([
+      { property: 'assetId', assetId: 'crate', kind: 'model' },
+    ]);
+    expect(assetReferencesOf({ type: 'audio', assetId: 'click', volume: 1, loop: false, autoplay: false, spatial: true, maxDistance: 20 })).toEqual([
+      { property: 'assetId', assetId: 'click', kind: 'audio' },
+    ]);
+    expect(
+      assetReferencesOf({
+        type: 'material',
+        map: 'albedo',
+        normalMap: 'normal',
+        emissiveMap: null,
+        textureRepeat: [1, 1],
+        textureOffset: [0, 0],
+        color: '#ffffff',
+        roughness: 0.5,
+        metalness: 0,
+        emissive: '#000000',
+        emissiveIntensity: 1,
+        opacity: 1,
+        transparent: false,
+        doubleSided: false,
+        flatShading: false,
+        visible: true,
+      }),
+    ).toEqual([
+      { property: 'map', assetId: 'albedo', kind: 'image' },
+      { property: 'normalMap', assetId: 'normal', kind: 'image' },
+    ]);
+  });
+
   it('accepts the stage 0 probe scene and applies documented defaults', () => {
     const result = parseScene(probeScene);
     expect(result.ok, formatIssues(result.issues)).toBe(true);
@@ -105,6 +138,42 @@ describe('scene schema', () => {
     );
     expect(result.ok).toBe(false);
     expect(result.issues.map((issue) => issue.code)).toContain('missing-asset');
+  });
+
+  it('applies material texture defaults and accepts an image map', () => {
+    const result = parseScene(
+      sceneWith([
+        minimalEntity('box', {
+          components: [
+            { type: 'primitive', shape: 'box', size: [1, 1, 1] },
+            { type: 'material', map: 'swatch' },
+          ],
+        }),
+      ]),
+      { assetIds: new Set(['swatch']), assetKinds: new Map([['swatch', 'image']]) },
+    );
+    expect(result.ok, formatIssues(result.issues)).toBe(true);
+    const material = result.value?.entities[0]?.components.find((component) => component.type === 'material');
+    expect(material?.type).toBe('material');
+    if (material?.type !== 'material') return;
+    expect(material.map).toBe('swatch');
+    expect(material.textureRepeat).toEqual([1, 1]);
+    expect(material.textureOffset).toEqual([0, 0]);
+  });
+
+  it('reports a material map with the wrong asset kind', () => {
+    const result = parseScene(
+      sceneWith([
+        minimalEntity('box', {
+          components: [
+            { type: 'primitive', shape: 'box', size: [1, 1, 1] },
+            { type: 'material', map: 'crate' },
+          ],
+        }),
+      ]),
+      { assetIds: new Set(['crate']), assetKinds: new Map([['crate', 'model']]) },
+    );
+    expect(result.issues.some((issue) => issue.code === 'asset-kind-mismatch')).toBe(true);
   });
 
   it('checks behavior properties against the declared registry descriptors', () => {

@@ -155,7 +155,7 @@ catches a behavior that is registered but cannot run. Both commands exit non-zer
 | --- | --- | --- |
 | `primitive` | box, sphere, plane, capsule, or cylinder | `shape`, `size` (full extents in metres), `castShadow`, `receiveShadow` |
 | `model` | an imported `.glb` | `assetId`, shadows |
-| `material` | colour and surface | `color`, `roughness`, `metalness`, `opacity`, `emissive` |
+| `material` | colour, surface, and primitive textures | `color`, `roughness`, `metalness`, `opacity`, `emissive`, `map`, `normalMap`, `emissiveMap`, `textureRepeat`, `textureOffset` |
 | `camera` | the game camera | `mode` (`free`/`follow`/`fixed`), `fov`, `near`, `far`, `targetId`, `distance`, `height` |
 | `light` | directional, ambient, hemisphere, point, spot | `kind`, `color`, `intensity`, `castShadow`, `shadowMapSize`, `shadowExtent` |
 | `rigidBody` | physics participation | `bodyType` (`static`/`dynamic`/`kinematic`), `gravityScale`, `lockRotation`, `mass` |
@@ -199,7 +199,8 @@ Rules the runtime enforces:
   asset never changes the reference and moving a file never breaks a scene.
 - `requires` lists glTF extensions the file declares. A model that needs a codec this build does not
   bundle (Draco, meshopt, Basis) is recorded at import and refused at load with an explanation.
-- Supported today: self-contained `.glb` models, PNG/JPEG/WebP images, MP3/OGG/WAV audio. Everything
+- Supported today: self-contained `.glb` models, PNG/JPEG/WebP images, MP3/OGG/WAV audio. Images are
+  referenced by material texture slots on primitive entities. Everything
   else is refused at import with a message that says what to do instead.
 
 ## `scripts/registry.json`

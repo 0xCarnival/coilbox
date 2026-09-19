@@ -1,4 +1,4 @@
-import type { Component, ComponentType, Quat, Vec3 } from '@schema/index.js';
+import type { AssetKind, Component, ComponentType, Quat, Vec3 } from '@schema/index.js';
 import { COMPONENT_LABELS } from '@schema/index.js';
 
 /**
@@ -15,6 +15,7 @@ export type FieldKind =
   | 'text'
   | 'color'
   | 'enum'
+  | 'vec2'
   | 'vec3'
   | 'positive-vec3'
   | 'quaternion-degrees'
@@ -30,6 +31,9 @@ export interface FieldDescriptor {
   min?: number;
   max?: number;
   step?: number;
+  assetKind?: AssetKind;
+  /** An empty selection writes `null` rather than an empty string. */
+  nullable?: boolean;
   options?: Array<{ value: string; label: string }>;
   /** Advanced fields are collapsed by default. */
   advanced?: boolean;
@@ -77,7 +81,7 @@ export const COMPONENT_DESCRIPTORS: Record<ComponentType, ComponentDescriptor> =
     singleton: true,
     summary: (component) => (component.type === 'model' ? component.assetId : ''),
     fields: [
-      { key: 'assetId', label: 'Asset', kind: 'asset-reference', help: 'Import a .glb in the Assets tab, then choose it here.' },
+      { key: 'assetId', label: 'Asset', kind: 'asset-reference', assetKind: 'model', help: 'Import a .glb in the Assets tab, then choose it here.' },
       shadowField,
       { key: 'receiveShadow', label: 'Receive shadow', kind: 'boolean' },
     ],
@@ -92,8 +96,13 @@ export const COMPONENT_DESCRIPTORS: Record<ComponentType, ComponentDescriptor> =
       { key: 'roughness', label: 'Roughness', kind: 'number', min: 0, max: 1, step: 0.05 },
       { key: 'metalness', label: 'Metalness', kind: 'number', min: 0, max: 1, step: 0.05 },
       { key: 'opacity', label: 'Opacity', kind: 'number', min: 0, max: 1, step: 0.05 },
+      { key: 'map', label: 'Texture', kind: 'asset-reference', assetKind: 'image', nullable: true, help: 'Import a PNG/JPEG/WebP in the Assets tab, then choose it here.' },
+      { key: 'textureRepeat', label: 'Texture repeat', kind: 'vec2', step: 0.5 },
       { key: 'emissive', label: 'Emissive', kind: 'color', advanced: true },
       { key: 'emissiveIntensity', label: 'Emissive intensity', kind: 'number', min: 0, step: 0.1, advanced: true },
+      { key: 'normalMap', label: 'Normal map', kind: 'asset-reference', assetKind: 'image', nullable: true, advanced: true },
+      { key: 'emissiveMap', label: 'Emissive map', kind: 'asset-reference', assetKind: 'image', nullable: true, advanced: true },
+      { key: 'textureOffset', label: 'Texture offset', kind: 'vec2', step: 0.5, advanced: true },
       { key: 'transparent', label: 'Transparent', kind: 'boolean', advanced: true },
       { key: 'doubleSided', label: 'Double sided', kind: 'boolean', advanced: true },
       { key: 'flatShading', label: 'Flat shading', kind: 'boolean', advanced: true },
@@ -224,7 +233,7 @@ export const COMPONENT_DESCRIPTORS: Record<ComponentType, ComponentDescriptor> =
     singleton: true,
     summary: (component) => (component.type === 'audio' ? component.assetId : ''),
     fields: [
-      { key: 'assetId', label: 'Asset', kind: 'asset-reference' },
+      { key: 'assetId', label: 'Asset', kind: 'asset-reference', assetKind: 'audio' },
       { key: 'volume', label: 'Volume', kind: 'number', min: 0, max: 1, step: 0.05 },
       { key: 'loop', label: 'Loop', kind: 'boolean' },
       { key: 'autoplay', label: 'Play on start', kind: 'boolean' },

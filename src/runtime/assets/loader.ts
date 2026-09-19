@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkeletonAware } from 'three/addons/utils/SkeletonUtils.js';
-import type { AssetEntry, AssetId } from '@schema/index.js';
+import type { AssetEntry, AssetId, MaterialComponent } from '@schema/index.js';
 import type { AssetResolver } from './resolver.js';
 
 /**
@@ -58,6 +58,36 @@ export interface ModelInstance {
   source: LoadedModel;
 }
 
+export interface TextureSource {
+  loadTexture(assetId: AssetId, options: { colorSpace: 'srgb' | 'linear' }): Promise<THREE.Texture>;
+}
+
+export interface MaterialTextures {
+  map?: THREE.Texture;
+  normalMap?: THREE.Texture;
+  emissiveMap?: THREE.Texture;
+}
+
+export const MATERIAL_TEXTURE_SLOTS: ReadonlyArray<{
+  slot: 'map' | 'normalMap' | 'emissiveMap';
+  colorSpace: 'srgb' | 'linear';
+}> = [
+  { slot: 'map', colorSpace: 'srgb' },
+  { slot: 'normalMap', colorSpace: 'linear' },
+  { slot: 'emissiveMap', colorSpace: 'srgb' },
+];
+
+export async function loadMaterialTextures(source: TextureSource, component: MaterialComponent): Promise<MaterialTextures> {
+  const result: MaterialTextures = {};
+  await Promise.all(
+    MATERIAL_TEXTURE_SLOTS.map(async ({ slot, colorSpace }) => {
+      const assetId = component[slot];
+      if (assetId !== null) result[slot] = await source.loadTexture(assetId, { colorSpace });
+    }),
+  );
+  return result;
+}
+
 export interface AssetCacheOptions {
   resolver: AssetResolver;
   /** Read the manifest entry for an asset id (supplies `requires` and hashes). */
@@ -95,7 +125,9 @@ export class AssetCache {
   private readonly fetchImpl: typeof fetch;
   private readonly onWarning: (message: string) => void;
   private readonly models = new Map<AssetId, Promise<LoadedModel>>();
-  private readonly textures = new Map<AssetId, Promise<THREE.Texture>>();
+  private readonly textures = new Map<string, Promise<THREE.Texture>>();
+  private readonly retiredModels: Array<Promise<LoadedModel>> = [];
+  private readonly retiredTextures: Array<Promise<THREE.Texture>> = [];
 
   constructor(options: AssetCacheOptions) {
     this.resolver = options.resolver;
@@ -105,6 +137,22 @@ export class AssetCache {
     // A supplied implementation is used as-is so tests can inject their own.
     this.fetchImpl = options.fetchImpl ?? ((input: RequestInfo | URL, init?: RequestInit) => globalThis.fetch(input, init));
     this.onWarning = options.onWarning ?? (() => {});
+  }
+
+  /** Forget cached bytes without disposing resources still used by live projections. */
+  invalidate(assetId: AssetId): void {
+    const model = this.models.get(assetId);
+    if (model) {
+      this.models.delete(assetId);
+      this.retiredModels.push(model);
+    }
+    const prefix = `${assetId}:`;
+    for (const key of this.textures.keys()) {
+      if (!key.startsWith(prefix)) continue;
+      const texture = this.textures.get(key);
+      if (texture) this.retiredTextures.push(texture);
+      this.textures.delete(key);
+    }
   }
 
   /** Load (once) and cache a model asset. Concurrent callers share one load. */
@@ -195,20 +243,29 @@ export class AssetCache {
     return { object, materials, clips: loaded.animations, source: loaded };
   }
 
-  loadTexture(assetId: AssetId): Promise<THREE.Texture> {
-    const cached = this.textures.get(assetId);
+  loadTexture(assetId: AssetId, options: { colorSpace: 'srgb' | 'linear' } = { colorSpace: 'srgb' }): Promise<THREE.Texture> {
+    const key = `${assetId}:${options.colorSpace}`;
+    const cached = this.textures.get(key);
     if (cached) return cached;
     const promise = (async () => {
+      const entry = this.describeEntry?.(assetId);
+      if (entry && entry.kind !== 'image') {
+        throw new UnsupportedAssetError(assetId, `"${assetId}" is a ${entry.kind}, not an image`);
+      }
       const url = this.resolver.resolveUrl(assetId);
       if (!url) throw new MissingAssetError(assetId, `image asset "${assetId}" is not in this project's asset manifest`);
-      const texture = await new THREE.TextureLoader().loadAsync(url);
-      texture.colorSpace = THREE.SRGBColorSpace;
+      const texture = await new THREE.TextureLoader().loadAsync(url).catch((cause: unknown) => {
+        throw new MissingAssetError(assetId, `image asset "${assetId}" could not be loaded from ${url}: ${String(cause)}`);
+      });
+      texture.colorSpace = options.colorSpace === 'srgb' ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+      texture.wrapS = THREE.RepeatWrapping;
+      texture.wrapT = THREE.RepeatWrapping;
       return texture;
     })().catch((cause: unknown) => {
-      this.textures.delete(assetId);
+      this.textures.delete(key);
       throw cause;
     });
-    this.textures.set(assetId, promise);
+    this.textures.set(key, promise);
     return promise;
   }
 
@@ -216,11 +273,27 @@ export class AssetCache {
   async dispose(): Promise<void> {
     const models = [...this.models.values()];
     this.models.clear();
+    const retiredModels = this.retiredModels.splice(0);
+    const textures = [...this.textures.values()];
     this.textures.clear();
+    const retiredTextures = this.retiredTextures.splice(0);
     for (const promise of models) {
       const model = await promise.catch(() => null);
       if (!model) continue;
       disposeObject(model.source);
+    }
+    for (const promise of retiredModels) {
+      const model = await promise.catch(() => null);
+      if (!model) continue;
+      disposeObject(model.source);
+    }
+    for (const promise of textures) {
+      const texture = await promise.catch(() => null);
+      texture?.dispose();
+    }
+    for (const promise of retiredTextures) {
+      const texture = await promise.catch(() => null);
+      texture?.dispose();
     }
   }
 

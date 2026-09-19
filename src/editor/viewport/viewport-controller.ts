@@ -1,11 +1,12 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
-import type { Entity, SceneDocument, Transform } from '@schema/index.js';
+import type { Entity, SceneDocument, Transform, MaterialComponent } from '@schema/index.js';
 import { applyMaterial, createLight, createPrimitiveMesh, RuntimeWorldError } from '@runtime/scene-graph.js';
 import { disposeSceneResources } from '@runtime/render/viewport.js';
 import { AnimationController } from '@runtime/animation.js';
-import type { ModelInstance } from '@runtime/assets/loader.js';
+import { loadMaterialTextures, type MaterialTextures, type ModelInstance } from '@runtime/assets/loader.js';
+import type { AssetDropTarget } from '../assets/asset-drop.js';
 
 /**
  * Editor viewport: an imperative Three.js authoring view owned by one React component.
@@ -46,6 +47,7 @@ export interface ViewportCallbacks {
 export interface ViewportAssetProvider {
   instantiate(assetId: string): Promise<ModelInstance>;
   clipsFor(assetId: string): string[] | null;
+  loadTexture(assetId: string, options: { colorSpace: 'srgb' | 'linear' }): Promise<THREE.Texture>;
 }
 
 export interface ViewportOptions extends ViewportCallbacks {
@@ -75,9 +77,15 @@ interface EntityProjection {
   pendingAssetId: string | null;
   /** True once a load failed, to avoid retrying every sync. */
   failed: boolean;
+  textures: MaterialTextures;
+  textureKey: string;
 }
 
 const EDITOR_ONLY = 'editorOnly';
+const MATERIAL_TEXTURE_PROPERTIES = ['map', 'normalMap', 'emissiveMap'] as const;
+function materialTextureKey(component: MaterialComponent): string {
+  return MATERIAL_TEXTURE_PROPERTIES.map((slot) => component[slot] ?? '').join('|');
+}
 
 /**
  * The editor's own colours in the 3D layer.
@@ -332,13 +340,15 @@ export class EditorViewport {
   private snap: SnapSettings = { enabled: false, translate: 0.5, rotateDegrees: 15, scale: 0.25 };
   private pointerDownAt: { x: number; y: number } | null = null;
   private disposed = false;
+  private lastSyncedScene: SceneDocument | null = null;
   private resizeObserver: ResizeObserver | null = null;
   /** The last canvas size, so a render can set its own viewport without measuring the DOM. */
   private width = 1;
   private height = 1;
   private assetProvider: ViewportAssetProvider | null = null;
   private readonly clock = new THREE.Clock();
-  private readonly pendingLoads = new Set<string>();
+  private readonly pendingLoads = new Map<string, number>();
+  private nextLoadToken = 0;
 
   constructor(options: ViewportOptions) {
     this.canvas = options.canvas;
@@ -457,6 +467,7 @@ export class EditorViewport {
 
   /** Project the authored scene into the viewport, creating/updating/removing as needed. */
   sync(scene: SceneDocument): void {
+    this.lastSyncedScene = scene;
     const seen = new Set<string>();
     for (const entity of scene.entities) {
       seen.add(entity.id);
@@ -507,6 +518,8 @@ export class EditorViewport {
         animation: null,
         pendingAssetId: null,
         failed: false,
+        textures: {},
+        textureKey: '',
       };
       projection.object.name = entity.name;
       projection.object.userData.entityId = entity.id;
@@ -519,7 +532,7 @@ export class EditorViewport {
       // Rebuild the entity's visual children; the group itself stays put so selection and
       // transform controls are not disturbed by a property edit.
       this.disposeProjectionChildren(projection);
-      this.projectComponents(projection.object, entity);
+      this.projectComponents(projection, entity);
       projection.signature = signature;
     }
 
@@ -544,7 +557,8 @@ export class EditorViewport {
     projection.object.visible = entity.enabled && entity.editor.visible;
   }
 
-  private projectComponents(object: THREE.Object3D, entity: Entity): void {
+  private projectComponents(projection: EntityProjection, entity: Entity): void {
+    const object = projection.object;
     // A disabled-in-game entity is still editable, but it is drawn dimmed rather than
     // hidden, so authoring an entity that is off in the game is not confusing.
     for (const component of entity.components) {
@@ -559,7 +573,7 @@ export class EditorViewport {
           const mesh = object.children.find(isMesh);
           // `applyMaterial` configures standard-material fields, so a mesh that does not carry one
           // is left alone rather than written with properties it does not have.
-          if (mesh && mesh.material instanceof THREE.MeshStandardMaterial) applyMaterial(mesh.material, component);
+          if (mesh && mesh.material instanceof THREE.MeshStandardMaterial) applyMaterial(mesh.material, component, projection.textures);
           break;
         }
         case 'light': {
@@ -627,10 +641,40 @@ export class EditorViewport {
           break;
       }
     }
+    const material = entity.components.find((component) => component.type === 'material');
+    if (material?.type === 'material') {
+      const key = materialTextureKey(material);
+      const missing = MATERIAL_TEXTURE_PROPERTIES.some((slot) => material[slot] !== null && !projection.textures[slot]);
+      if (key !== projection.textureKey || missing) void this.loadTexturesFor(projection, material, key);
+    }
   }
 
   setAssetProvider(provider: ViewportAssetProvider | null): void {
     this.assetProvider = provider;
+  }
+
+  invalidateAsset(assetId: string): void {
+    if (this.disposed) return;
+    for (const projection of this.projections.values()) {
+      const hasModel = projection.entity.components.some(
+        (component) => component.type === 'model' && component.assetId === assetId,
+      );
+      const hasTexture = projection.entity.components.some(
+        (component) =>
+          component.type === 'material' &&
+          (component.map === assetId || component.normalMap === assetId || component.emissiveMap === assetId),
+      );
+      if (!hasModel && !hasTexture) continue;
+      if (hasModel) this.pendingLoads.delete(`${projection.entity.id}:${assetId}`);
+      if (hasTexture && projection.textureKey) this.pendingLoads.delete(`${projection.entity.id}:${projection.textureKey}`);
+      if (hasModel) this.disposeProjectionModel(projection);
+      projection.pendingAssetId = null;
+      projection.failed = false;
+      projection.textures = {};
+      projection.textureKey = '';
+      projection.signature = '';
+    }
+    if (this.lastSyncedScene) this.sync(this.lastSyncedScene);
   }
 
   private async loadModelFor(projection: EntityProjection, assetId: string): Promise<void> {
@@ -639,12 +683,20 @@ export class EditorViewport {
     if (!provider) return;
     const key = `${projection.entity.id}:${assetId}`;
     if (this.pendingLoads.has(key)) return;
-    this.pendingLoads.add(key);
+    const loadToken = ++this.nextLoadToken;
+    this.pendingLoads.set(key, loadToken);
     try {
       const instance = await provider.instantiate(assetId);
       // The projection may have been rebuilt or removed while the load was in flight.
       const current = this.projections.get(projection.entity.id);
-      if (!current || current !== projection || current.pendingAssetId !== assetId || this.disposed) return;
+      if (
+        this.pendingLoads.get(key) !== loadToken ||
+        !current ||
+        current !== projection ||
+        current.pendingAssetId !== assetId ||
+        this.disposed
+      )
+        return;
       this.disposeProjectionModel(current);
       current.model = instance;
       current.object.add(instance.object);
@@ -653,12 +705,45 @@ export class EditorViewport {
       this.syncProjectionAnimation(current, current.entity);
     } catch (error) {
       const current = this.projections.get(projection.entity.id);
+      if (this.pendingLoads.get(key) !== loadToken) return;
       if (current && current === projection) current.failed = true;
       const message = error instanceof Error ? error.message : String(error);
       this.callbacks.onModelFailed?.(projection.entity.id, message);
       this.callbacks.onWarning?.(message);
     } finally {
-      this.pendingLoads.delete(key);
+      if (this.pendingLoads.get(key) === loadToken) this.pendingLoads.delete(key);
+    }
+  }
+
+  private async loadTexturesFor(projection: EntityProjection, component: MaterialComponent, key: string): Promise<void> {
+    const provider = this.assetProvider;
+    projection.textureKey = key;
+    if (!provider) return;
+    const pendingKey = `${projection.entity.id}:${key}`;
+    if (this.pendingLoads.has(pendingKey)) return;
+    const loadToken = ++this.nextLoadToken;
+    this.pendingLoads.set(pendingKey, loadToken);
+    try {
+      const textures = await loadMaterialTextures(provider, component);
+      const current = this.projections.get(projection.entity.id);
+      if (
+        this.pendingLoads.get(pendingKey) !== loadToken ||
+        !current ||
+        current !== projection ||
+        this.disposed ||
+        current.textureKey !== key
+      )
+        return;
+      current.textures = textures;
+      const mesh = current.object.children.find(isMesh);
+      const material = current.entity.components.find((candidate) => candidate.type === 'material');
+      if (mesh && mesh.material instanceof THREE.MeshStandardMaterial && material?.type === 'material') {
+        applyMaterial(mesh.material, material, textures);
+      }
+    } catch (error) {
+      this.callbacks.onWarning?.(error instanceof Error ? error.message : String(error));
+    } finally {
+      if (this.pendingLoads.get(pendingKey) === loadToken) this.pendingLoads.delete(pendingKey);
     }
   }
 
@@ -938,6 +1023,7 @@ export class EditorViewport {
     this.raycaster.setFromCamera(this.pointer, this.camera);
     const hits = this.raycaster.intersectObjects(this.root.children, true);
     for (const hit of hits) {
+      if (hit.object.userData[EDITOR_ONLY] === true) continue;
       const entityId = findEntityId(hit.object);
       if (entityId) {
         this.callbacks.onSelect(entityId, event.shiftKey || event.metaKey || event.ctrlKey);
@@ -946,6 +1032,67 @@ export class EditorViewport {
     }
     this.callbacks.onSelect(null, false);
   };
+
+  pickDrop(clientX: number, clientY: number): AssetDropTarget {
+    const rect = this.canvas.getBoundingClientRect();
+    this.pointer.set(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1);
+    this.raycaster.setFromCamera(this.pointer, this.camera);
+    const hits = this.raycaster.intersectObjects(this.root.children, true);
+    for (const hit of hits) {
+      if (hit.object.userData[EDITOR_ONLY] === true) continue;
+      const entityId = findEntityId(hit.object);
+      if (entityId) return { entityId, point: [hit.point.x, hit.point.y, hit.point.z] };
+    }
+    const ray = this.raycaster.ray;
+    const distance = Math.abs(ray.direction.y) > 1e-6 ? -ray.origin.y / ray.direction.y : 5;
+    const point = ray.origin.clone().addScaledVector(ray.direction, distance > 0 ? distance : 5);
+    return { entityId: null, point: [point.x, point.y, point.z] };
+  }
+
+  renderThumbnail(object: THREE.Object3D, size = 96): string {
+    const scene = new THREE.Scene();
+    scene.add(object);
+    const hemisphere = new THREE.HemisphereLight(0xffffff, 0x555555, 2);
+    const directional = new THREE.DirectionalLight(0xffffff, 2);
+    directional.position.set(3, 5, 4);
+    scene.add(hemisphere, directional);
+    object.updateMatrixWorld(true);
+    const bounds = new THREE.Box3().setFromObject(object);
+    const sphere = bounds.getBoundingSphere(new THREE.Sphere());
+    const camera = new THREE.PerspectiveCamera(35, 1, 0.01, 10000);
+    const direction = new THREE.Vector3(1, 0.8, 1).normalize();
+    const distance = Math.max(0.1, sphere.radius / Math.tan((camera.fov * Math.PI) / 360)) * 1.35;
+    camera.position.copy(sphere.center).addScaledVector(direction, distance);
+    camera.lookAt(sphere.center);
+    const target = new THREE.WebGLRenderTarget(size, size, { depthBuffer: true, stencilBuffer: false });
+    const previousTarget = this.renderer.getRenderTarget();
+    const previousColor = this.renderer.getClearColor(new THREE.Color());
+    const previousAlpha = this.renderer.getClearAlpha();
+    this.renderer.setRenderTarget(target);
+    this.renderer.setClearColor(0x000000, 0);
+    this.renderer.clear(true, true, true);
+    this.renderer.render(scene, camera);
+    const pixels = new Uint8Array(size * size * 4);
+    this.renderer.readRenderTargetPixels(target, 0, 0, size, size, pixels);
+    this.renderer.setRenderTarget(previousTarget);
+    this.renderer.setClearColor(previousColor, previousAlpha);
+    target.dispose();
+    scene.remove(hemisphere, directional);
+    scene.remove(object);
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const context = canvas.getContext('2d');
+    if (!context) return '';
+    const image = context.createImageData(size, size);
+    for (let row = 0; row < size; row += 1) {
+      const source = row * size * 4;
+      const destination = (size - row - 1) * size * 4;
+      image.data.set(pixels.subarray(source, source + size * 4), destination);
+    }
+    context.putImageData(image, 0, 0);
+    return canvas.toDataURL('image/png');
+  }
 
   // ------------------------------------------------------------------ rendering
 
