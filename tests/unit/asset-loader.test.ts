@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import * as THREE from 'three';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { AssetCache, MissingAssetError, UnsupportedAssetError } from '@runtime/assets/loader.js';
 import type { AssetResolver } from '@runtime/assets/resolver.js';
 import type { AssetEntry } from '@schema/index.js';
@@ -94,11 +94,14 @@ describe('model loading', () => {
         return fixtureFetch()(input as never);
       }) as typeof fetch,
     });
-    await cache.instantiate('crate');
+    const loaded = await cache.loadModel('crate');
+    const mesh = loaded.source.getObjectByName('Crate') as THREE.Mesh;
+    const disposeGeometry = vi.spyOn(mesh.geometry, 'dispose');
     cache.invalidate('crate');
     await cache.instantiate('crate');
     expect(fetches).toBe(2);
     await cache.dispose();
+    expect(disposeGeometry).toHaveBeenCalled();
   });
 
   it('clones skinned models with independent skeletons and animation state', async () => {

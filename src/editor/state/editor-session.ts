@@ -551,8 +551,8 @@ export class EditorSession {
     }
   }
 
-  async refreshAssets(): Promise<boolean> {
-    if (!this.project) return false;
+  async refreshAssets(options: { beforeEmit?: () => void } = {}): Promise<void> {
+    if (!this.project) return;
     try {
       const { manifest, usage } = await this.client.listAssets(this.project.id);
       this.assets = manifest.assets;
@@ -560,10 +560,10 @@ export class EditorSession {
       this.assetResolver.setProject(this.project.id, manifest.assets);
     } catch (error) {
       this.log('error', 'Could not read the asset manifest', describeError(error));
-      return false;
+      return;
     }
+    options.beforeEmit?.();
     this.emit();
-    return true;
   }
 
   /**
@@ -605,10 +605,14 @@ export class EditorSession {
       const result = await this.client.importAsset(this.project.id, { name: file.name, bytes, type: file.type }, { replaceAssetId: assetId });
       this.log('info', `Replaced "${assetId}" with ${file.name}`);
       for (const warning of result.warnings) this.log('warning', `${assetId}: ${warning}`);
-      const refreshed = await this.refreshAssets();
-      if (refreshed) {
-        for (const listener of this.assetReplacedListeners) listener(assetId);
+      for (const key of Object.keys(this.thumbnails)) {
+        if (key.startsWith(`${assetId}@`)) delete this.thumbnails[key];
       }
+      await this.refreshAssets({
+        beforeEmit: () => {
+          for (const listener of this.assetReplacedListeners) listener(assetId);
+        },
+      });
       return true;
     } catch (error) {
       this.log('error', `Could not replace "${assetId}"`, describeError(error));

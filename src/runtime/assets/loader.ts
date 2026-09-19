@@ -126,6 +126,8 @@ export class AssetCache {
   private readonly onWarning: (message: string) => void;
   private readonly models = new Map<AssetId, Promise<LoadedModel>>();
   private readonly textures = new Map<string, Promise<THREE.Texture>>();
+  private readonly retiredModels: Array<Promise<LoadedModel>> = [];
+  private readonly retiredTextures: Array<Promise<THREE.Texture>> = [];
 
   constructor(options: AssetCacheOptions) {
     this.resolver = options.resolver;
@@ -139,10 +141,17 @@ export class AssetCache {
 
   /** Forget cached bytes without disposing resources still used by live projections. */
   invalidate(assetId: AssetId): void {
-    this.models.delete(assetId);
+    const model = this.models.get(assetId);
+    if (model) {
+      this.models.delete(assetId);
+      this.retiredModels.push(model);
+    }
     const prefix = `${assetId}:`;
     for (const key of this.textures.keys()) {
-      if (key.startsWith(prefix)) this.textures.delete(key);
+      if (!key.startsWith(prefix)) continue;
+      const texture = this.textures.get(key);
+      if (texture) this.retiredTextures.push(texture);
+      this.textures.delete(key);
     }
   }
 
@@ -264,14 +273,25 @@ export class AssetCache {
   async dispose(): Promise<void> {
     const models = [...this.models.values()];
     this.models.clear();
+    const retiredModels = this.retiredModels.splice(0);
     const textures = [...this.textures.values()];
     this.textures.clear();
+    const retiredTextures = this.retiredTextures.splice(0);
     for (const promise of models) {
       const model = await promise.catch(() => null);
       if (!model) continue;
       disposeObject(model.source);
     }
+    for (const promise of retiredModels) {
+      const model = await promise.catch(() => null);
+      if (!model) continue;
+      disposeObject(model.source);
+    }
     for (const promise of textures) {
+      const texture = await promise.catch(() => null);
+      texture?.dispose();
+    }
+    for (const promise of retiredTextures) {
       const texture = await promise.catch(() => null);
       texture?.dispose();
     }
