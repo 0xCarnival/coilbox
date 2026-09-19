@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { JSX } from 'react';
 import * as stylex from '@stylexjs/stylex';
 import { AlertTriangle, Check, Info, X } from 'lucide-react';
-import { color, control, fontSize, radius, space } from '../styles/tokens.stylex.js';
+import { color, control, fontSize, overlay, radius, space } from '../styles/tokens.stylex.js';
 import { useSessionSnapshot } from '../hooks.js';
 import { DOM, withDomClass } from '../dom-contract.js';
 import { IconButton } from './Button.js';
@@ -32,7 +32,8 @@ import { expireToasts, nextExpiry, pushToast, type Toast } from './toast-queue.j
  * Over the stage, in its bottom-right corner, rather than over the window's. The workspace corner
  * put the stack on top of the inspector's fields and the status bar — the two places the eye goes
  * right after an action to see what changed. The stage corner is the render, which has nothing to
- * read there.
+ * read there. The stack starts above the tool dock's lane, since on a laptop-width stage the corner
+ * and the centred dock are close enough to meet.
  *
  * `LogLevel` is `info | warning | error`, so there is no level to filter out — every entry is worth
  * surfacing. A `debug` tier was the first thing written here and the type checker was right to
@@ -46,7 +47,7 @@ const styles = stylex.create({
   region: {
     position: 'absolute',
     insetInlineEnd: space.lg,
-    insetBlockEnd: space.lg,
+    insetBlockEnd: overlay.dockLane,
     display: 'flex',
     flexDirection: 'column',
     gap: space.sm,
@@ -159,10 +160,9 @@ export function Toasts({ enabled }: { enabled: boolean }): JSX.Element | null {
   const latest = snapshot.logs.length > 0 ? snapshot.logs[snapshot.logs.length - 1] : undefined;
 
   useEffect(() => {
-    if (!enabled || !latest) return;
-    if (latest.id <= seen.current) return;
+    if (!latest || latest.id <= seen.current) return;
     seen.current = latest.id;
-    setVisible((current) => pushToast(current, latest, Date.now()));
+    if (enabled) setVisible((current) => pushToast(current, latest, Date.now()));
   }, [enabled, latest]);
 
   useEffect(() => {
