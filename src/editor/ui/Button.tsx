@@ -40,12 +40,12 @@ const variantStyles = {
 const sizeStyles = stylex.create({
   /** The default: `h-8` with horizontal padding, for a label with or without a leading icon. */
   sm: {
-    paddingInline: space.lg,
+    paddingInline: space.md,
   },
-  /** A form-scale control: `h-9`, used on the project home and in dialogs. */
+  /** A form-scale control: `h-8`, used on the project home and in dialogs. */
   md: {
-    height: control.md,
-    paddingInline: space.xl,
+    height: control.sm,
+    paddingInline: space.lg,
   },
   /** A square icon-only control at the default height. */
   icon: {},
