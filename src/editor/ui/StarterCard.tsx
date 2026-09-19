@@ -86,7 +86,7 @@ export function StarterCard({ visible }: { visible: boolean }): JSX.Element | nu
   if (!visible || !scene || scene.entities.length > 0) return null;
 
   const addStarterSet = () => {
-    const entities = createStarterEntities();
+    const entities = createStarterEntities(scene.entities.map((entity) => entity.id));
     const camera = entities.find((entity) => entity.components.some((component) => component.type === 'camera'));
     const ok = session.transaction('Add starter scene', [
       { kind: 'insertEntities', entities },

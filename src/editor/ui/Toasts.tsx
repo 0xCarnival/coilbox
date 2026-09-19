@@ -154,16 +154,27 @@ function glyphFor(level: string): { Icon: typeof Info; style: stylex.StyleXStyle
 export function Toasts({ enabled }: { enabled: boolean }): JSX.Element | null {
   const snapshot = useSessionSnapshot();
   const [visible, setVisible] = useState<readonly Toast[]>([]);
-  /** The highest log id already seen, so only genuinely new entries raise a toast. */
-  const seen = useRef(0);
+  const { logs } = snapshot;
+  /**
+   * The highest log id already seen, so only genuinely new entries raise a toast. On mount everything
+   * but the newest entry counts as seen: the stage mounts after the project has already logged its
+   * opening, and a stack of three stale lines is not news.
+   */
+  const seen = useRef(logs.length > 1 ? (logs[logs.length - 2]?.id ?? 0) : 0);
 
-  const latest = snapshot.logs.length > 0 ? snapshot.logs[snapshot.logs.length - 1] : undefined;
-
+  /**
+   * Every unseen entry is queued, not just the newest: React batches store notifications, so one
+   * continuation that logs two warnings and a success reaches this effect once, with all three new.
+   */
   useEffect(() => {
-    if (!latest || latest.id <= seen.current) return;
-    seen.current = latest.id;
-    if (enabled) setVisible((current) => pushToast(current, latest, Date.now()));
-  }, [enabled, latest]);
+    const fresh = logs.filter((entry) => entry.id > seen.current);
+    const last = fresh[fresh.length - 1];
+    if (!last) return;
+    seen.current = last.id;
+    if (!enabled) return;
+    const now = Date.now();
+    setVisible((current) => fresh.reduce((queue, entry) => pushToast(queue, entry, now), current));
+  }, [enabled, logs]);
 
   useEffect(() => {
     const due = nextExpiry(visible);
