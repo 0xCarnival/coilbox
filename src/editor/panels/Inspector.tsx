@@ -464,7 +464,9 @@ export function Inspector({ locked }: { locked: boolean }): JSX.Element {
           value={entity.transform.position}
           step={0.1}
           disabled={locked}
-          onChange={(value) => setTransform({ position: value })}
+          onChange={(value) => {
+            if (value.length === 3) setTransform({ position: value });
+          }}
         />
         <RotationField
           value={entity.transform.rotation}
@@ -476,7 +478,9 @@ export function Inspector({ locked }: { locked: boolean }): JSX.Element {
           value={entity.transform.scale}
           step={0.05}
           disabled={locked}
-          onChange={(value) => setTransform({ scale: value })}
+          onChange={(value) => {
+            if (value.length === 3) setTransform({ scale: value });
+          }}
         />
       </Section>
 

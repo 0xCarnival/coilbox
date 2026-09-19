@@ -47,7 +47,7 @@ describe('scene schema', () => {
     expect(assetReferencesOf({ type: 'model', assetId: 'crate', castShadow: true, receiveShadow: true })).toEqual([
       { property: 'assetId', assetId: 'crate', kind: 'model' },
     ]);
-    expect(assetReferencesOf({ type: 'audio', assetId: 'click', volume: 1, loop: false, autoplay: false, spatial: true })).toEqual([
+    expect(assetReferencesOf({ type: 'audio', assetId: 'click', volume: 1, loop: false, autoplay: false, spatial: true, maxDistance: 20 })).toEqual([
       { property: 'assetId', assetId: 'click', kind: 'audio' },
     ]);
     expect(
