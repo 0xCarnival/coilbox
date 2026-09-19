@@ -144,8 +144,9 @@ explain the failure after the log has scrolled away.
 
 Supported today: self-contained `.glb` models, PNG/JPEG/WebP images, MP3/OGG/WAV audio. Anything
 else is refused at import with a message saying what to do instead — `.fbx`, `.blend`, `.obj`,
-`.ktx2`, `.flac`, and zipped glTF included. A `.glb` that requires Draco, meshopt, or Basis
-compression imports with that requirement recorded and is refused at load with the same explanation.
+`.ktx2`, `.flac`, and zipped glTF included. A `.glb` compressed with Draco, meshopt, or KTX2/Basis
+Universal (textures embedded in the GLB) imports with that requirement recorded and decodes
+everywhere the runtime runs; the asset list labels it with its codec.
 
 Import through the editor's **Assets** tab (drag files in, or use *Import files*). Replacing an
 asset keeps its id, so scenes that reference it are untouched; the previous file moves to
