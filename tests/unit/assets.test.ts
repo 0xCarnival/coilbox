@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { AssetService } from '../../server/assets.js';
+import { planAssetExport } from '../../server/build.js';
 import { Workspace } from '../../server/workspace.js';
 import { parseAssetManifest } from '@schema/index.js';
 
@@ -196,5 +197,37 @@ describe('asset import', () => {
   it('warns when a model file is not a GLB at all', async () => {
     const result = await importFixture('models/not-a-model.glb');
     expect(result.warnings.join(' ')).toMatch(/too short to be a GLB|does not start with a GLB header/);
+  });
+});
+
+describe('export asset plan', () => {
+  const entry = (id: string, kind: 'model' | 'image' | 'audio', bytes: number) => ({
+    id,
+    kind,
+    path: `assets/${kind}s/${id}.bin`,
+    hash: '',
+    bytes,
+    note: '',
+    requires: [],
+    meta: {},
+  });
+
+  it('ships only referenced assets, largest first, and totals what it left out', () => {
+    const manifest = { schemaVersion: 1, assets: [entry('small', 'image', 10), entry('big', 'model', 5000), entry('song', 'audio', 300)] };
+    const plan = planAssetExport(manifest, new Set(['big']));
+    expect(plan.assets.map((asset) => [asset.id, asset.included])).toEqual([
+      ['big', true],
+      ['song', false],
+      ['small', false],
+    ]);
+    expect(plan.manifest.assets.map((asset) => asset.id)).toEqual(['big']);
+    expect(plan.manifest.schemaVersion).toBe(1);
+    expect(plan.prunedBytes).toBe(310);
+  });
+
+  it('reports nothing pruned when every asset is used or there are none', () => {
+    expect(planAssetExport({ schemaVersion: 1, assets: [] }, new Set())).toEqual({ assets: [], manifest: { schemaVersion: 1, assets: [] }, prunedBytes: 0 });
+    const manifest = { schemaVersion: 1, assets: [entry('used', 'model', 42)] };
+    expect(planAssetExport(manifest, new Set(['used'])).prunedBytes).toBe(0);
   });
 });

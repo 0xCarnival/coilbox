@@ -234,19 +234,50 @@ function clampNumber(value: JsonValue, min: number, max: number, fallback: numbe
   return Math.min(max, Math.max(min, value));
 }
 
-/** The `/build` response: where the export landed, or what went wrong. */
+/** The `/build` response: where the export landed and what it weighs, or what went wrong. */
 interface ExportResult {
   message: string | null;
   relativeOutDir: string | null;
+  totalBytes: number | null;
+  prunedBytes: number | null;
+  /** Manifest assets largest first; `included` is false for the unreferenced ones left out. */
+  assets: Array<{ id: string; bytes: number; included: boolean }>;
 }
 
 function readExportResult(payload: JsonValue): ExportResult {
   const message = jsonField(payload, 'message');
   const relativeOutDir = jsonField(payload, 'relativeOutDir');
+  const totalBytes = jsonField(payload, 'totalBytes');
+  const prunedBytes = jsonField(payload, 'prunedBytes');
+  const assets = jsonField(payload, 'assets');
   return {
     message: isJsonString(message) ? message : null,
     relativeOutDir: isJsonString(relativeOutDir) ? relativeOutDir : null,
+    totalBytes: isFiniteJsonNumber(totalBytes) ? totalBytes : null,
+    prunedBytes: isFiniteJsonNumber(prunedBytes) ? prunedBytes : null,
+    assets: Array.isArray(assets)
+      ? assets.flatMap((entry) => {
+          const id = jsonField(entry, 'id');
+          const bytes = jsonField(entry, 'bytes');
+          const included = jsonField(entry, 'included');
+          return isJsonString(id) && isFiniteJsonNumber(bytes) ? [{ id, bytes, included: included === true }] : [];
+        })
+      : [],
   };
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KiB`;
+  return `${(bytes / 1024 / 1024).toFixed(2)} MiB`;
+}
+
+/** One line per asset for the console entry: what shipped, what was left out, largest first. */
+function describeExportAssets(result: ExportResult): string {
+  if (result.assets.length === 0) return 'No imported assets.';
+  return result.assets
+    .map((asset) => `${asset.included ? 'bundled' : 'skipped (unused)'}  ${formatBytes(asset.bytes)}  ${asset.id}`)
+    .join('\n');
 }
 
 export function App({ session }: { session: EditorSession }): JSX.Element {
@@ -567,8 +598,10 @@ function StudioShell(): JSX.Element {
         setStatus(`Export failed: ${result.message ?? response.statusText}`);
         return;
       }
-      session.log('info', `Exported to ${result.relativeOutDir}`);
-      setStatus(`Exported to ${result.relativeOutDir} — serve it with any static server`);
+      const size = result.totalBytes === null ? '' : ` (${formatBytes(result.totalBytes)})`;
+      const pruned = result.prunedBytes ? `, ${formatBytes(result.prunedBytes)} of unused assets left out` : '';
+      session.log('info', `Exported to ${result.relativeOutDir}${size}${pruned}`, describeExportAssets(result));
+      setStatus(`Exported to ${result.relativeOutDir}${size}${pruned} — serve it with any static server`);
     } catch (error) {
       session.log('error', 'Export failed', String(error));
       setStatus(`Export failed: ${String(error)}`);

@@ -1,7 +1,8 @@
 import { cp, mkdir, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import { join, relative, sep } from 'node:path';
+import { dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { assetReferencesOf, type AssetEntry, type AssetKind, type AssetManifest } from '@schema/index.js';
 import { box3dWasmPlugin } from '../tools/vite-plugin-box3d-wasm.js';
 import { Workspace, WorkspaceError } from './workspace.js';
 
@@ -19,6 +20,11 @@ import { Workspace, WorkspaceError } from './workspace.js';
  *     project/              game.json, scenes/, assets/, scripts/ — plain files
  *     NOTICES.txt           bundled third-party notices
  *
+ * Only assets some scene references are copied, and the exported manifest lists only those: an
+ * import that was tried and abandoned should not be what makes a published game slow to load. The
+ * result reports every asset's size and whether it shipped, so the author can see what the export
+ * weighs and why.
+ *
  * The exported game must run with the editor and the workspace service switched off, which
  * is what `tools/verify-stage1.ts` checks.
  */
@@ -33,7 +39,49 @@ export interface BuildResult {
   relativeOutDir: string;
   files: Array<{ path: string; bytes: number }>;
   totalBytes: number;
+  /** Every manifest asset, largest first, with whether it shipped. */
+  assets: ExportedAsset[];
+  /** Bytes of unreferenced assets left out of the export. */
+  prunedBytes: number;
   log: string[];
+}
+
+export interface ExportedAsset {
+  id: string;
+  kind: AssetKind;
+  path: string;
+  bytes: number;
+  /** False when no scene references the asset, so it stayed out of the export. */
+  included: boolean;
+}
+
+export interface AssetExportPlan {
+  assets: ExportedAsset[];
+  /** The manifest the export ships: the referenced entries only. */
+  manifest: AssetManifest;
+  prunedBytes: number;
+}
+
+/**
+ * Decide which manifest assets an export ships: those at least one scene references. Sizes come
+ * from the manifest, so the report is the same whether or not the files are read.
+ */
+export function planAssetExport(manifest: AssetManifest, referenced: ReadonlySet<string>): AssetExportPlan {
+  const assets = manifest.assets
+    .map((entry) => ({
+      id: entry.id,
+      kind: entry.kind,
+      path: entry.path,
+      bytes: entry.bytes,
+      included: referenced.has(entry.id),
+    }))
+    .sort((a, b) => b.bytes - a.bytes || a.id.localeCompare(b.id));
+  const kept = new Set(assets.filter((asset) => asset.included).map((asset) => asset.id));
+  return {
+    assets,
+    manifest: { schemaVersion: manifest.schemaVersion, assets: manifest.assets.filter((entry) => kept.has(entry.id)) },
+    prunedBytes: assets.reduce((sum, asset) => (asset.included ? sum : sum + asset.bytes), 0),
+  };
 }
 
 export interface BuildOptions {
@@ -110,6 +158,30 @@ export async function buildGame(options: BuildOptions): Promise<BuildResult> {
   await copyIcons(outDir);
   await copyProjectDocuments(projectRoot, join(outDir, 'project'), write);
 
+  const detail = await options.workspace.readProject(options.projectId);
+  const manifest = await options.workspace.readAssetManifest(projectRoot, detail.game);
+  // Every scene is read outright: a scene that fails to parse must fail the export, not quietly
+  // drop the assets it references.
+  const referenced = new Set<string>();
+  for (const sceneEntry of detail.game.scenes) {
+    const scene = await options.workspace.readScene(options.projectId, sceneEntry.id);
+    for (const entity of scene.entities) {
+      for (const component of entity.components) {
+        for (const reference of assetReferencesOf(component)) referenced.add(reference.assetId);
+      }
+    }
+  }
+  const plan = planAssetExport(manifest, referenced);
+  await copyAssets(projectRoot, join(outDir, 'project'), detail.game.assetManifest, plan.manifest);
+  const shipped = plan.assets.filter((asset) => asset.included);
+  const shippedBytes = shipped.reduce((sum, asset) => sum + asset.bytes, 0);
+  write(
+    `${shipped.length} asset(s) bundled, ${formatBytes(shippedBytes)}; ${plan.assets.length - shipped.length} unused skipped, ${formatBytes(plan.prunedBytes)}`,
+  );
+  for (const asset of plan.assets) {
+    write(`  ${asset.included ? 'bundled' : 'skipped'}  ${formatBytes(asset.bytes).padStart(10)}  ${asset.id} (${asset.kind})`);
+  }
+
   await writeFile(
     join(outDir, 'NOTICES.txt'),
     [
@@ -129,23 +201,32 @@ export async function buildGame(options: BuildOptions): Promise<BuildResult> {
   );
 
   const files = await listFiles(outDir);
-  const detail = await Promise.all(
+  const fileDetail = await Promise.all(
     files.map(async (path) => ({ path: relative(outDir, path).split(sep).join('/'), bytes: (await stat(path)).size })),
   );
-  const totalBytes = detail.reduce((sum, entry) => sum + entry.bytes, 0);
-  write(`exported ${detail.length} files, ${(totalBytes / 1024 / 1024).toFixed(2)} MiB`);
+  const totalBytes = fileDetail.reduce((sum, entry) => sum + entry.bytes, 0);
+  write(`exported ${fileDetail.length} files, ${formatBytes(totalBytes)}`);
 
   return {
     ok: true,
     outDir,
     relativeOutDir: relative(projectRoot, outDir).split(sep).join('/'),
-    files: detail,
+    files: fileDetail,
     totalBytes,
+    assets: plan.assets,
+    prunedBytes: plan.prunedBytes,
     log,
   };
 }
 
-const PROJECT_DOCUMENT_FOLDERS = ['scenes', 'assets', 'scripts'];
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KiB`;
+  return `${(bytes / 1024 / 1024).toFixed(2)} MiB`;
+}
+
+/** Assets are copied one by one from the pruned manifest, never as a folder. */
+const PROJECT_DOCUMENT_FOLDERS = ['scenes', 'scripts'];
 
 const PROJECT_DOCUMENT_FILES = ['game.json', 'README.md'];
 /** Icons the HTML pages link, copied into every export. */
@@ -178,6 +259,30 @@ async function copyProjectDocuments(projectRoot: string, target: string, write: 
     await cp(source, join(target, folder), { recursive: true });
   }
   write('project documents copied next to the player');
+}
+
+async function copyAssets(projectRoot: string, target: string, manifestPath: string, manifest: AssetManifest): Promise<void> {
+  const manifestTarget = join(target, ...manifestPath.split('/'));
+  await mkdir(dirname(manifestTarget), { recursive: true });
+  await writeFile(manifestTarget, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+  for (const entry of manifest.assets) {
+    await copyAsset(projectRoot, target, entry);
+  }
+}
+
+async function copyAsset(projectRoot: string, target: string, entry: AssetEntry): Promise<void> {
+  const segments = entry.path.split('/');
+  const source = join(projectRoot, ...segments);
+  if (!existsSync(source)) {
+    throw new WorkspaceError(
+      'asset-missing',
+      `asset "${entry.id}" is referenced by a scene but its file ${entry.path} is missing; re-import it before exporting`,
+      422,
+    );
+  }
+  const destination = join(target, ...segments);
+  await mkdir(dirname(destination), { recursive: true });
+  await cp(source, destination);
 }
 
 async function listFiles(root: string): Promise<string[]> {
