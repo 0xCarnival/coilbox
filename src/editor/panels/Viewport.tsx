@@ -4,7 +4,7 @@ import * as stylex from '@stylexjs/stylex';
 import type { JsonValue, SceneDocument, Transform } from '@schema/index.js';
 import { RuntimeWorldError, type RuntimeStats } from '@runtime/world.js';
 import { RuntimeSession } from '@runtime/session.js';
-import { AssetCache } from '@runtime/assets/loader.js';
+import { AssetCache, disposeInstance } from '@runtime/assets/loader.js';
 import wasmUrl from 'virtual:box3d-wasm-url';
 import { color, fontSize, radius, space } from '../styles/tokens.stylex.js';
 import { DOM, DOM_ID, withDomClass } from '../dom-contract.js';
@@ -19,6 +19,7 @@ import {
   type ViewFace,
 } from '../viewport/viewport-controller.js';
 import { useSession } from '../hooks.js';
+import { applyAssetDrop, hasAssetDrag, readAssetDrag } from '../assets/asset-drop.js';
 
 /**
  * The viewport pane: an editor canvas plus a separate play canvas.
@@ -41,6 +42,12 @@ const styles = stylex.create({
     position: 'absolute',
     inset: 0,
     display: 'flex',
+  },
+  dragging: {
+    outlineWidth: '2px',
+    outlineStyle: 'dashed',
+    outlineColor: color.primary,
+    outlineOffset: '-4px',
   },
   editorCanvas: {
     position: 'absolute',
@@ -154,7 +161,7 @@ export interface ViewportHandle {
    * They live on the viewport rather than in React state because each one mutates a Three object —
    * a camera, a grid helper, the renderer's shadow map — and a re-render would not touch any of
    * them. The control reads the current value back from here so the two cannot disagree.
-   */
+  */
   display(): ViewportDisplay;
   setDisplay(next: Partial<ViewportDisplay>): void;
   /**
@@ -220,6 +227,8 @@ export interface ViewportHandle {
   playEntityTransform(entityId: string): [number, number, number] | null;
   /** PNG data URL of the current editor view, for the project thumbnail. */
   captureThumbnail(width?: number): string | null;
+  /** PNG data URL for a model asset thumbnail. */
+  thumbnail(assetId: string): Promise<string | null>;
   /** Behavior instances of the running play world, for checks and debugging. */
   behaviorRuntime(): { size: number; list(): Array<{ entityId: string; behaviorId: string }> } | null;
 }
@@ -243,6 +252,7 @@ export function Viewport({ handleRef, tool, snap, onPlayStateChange, onStatus }:
   const hudRootRef = useRef<HTMLDivElement | null>(null);
   const [playState, setPlayState] = useState<PlayState>('stopped');
   const [error, setError] = useState<string | null>(null);
+  const [dragging, setDragging] = useState(false);
 
   // Keep the latest callbacks without re-creating the viewport.
   const callbacksRef = useRef({ onPlayStateChange, onStatus });
@@ -284,6 +294,15 @@ export function Viewport({ handleRef, tool, snap, onPlayStateChange, onStatus }:
     viewport.setAssetProvider({
       instantiate: (assetId) => assetCache.instantiate(assetId),
       clipsFor: () => null,
+      loadTexture: (assetId, options) => assetCache.loadTexture(assetId, options),
+    });
+    sessionRef.current.setThumbnailRenderer(async (assetId) => {
+      const instance = await assetCache.instantiate(assetId);
+      try {
+        return viewport.renderThumbnail(instance.object);
+      } finally {
+        disposeInstance(instance);
+      }
     });
     viewport.start();
     viewport.setTool(tool);
@@ -294,6 +313,7 @@ export function Viewport({ handleRef, tool, snap, onPlayStateChange, onStatus }:
 
     return () => {
       viewport.dispose();
+      sessionRef.current.setThumbnailRenderer(null);
       viewportRef.current = null;
     };
     // The viewport is created once; document changes flow through the sync effect below.
@@ -514,6 +534,16 @@ export function Viewport({ handleRef, tool, snap, onPlayStateChange, onStatus }:
         context.drawImage(canvas, 0, 0, target.width, target.height);
         return target.toDataURL('image/png');
       },
+      thumbnail: async (assetId: string) => {
+        const viewport = viewportRef.current;
+        if (!viewport) return null;
+        const instance = await assetCache.instantiate(assetId);
+        try {
+          return viewport.renderThumbnail(instance.object);
+        } finally {
+          disposeInstance(instance);
+        }
+      },
       playEntityTransform: (entityId: string) => {
         const world = sessionRef2.current?.current;
         if (!world) return null;
@@ -527,7 +557,28 @@ export function Viewport({ handleRef, tool, snap, onPlayStateChange, onStatus }:
   );
 
   return (
-    <div {...stylex.props(styles.viewport)} ref={containerRef}>
+    <div
+      {...stylex.props(styles.viewport, dragging && styles.dragging)}
+      ref={containerRef}
+      onDragOver={(event) => {
+        if (playState !== 'stopped' || !hasAssetDrag(event.dataTransfer)) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'copy';
+        setDragging(true);
+      }}
+      onDragLeave={() => setDragging(false)}
+      onDrop={(event) => {
+        event.preventDefault();
+        setDragging(false);
+        if (playState !== 'stopped') return;
+        const payload = readAssetDrag(event.dataTransfer);
+        if (!payload) return;
+        const result = viewportRef.current?.pickDrop(event.clientX, event.clientY);
+        if (!result) return;
+        const applied = applyAssetDrop(sessionRef.current, payload, result);
+        onStatus(applied.message);
+      }}
+    >
       <canvas {...stylex.props(styles.editorCanvas)} id={DOM_ID.editorCanvas} ref={editorCanvasRef} tabIndex={0} />
       <canvas
         {...stylex.props(styles.playCanvas, playState === 'stopped' && styles.canvasHidden)}

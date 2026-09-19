@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { Component, Entity, LightComponent, PrimitiveComponent, SceneDocument } from '@schema/index.js';
 import { AnimationController } from './animation.js';
-import type { ModelInstance } from './assets/loader.js';
+import type { MaterialTextures, ModelInstance } from './assets/loader.js';
 
 /**
  * Scene-document -> Three.js projection (plan §6, §7).
@@ -65,6 +65,7 @@ export interface BuildSceneOptions {
    * recorded error rather than a silent empty object.
    */
   models?: Map<string, ModelInstance>;
+  materialTextures?: Map<string, MaterialTextures>;
   onWarning?: (message: string) => void;
 }
 
@@ -146,7 +147,7 @@ export function buildSceneGraph(scene: SceneDocument, options: BuildSceneOptions
             warnings.push(`entity "${entity.name}" has a material component but nothing to apply it to yet`);
             break;
           }
-          applyMaterial(built.mesh.material, component);
+          applyMaterial(built.mesh.material, component, options.materialTextures?.get(entity.id));
           break;
         }
         case 'light': {
@@ -319,7 +320,11 @@ export function createPrimitiveMesh(
   return mesh;
 }
 
-export function applyMaterial(material: THREE.MeshStandardMaterial, component: Extract<Component, { type: 'material' }>): void {
+export function applyMaterial(
+  material: THREE.MeshStandardMaterial,
+  component: Extract<Component, { type: 'material' }>,
+  textures: MaterialTextures = {},
+): void {
   material.color.set(component.color);
   material.roughness = component.roughness;
   material.metalness = component.metalness;
@@ -330,6 +335,21 @@ export function applyMaterial(material: THREE.MeshStandardMaterial, component: E
   material.side = component.doubleSided ? THREE.DoubleSide : THREE.FrontSide;
   material.flatShading = component.flatShading;
   material.visible = component.visible;
+  for (const slot of ['map', 'normalMap', 'emissiveMap'] as const) {
+    const current = material[slot];
+    if (current?.userData.coilboxClone === true) current.dispose();
+    const source = textures[slot];
+    if (source) {
+      const clone = source.clone();
+      clone.repeat.set(component.textureRepeat[0], component.textureRepeat[1]);
+      clone.offset.set(component.textureOffset[0], component.textureOffset[1]);
+      clone.userData.coilboxClone = true;
+      clone.needsUpdate = true;
+      material[slot] = clone;
+    } else {
+      material[slot] = null;
+    }
+  }
   material.needsUpdate = true;
 }
 

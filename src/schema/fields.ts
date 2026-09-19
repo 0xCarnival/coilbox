@@ -5,6 +5,7 @@ import type { JsonValue } from './primitives.js';
 export const finiteNumber = z.number().finite();
 
 export const vec3 = z.tuple([finiteNumber, finiteNumber, finiteNumber]);
+export const vec2 = z.tuple([finiteNumber, finiteNumber]);
 export const quat = z
   .tuple([finiteNumber, finiteNumber, finiteNumber, finiteNumber])
   .refine((q) => Math.abs(q[0] * q[0] + q[1] * q[1] + q[2] * q[2] + q[3] * q[3] - 1) < 1e-3, {

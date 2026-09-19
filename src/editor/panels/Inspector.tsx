@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { JSX } from 'react';
 import * as stylex from '@stylexjs/stylex';
-import type { AssetEntry, Component, ComponentType, Entity, JsonValue, Quat, Vec3 } from '@schema/index.js';
+import type { AssetEntry, Component, ComponentType, Entity, JsonValue, Quat, Vec2, Vec3 } from '@schema/index.js';
 import { COMPONENT_TYPES, COMPONENT_LABELS, IDENTITY_QUAT, ZERO_VEC3 } from '@schema/index.js';
 import { color, control, fontFamily, fontSize, space } from '../styles/tokens.stylex.js';
 import { DOM, withDomClass } from '../dom-contract.js';
@@ -16,7 +16,7 @@ import {
 } from './field-schema.js';
 import type { BehaviorPropertyDescriptor } from '@runtime/behaviors/types.js';
 import { componentsFor, type CreatableKind } from '../document/factory.js';
-import { isFiniteJsonNumber, isJsonString, jsonQuaternion, jsonVec3 } from '../json-values.js';
+import { isFiniteJsonNumber, isJsonString, jsonQuaternion, jsonVec2, jsonVec3 } from '../json-values.js';
 import { ChevronRight, Plus, Trash2 } from 'lucide-react';
 import { ActionButton, ActionGroup } from '../ui/Controls.js';
 import { useScrub } from '../ui/useScrub.js';
@@ -587,7 +587,7 @@ function defaultComponent(type: ComponentType, assets: readonly AssetEntry[]): C
 function defaultLiteralFor(type: ComponentType): Component {
   switch (type) {
     case 'material':
-      return { type: 'material', color: '#cccccc', roughness: 0.8, metalness: 0, emissive: '#000000', emissiveIntensity: 1, opacity: 1, transparent: false, doubleSided: false, flatShading: false, visible: true };
+      return { type: 'material', color: '#cccccc', roughness: 0.8, metalness: 0, emissive: '#000000', emissiveIntensity: 1, opacity: 1, map: null, normalMap: null, emissiveMap: null, textureRepeat: [1, 1], textureOffset: [0, 0], transparent: false, doubleSided: false, flatShading: false, visible: true };
     case 'rigidBody':
       return { type: 'rigidBody', bodyType: 'dynamic', mass: null, gravityScale: 1, linearDamping: 0, angularDamping: 0.05, lockRotation: false, continuous: false, moveWithPhysics: true };
     case 'collider':
@@ -860,6 +860,19 @@ function Field({
           />
         </div>
       );
+    case 'vec2':
+      return (
+        <div {...withDomClass(styles.field, DOM.field)}>
+          <span {...withDomClass(styles.fieldLabel, DOM.fieldLabel)}>{field.label}</span>
+          <VectorField
+            label=""
+            value={jsonVec2(value) ?? [0, 0]}
+            step={field.step ?? 0.1}
+            disabled={disabled}
+            onChange={(next) => onChange(next)}
+          />
+        </div>
+      );
     case 'quaternion-degrees':
       return (
         <div {...withDomClass(styles.field, DOM.field)}>
@@ -872,7 +885,7 @@ function Field({
         </div>
       );
     case 'asset-reference': {
-      const kind = field.key === 'assetId' && entity.components.some((component) => component.type === 'audio') ? 'audio' : 'model';
+      const kind = field.assetKind ?? 'model';
       const options = snapshot.assets.filter((asset) => asset.kind === kind);
       return (
         <SelectField
@@ -1031,11 +1044,11 @@ function VectorField({
   onChange,
 }: {
   label: string;
-  value: Vec3;
+  value: Vec2 | Vec3;
   step: number;
   disabled: boolean;
   positive?: boolean;
-  onChange(value: Vec3): void;
+  onChange(value: Vec2 | Vec3): void;
 }): JSX.Element {
   return (
     <FieldShell
@@ -1046,7 +1059,7 @@ function VectorField({
       }
     >
       <div {...stylex.props(styles.vectorInputs)}>
-        {(['X', 'Y', 'Z'] as const).map((axis, index) => (
+        {(['X', 'Y', 'Z'] as const).slice(0, value.length).map((axis, index) => (
           <ScrubAxisInput
             key={axis}
             axis={axis}
@@ -1083,14 +1096,14 @@ function ScrubAxisInput({
 }: {
   axis: 'X' | 'Y' | 'Z';
   componentIndex: number;
-  value: Vec3;
+  value: Vec2 | Vec3;
   step: number;
   disabled: boolean;
   positive?: boolean;
-  onChange(value: Vec3): void;
+  onChange(value: Vec2 | Vec3): void;
 }): JSX.Element {
   const setComponent = (next: number) => {
-    const out: Vec3 = [value[0], value[1], value[2]];
+    const out: Vec2 | Vec3 = value.length === 2 ? [value[0], value[1]] : [value[0], value[1], value[2]];
     out[componentIndex] = positive ? Math.max(0.001, Math.abs(next)) : next;
     onChange(out);
   };

@@ -120,6 +120,7 @@ export async function loadProjectFromUrl(baseUrl: string, options: LoadProjectOp
   const sceneRaw = await fetchJson(sceneUrl, fetchImpl);
   const sceneResult = parseScene(sceneRaw, {
     assetIds,
+    assetKinds: new Map(assets.assets.map((asset) => [asset.id, asset.kind])),
     behaviorIds: options.registry ? new Set(options.registry.list().map((b) => b.id)) : undefined,
     behaviorProperties: options.registry ? options.registry.propertyDescriptors() : undefined,
   });

@@ -140,6 +140,7 @@ export interface SessionSnapshot {
   importing: boolean;
   /** Clip names per entity, reported as models finish loading. */
   modelClips: Record<string, string[]>;
+  thumbnails: Record<string, string>;
   /** Behavior metadata declared by the project's scripts/registry.json. */
   behaviors: Array<{ id: string; name: string; description: string; properties: BehaviorPropertyDescriptor[] }>;
   /**
@@ -180,6 +181,9 @@ export class EditorSession {
   private assetUsage: SessionSnapshot['assetUsage'] = {};
   private importing = false;
   private modelClips: Record<string, string[]> = {};
+  private thumbnails: Record<string, string> = {};
+  private thumbnailRenderer: ((assetId: string) => Promise<string | null>) | null = null;
+  private readonly thumbnailRequests = new Set<string>();
   private listeners = new Set<(snapshot: SessionSnapshot) => void>();
   private unsubscribes: Array<() => void> = [];
   private cachedSnapshot: SessionSnapshot | null = null;
@@ -228,6 +232,7 @@ export class EditorSession {
       assetUsage: this.assetUsage,
       importing: this.importing,
       modelClips: this.modelClips,
+      thumbnails: this.thumbnails,
       panels: this.panels,
       behaviors: this.behaviorRegistry.list().map((entry) => ({
         id: entry.id,
@@ -688,6 +693,26 @@ export class EditorSession {
 
   select(entityId: string | null, options: { additive?: boolean } = {}): void {
     this.selection.select(entityId, options);
+  }
+
+  setThumbnailRenderer(render: ((assetId: string) => Promise<string | null>) | null): void {
+    this.thumbnailRenderer = render;
+  }
+
+  requestThumbnail(asset: AssetEntry): void {
+    const key = `${asset.id}@${asset.hash}`;
+    if (Object.hasOwn(this.thumbnails, key) || this.thumbnailRequests.has(key) || !this.thumbnailRenderer) return;
+    this.thumbnailRequests.add(key);
+    void this.thumbnailRenderer(asset.id)
+      .then((result) => {
+        this.thumbnails = { ...this.thumbnails, [key]: result ?? '' };
+        this.emit();
+      })
+      .catch(() => {
+        this.thumbnails = { ...this.thumbnails, [key]: '' };
+        this.emit();
+      })
+      .finally(() => this.thumbnailRequests.delete(key));
   }
 
   // ------------------------------------------------------------------ saving

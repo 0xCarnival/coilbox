@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { buildSceneGraph, createLight, AIM_DISTANCE_METRES } from '@runtime/scene-graph.js';
+import { applyMaterial, buildSceneGraph, createLight, AIM_DISTANCE_METRES } from '@runtime/scene-graph.js';
 import { probeScene, lookAtQuaternion } from '@runtime/probe/scene.js';
 import { parseScene, type SceneDocument } from '@schema/index.js';
 
@@ -18,6 +18,53 @@ function forwardOf(object: THREE.Object3D): THREE.Vector3 {
 }
 
 describe('scene graph projection', () => {
+  it('clones material textures with repeat and offset and clears omitted slots', () => {
+    const material = new THREE.MeshStandardMaterial();
+    const source = new THREE.Texture();
+    applyMaterial(material, {
+      type: 'material',
+      color: '#ffffff',
+      roughness: 0.5,
+      metalness: 0,
+      emissive: '#000000',
+      emissiveIntensity: 1,
+      opacity: 1,
+      transparent: false,
+      doubleSided: false,
+      flatShading: false,
+      visible: true,
+      map: 'texture',
+      normalMap: null,
+      emissiveMap: null,
+      textureRepeat: [2, 3],
+      textureOffset: [0.5, -1],
+    }, { map: source });
+    expect(material.map).not.toBe(source);
+    expect(material.map?.repeat.toArray()).toEqual([2, 3]);
+    expect(material.map?.offset.toArray()).toEqual([0.5, -1]);
+    applyMaterial(material, {
+      type: 'material',
+      color: '#ffffff',
+      roughness: 0.5,
+      metalness: 0,
+      emissive: '#000000',
+      emissiveIntensity: 1,
+      opacity: 1,
+      transparent: false,
+      doubleSided: false,
+      flatShading: false,
+      visible: true,
+      map: null,
+      normalMap: null,
+      emissiveMap: null,
+      textureRepeat: [1, 1],
+      textureOffset: [0, 0],
+    });
+    expect(material.map).toBeNull();
+    source.dispose();
+    material.dispose();
+  });
+
   it('keeps the probe camera looking at the scene centre', () => {
     const scene = parseScene(probeScene).value as SceneDocument;
     const graph = buildSceneGraph(scene);

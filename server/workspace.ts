@@ -208,6 +208,7 @@ export class Workspace {
     const registry = await this.readBehaviorRegistry(projectId);
     const parsed = parseScene(raw, {
       assetIds: new Set(manifest.assets.map((asset) => asset.id)),
+      assetKinds: new Map(manifest.assets.map((asset) => [asset.id, asset.kind])),
       ...behaviorValidationContext(registry),
     });
     if (!parsed.value) {
@@ -300,6 +301,7 @@ export class Workspace {
     const registry = await this.readBehaviorRegistry(projectId);
     const parsed = parseScene(scene, {
       assetIds: new Set(manifest.assets.map((asset) => asset.id)),
+      assetKinds: new Map(manifest.assets.map((asset) => [asset.id, asset.kind])),
       ...behaviorValidationContext(registry),
     });
     if (!parsed.value || !parsed.ok) {
@@ -357,6 +359,7 @@ export class Workspace {
     const registry = await this.readBehaviorRegistry(projectId);
     const context = {
       assetIds: new Set(manifest.assets.map((asset) => asset.id)),
+      assetKinds: new Map(manifest.assets.map((asset) => [asset.id, asset.kind])),
       ...behaviorValidationContext(registry),
     };
     for (const sceneEntry of detail.game.scenes) {

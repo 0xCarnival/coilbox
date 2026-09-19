@@ -3,6 +3,7 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { extname, join } from 'node:path';
 import {
+  assetReferencesOf,
   parseAssetManifest,
   type AssetEntry,
   type AssetKind,
@@ -280,9 +281,7 @@ export class AssetService {
       const scene = await this.workspace.readScene(projectId, sceneEntry.id).catch(() => null);
       if (!scene) continue;
       const used = scene.entities.some((entity) =>
-        entity.components.some((component) =>
-          (component.type === 'model' || component.type === 'audio') && component.assetId === assetId,
-        ),
+        entity.components.some((component) => assetReferencesOf(component).some((reference) => reference.assetId === assetId)),
       );
       if (used) referencing.push(sceneEntry.id);
     }
@@ -298,8 +297,13 @@ export class AssetService {
       if (!scene) continue;
       for (const entity of scene.entities) {
         for (const component of entity.components) {
-          if (component.type !== 'model' && component.type !== 'audio') continue;
-          (index[component.assetId] ??= []).push({ sceneId: sceneEntry.id, entityId: entity.id, entityName: entity.name });
+          for (const reference of assetReferencesOf(component)) {
+            (index[reference.assetId] ??= []).push({
+              sceneId: sceneEntry.id,
+              entityId: entity.id,
+              entityName: entity.name,
+            });
+          }
         }
       }
     }

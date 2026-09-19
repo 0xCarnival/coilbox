@@ -4,7 +4,7 @@ import { buildSceneGraph, RuntimeWorldError, type BuiltEntity, type BuiltScene }
 import { FixedStepLoop, type LoopStats } from './loop.js';
 import { RuntimeViewport, disposeSceneResources } from './render/viewport.js';
 import { createBox3DBackend } from './physics/box3d-adapter.js';
-import { AssetCache, disposeInstance, type ModelInstance } from './assets/loader.js';
+import { AssetCache, disposeInstance, loadMaterialTextures, type MaterialTextures, type ModelInstance } from './assets/loader.js';
 import type { AnimationController } from './animation.js';
 import { BehaviorRegistry } from './behaviors/registry.js';
 import { BehaviorRuntime, type BehaviorHost } from './behaviors/runtime.js';
@@ -272,6 +272,7 @@ export class RuntimeWorld {
     // Load every referenced model before building the graph, so a missing or unsupported
     // asset produces one clear error instead of half a scene.
     const modelInstances = new Map<string, ModelInstance>();
+    const materialTextures = new Map<string, MaterialTextures>();
     const assetErrors: RuntimeWorldError[] = [];
     for (const entity of options.scene.entities) {
       const model = entity.components.find((component) => component.type === 'model');
@@ -290,7 +291,25 @@ export class RuntimeWorld {
       }
     }
 
-    const graph = buildSceneGraph(options.scene, { models: modelInstances });
+    for (const entity of options.scene.entities) {
+      if (!entity.enabled) continue;
+      const material = entity.components.find((component) => component.type === 'material');
+      if (!material || material.type !== 'material') continue;
+      if (!material.map && !material.normalMap && !material.emissiveMap) continue;
+      try {
+        materialTextures.set(entity.id, await loadMaterialTextures(assetCache, material));
+      } catch (cause) {
+        assetErrors.push(
+          new RuntimeWorldError(
+            'asset-load-failed',
+            cause instanceof Error ? cause.message : String(cause),
+            entity.id,
+          ),
+        );
+      }
+    }
+
+    const graph = buildSceneGraph(options.scene, { models: modelInstances, materialTextures });
     const viewport = new RuntimeViewport({
       canvas: options.canvas,
       render: options.game.settings.render,

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { componentSchema, type Component } from './components.js';
-import { PROJECT_SCHEMA_VERSION, ENGINE_VERSION, assetManifestSchema, gameSchema, type AssetManifest, type GameDocument } from './project.js';
+import { assetReferencesOf } from './asset-references.js';
+import { PROJECT_SCHEMA_VERSION, ENGINE_VERSION, assetManifestSchema, gameSchema, type AssetKind, type AssetManifest, type GameDocument } from './project.js';
 import { SCENE_SCHEMA_VERSION, sceneSchema, type Entity, type SceneDocument } from './scene.js';
 import type { JsonValue } from './primitives.js';
 
@@ -34,6 +35,7 @@ export type BehaviorPropertyKind = 'number' | 'boolean' | 'text' | 'enum' | 'ent
 export interface SceneValidationContext {
   /** Known asset ids from the project's asset manifest, if available. */
   assetIds?: ReadonlySet<string>;
+  assetKinds?: ReadonlyMap<string, AssetKind>;
   /** Known behavior ids from the behavior registry, if available. */
   behaviorIds?: ReadonlySet<string>;
   /** Declared property descriptors per behavior id, used to check property names/types. */
@@ -180,12 +182,22 @@ export function validateSceneRelationships(scene: SceneDocument, context: SceneV
   for (const [index, entity] of scene.entities.entries()) {
     for (const [cIndex, component] of entity.components.entries()) {
       const at = `entities[${index}].components[${cIndex}]`;
-      const assetRefs: Array<[string, string]> = [];
-      if (component.type === 'model') assetRefs.push(['assetId', component.assetId]);
-      if (component.type === 'audio') assetRefs.push(['assetId', component.assetId]);
-      for (const [field, id] of assetRefs) {
+      for (const { property, assetId, kind } of assetReferencesOf(component)) {
+        const field = property;
+        const id = assetId;
         if (context.assetIds && !context.assetIds.has(id)) {
           issues.push(error('missing-asset', `${at}.${field}`, `asset "${id}" is not present in the project asset manifest`));
+        } else {
+          const actual = context.assetKinds?.get(id);
+          if (actual && actual !== kind) {
+            issues.push(
+              error(
+                'asset-kind-mismatch',
+                `${at}.${field}`,
+                `asset "${id}" is a ${actual}, but ${property} needs a ${kind}`,
+              ),
+            );
+          }
         }
       }
       if (component.type === 'camera' && component.targetId !== null && !byId.has(component.targetId)) {

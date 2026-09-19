@@ -143,6 +143,29 @@ describe('asset import', () => {
     expect(removed.removed.id).toBe(imported.entry.id);
   });
 
+  it('indexes material texture references', async () => {
+    const imported = await importFixture('images/swatch.png');
+    const scene = await workspace.readScene('g', 'main');
+    scene.entities.push({
+      id: 'ground',
+      name: 'Ground',
+      parentId: null,
+      order: 1,
+      enabled: true,
+      transform: { position: [0, 0, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] },
+      components: [
+        { type: 'primitive', shape: 'box', size: [1, 1, 1] },
+        { type: 'material', map: imported.entry.id },
+      ],
+      editor: { visible: true, locked: false, color: null, helper: false },
+    });
+    await workspace.writeScene('g', 'main', scene, { expectedRevision: scene.revision });
+
+    const usage = await assets.usageIndex('g');
+    expect(usage[imported.entry.id]).toEqual([{ sceneId: 'main', entityId: 'ground', entityName: 'Ground' }]);
+    expect(await assets.findReferences('g', imported.entry.id)).toEqual(['main']);
+  });
+
   it('serves the stored bytes and reports a missing file distinctly', async () => {
     const imported = await importFixture('images/swatch.png');
     const { path, entry } = await assets.assetFilePath('g', imported.entry.id);

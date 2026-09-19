@@ -9,6 +9,7 @@ import {
   positiveVec3,
   quat,
   unitInterval,
+  vec2,
   vec3,
 } from './fields.js';
 
@@ -47,6 +48,11 @@ export const materialComponent = z.object({
   emissive: hexColor.default('#000000'),
   emissiveIntensity: finiteNumber.min(0).default(1),
   opacity: unitInterval.default(1),
+  map: assetId.nullable().default(null),
+  normalMap: assetId.nullable().default(null),
+  emissiveMap: assetId.nullable().default(null),
+  textureRepeat: vec2.default([1, 1]),
+  textureOffset: vec2.default([0, 0]),
   transparent: z.boolean().default(false),
   doubleSided: z.boolean().default(false),
   flatShading: z.boolean().default(false),

@@ -1,11 +1,13 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { JSX } from 'react';
 import * as stylex from '@stylexjs/stylex';
+import { FileBox, Image as ImageIcon, Music2, Play, Square } from 'lucide-react';
 import type { AssetEntry } from '@schema/index.js';
 import { button, color, fontFamily, fontSize, radius, space } from '../styles/tokens.stylex.js';
 import { PanelSection, SegmentedControl, type SegmentedOption } from '../ui/Controls.js';
 import { DOM, withDomClass } from '../dom-contract.js';
 import { useSession, useSessionSnapshot } from '../hooks.js';
+import { ASSET_DRAG_MIME, hasAssetDrag } from '../assets/asset-drop.js';
 
 /**
  * Asset browser (plan §3, §4): import, inspect, and remove the project's assets.
@@ -142,7 +144,18 @@ const styles = stylex.create({
     fontVariantNumeric: 'tabular-nums',
     color: color.muted,
   },
+  thumbnail: {
+    width: '40px',
+    height: '40px',
+    borderRadius: radius.sm,
+    backgroundColor: color.surface,
+    objectFit: 'cover',
+    verticalAlign: 'middle',
+    marginInlineEnd: space.sm,
+  },
 });
+
+let activeAudio: HTMLAudioElement | null = null;
 
 export function AssetBrowser(): JSX.Element {
   const session = useSession();
@@ -175,6 +188,7 @@ export function AssetBrowser(): JSX.Element {
     <div
       {...stylex.props(styles.browser, dragging && styles.dragging)}
       onDragOver={(event) => {
+        if (hasAssetDrag(event.dataTransfer)) return;
         event.preventDefault();
         setDragging(true);
       }}
@@ -182,6 +196,7 @@ export function AssetBrowser(): JSX.Element {
       onDrop={(event) => {
         event.preventDefault();
         setDragging(false);
+        if (hasAssetDrag(event.dataTransfer)) return;
         void importFiles(event.dataTransfer.files);
       }}
     >
@@ -304,22 +319,79 @@ function AssetRow({
   onDelete(): void;
   onReplace(file: File): void;
 }): JSX.Element {
+  const session = useSession();
+  const snapshot = useSessionSnapshot();
   const replaceRef = useRef<HTMLInputElement | null>(null);
   const [hovered, setHovered] = useState(false);
+  const [playing, setPlaying] = useState(false);
+  const [duration, setDuration] = useState<number | null>(null);
+  const [dimensions, setDimensions] = useState<[number, number] | null>(null);
+  const [imageFailed, setImageFailed] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const unsupported = asset.requires.filter((extension) =>
     ['KHR_draco_mesh_compression', 'EXT_meshopt_compression', 'KHR_texture_basisu'].includes(extension),
   );
   const cell = [styles.cell, hovered && styles.cellHovered] as const;
+  const thumbnailKey = `${asset.id}@${asset.hash}`;
+  const thumbnail = snapshot.thumbnails[thumbnailKey];
+  useEffect(() => {
+    if (asset.kind === 'model') session.requestThumbnail(asset);
+  }, [asset, session]);
+  const toggleAudio = () => {
+    if (!audioRef.current) {
+      const audio = new Audio(session.assetResolver.resolveUrl(asset.id) ?? '');
+      audio.addEventListener('loadedmetadata', () => setDuration(audio.duration));
+      audio.addEventListener('ended', () => setPlaying(false));
+      audioRef.current = audio;
+    }
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (playing) {
+      audio.pause();
+      setPlaying(false);
+    } else {
+      activeAudio?.pause();
+      activeAudio = audio;
+      void audio.play().catch(() => setPlaying(false));
+      setPlaying(true);
+    }
+  };
 
   return (
     <tr
+      draggable
+      onDragStart={(event) => {
+        event.dataTransfer.setData(ASSET_DRAG_MIME, JSON.stringify({ assetId: asset.id, kind: asset.kind }));
+        event.dataTransfer.effectAllowed = 'copy';
+      }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       data-asset-id={asset.id}
     >
-      <td {...stylex.props(...cell, styles.mono)}>{asset.id}</td>
+      <td {...stylex.props(...cell, styles.mono)} title={asset.kind === 'image' ? `${asset.kind}${dimensions ? ` ${dimensions[0]}×${dimensions[1]}` : ''}` : asset.kind}>
+        {asset.kind === 'image' && !imageFailed ? (
+          <img
+            {...stylex.props(styles.thumbnail)}
+            src={`${session.assetResolver.resolveUrl(asset.id) ?? ''}?v=${encodeURIComponent(asset.hash)}`}
+            alt=""
+            onLoad={(event) => setDimensions([event.currentTarget.naturalWidth, event.currentTarget.naturalHeight])}
+            onError={() => setImageFailed(true)}
+          />
+        ) : asset.kind === 'image' ? (
+          <ImageIcon size={18} />
+        ) : asset.kind === 'model' ? (
+          thumbnail ? <img {...stylex.props(styles.thumbnail)} src={thumbnail} alt="" /> : <FileBox size={18} />
+        ) : asset.kind === 'audio' ? (
+          <button type="button" onClick={toggleAudio} aria-label={playing ? `Stop ${asset.id}` : `Play ${asset.id}`}>
+            {playing ? <Square size={14} /> : <Play size={14} />}
+          </button>
+        ) : (
+          <Music2 size={18} />
+        )}
+        {asset.id}
+      </td>
       <td {...stylex.props(...cell)}>{asset.kind}</td>
-      <td {...stylex.props(...cell)}>{formatBytes(asset.bytes)}</td>
+      <td {...stylex.props(...cell)}>{formatBytes(asset.bytes)}{duration !== null ? ` · ${formatDuration(duration)}` : ''}</td>
       <td {...stylex.props(...cell)}>
         {usage.length === 0 ? (
           <span {...stylex.props(styles.muted)}>unused</span>
@@ -368,4 +440,9 @@ function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KiB`;
   return `${(bytes / 1024 / 1024).toFixed(2)} MiB`;
+}
+
+function formatDuration(seconds: number): string {
+  const total = Math.max(0, Math.round(seconds));
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
 }
