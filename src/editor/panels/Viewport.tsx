@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
 import type { JSX } from 'react';
 import * as stylex from '@stylexjs/stylex';
-import type { JsonValue, SceneDocument, Transform } from '@schema/index.js';
+import type { JsonValue, SceneDocument } from '@schema/index.js';
 import { RuntimeWorldError, type RuntimeStats } from '@runtime/world.js';
 import { RuntimeSession } from '@runtime/session.js';
 import { AssetCache, disposeInstance } from '@runtime/assets/loader.js';
@@ -48,6 +48,14 @@ const styles = stylex.create({
     outlineStyle: 'dashed',
     outlineColor: color.primary,
     outlineOffset: '-4px',
+  },
+  marquee: {
+    position: 'absolute',
+    pointerEvents: 'none',
+    borderWidth: '1px',
+    borderStyle: 'dashed',
+    borderColor: color.primary,
+    backgroundColor: 'rgba(232, 232, 232, 0.12)',
   },
   editorCanvas: {
     position: 'absolute',
@@ -251,6 +259,7 @@ export function Viewport({ handleRef, tool, snap, onPlayStateChange, onStatus }:
   const [playState, setPlayState] = useState<PlayState>('stopped');
   const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [marquee, setMarquee] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
 
   // Keep the latest callbacks without re-creating the viewport.
   const callbacksRef = useRef({ onPlayStateChange, onStatus });
@@ -283,9 +292,19 @@ export function Viewport({ handleRef, tool, snap, onPlayStateChange, onStatus }:
       canvas,
       container,
       onSelect: (entityId, additive) => sessionRef.current.select(entityId, { additive }),
-      onCommitTransform: (entityId, transform: Partial<Transform>) => {
-        sessionRef.current.execute({ kind: 'setTransform', entityId, transform }, { label: 'Move' });
+      onSelectMany: (ids, additive) => sessionRef.current.selectMany(ids, { additive }),
+      onCommitTransforms: (entries) => {
+        if (entries.length === 1) {
+          const entry = entries[0]!;
+          sessionRef.current.execute({ kind: 'setTransform', entityId: entry.entityId, transform: entry.transform }, { label: 'Move' });
+        } else if (entries.length > 1) {
+          sessionRef.current.transaction(
+            `Move ${entries.length} objects`,
+            entries.map((entry) => ({ kind: 'setTransform' as const, entityId: entry.entityId, transform: entry.transform })),
+          );
+        }
       },
+      onMarquee: (rect) => setMarquee(rect),
       onWarning: (message) => callbacksRef.current.onStatus(message),
     });
     viewportRef.current = viewport;
@@ -314,6 +333,7 @@ export function Viewport({ handleRef, tool, snap, onPlayStateChange, onStatus }:
     if (scene) viewport.sync(scene);
 
     return () => {
+      setMarquee(null);
       void sessionRef2.current?.dispose();
       sessionRef2.current = null;
       viewport.dispose();
@@ -585,6 +605,17 @@ export function Viewport({ handleRef, tool, snap, onPlayStateChange, onStatus }:
         ref={playCanvasRef}
       />
       <div {...withDomClass(styles.hudHost, DOM.hudHost)} ref={hudRootRef} />
+      {marquee && (
+        <div
+          {...stylex.props(styles.marquee)}
+          style={{
+            left: Math.min(marquee.x, marquee.x + marquee.width),
+            top: Math.min(marquee.y, marquee.y + marquee.height),
+            width: Math.abs(marquee.width),
+            height: Math.abs(marquee.height),
+          }}
+        />
+      )}
       {playState !== 'stopped' && (
         <div {...withDomClass(styles.badge, DOM.viewportBadge)}>
           <span {...stylex.props(styles.badgeDot)} />

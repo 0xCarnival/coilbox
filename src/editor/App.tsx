@@ -32,6 +32,7 @@ const CommandPalette = lazy(() =>
 );
 import { Toasts } from './ui/Toasts.js';
 import { ToolDock } from './ui/ToolDock.js';
+import { duplicateEntities } from './document/duplicate.js';
 
 /**
  * Editor shell: one fixed, resizable layout instead of a window manager (plan §3).
@@ -472,6 +473,23 @@ function StudioShell(): JSX.Element {
       if (meta && event.key.toLowerCase() === 's') {
         event.preventDefault();
         void session.save();
+        return;
+      }
+      if (meta && event.key.toLowerCase() === 'd') {
+        const ids = [...session.selection.selectedIds];
+        const scene = session.scene;
+        if (scene && ids.length > 0) {
+          event.preventDefault();
+          const duplicate = duplicateEntities(scene, ids);
+          const primary = scene.entities.find((entity) => entity.id === session.selection.primary);
+          if (duplicate.entities.length > 0 && session.execute({
+            kind: 'insertEntities',
+            entities: duplicate.entities,
+            label: ids.length === 1 ? `Duplicate ${primary?.name ?? 'object'}` : `Duplicate ${ids.length} objects`,
+          })) {
+            session.selectMany(duplicate.selectIds);
+          }
+        }
         return;
       }
       if (event.key === 'Delete' || event.key === 'Backspace') {

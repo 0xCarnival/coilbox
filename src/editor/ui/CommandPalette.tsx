@@ -4,6 +4,7 @@ import * as stylex from '@stylexjs/stylex';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { Search } from 'lucide-react';
 import { createEntity, CREATABLE_KINDS, CREATABLE_LABELS, type CreatableKind } from '../document/factory.js';
+import { duplicateEntities } from '../document/duplicate.js';
 import { color, control, fontSize, radius, space } from '../styles/tokens.stylex.js';
 import { useSession, useSessionSnapshot } from '../hooks.js';
 import type { TransformTool, ViewFace } from '../viewport/viewport-controller.js';
@@ -283,6 +284,25 @@ export function CommandPalette({
         run: () => {
           if (!primary) return;
           session.execute({ kind: 'deleteEntities', entityIds: [...snapshot.selectedIds] });
+        },
+      },
+      {
+        id: 'edit:duplicate',
+        label: 'Duplicate the selection',
+        group: 'Edit',
+        shortcut: '⌘D',
+        run: () => {
+          if (!scene || snapshot.selectedIds.length === 0) return;
+          const duplicate = duplicateEntities(scene, [...snapshot.selectedIds]);
+          const primaryEntity = entity;
+          if (duplicate.entities.length === 0) return;
+          if (session.execute({
+            kind: 'insertEntities',
+            entities: duplicate.entities,
+            label: snapshot.selectedIds.length === 1 ? `Duplicate ${primaryEntity?.name ?? 'object'}` : `Duplicate ${snapshot.selectedIds.length} objects`,
+          })) {
+            session.selectMany(duplicate.selectIds);
+          }
         },
       },
       { id: 'file:save', label: 'Save the scene', group: 'File', shortcut: '⌘S', run: () => void session.save() },

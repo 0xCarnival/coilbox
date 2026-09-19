@@ -25,7 +25,8 @@ import { IconButton } from '../ui/Button.js';
 import { DOM, DOM_STATE, withDomClass } from '../dom-contract.js';
 import { useSession, useSessionSnapshot } from '../hooks.js';
 import { createEntity, reparentPreservingWorldTransform } from '../document/factory.js';
-import { createEntityId, subtreeOf } from '../document/commands.js';
+import { subtreeOf } from '../document/commands.js';
+import { duplicateEntities } from '../document/duplicate.js';
 import { applyAssetDrop, hasAssetDrag, readAssetDrag, type AssetDropTarget } from '../assets/asset-drop.js';
 
 
@@ -392,20 +393,11 @@ export function Hierarchy({ locked }: { locked: boolean }): JSX.Element {
   };
 
   const duplicate = (entity: Entity) => {
-    const used = scene.entities.map((candidate) => candidate.id);
-    const subtree = subtreeOf(scene, entity.id);
-    const idMap = new Map<string, string>();
-    for (const member of subtree) {
-      idMap.set(member.id, createEntityId(`${member.name}-copy`, [...used, ...idMap.values()]));
+    const result = duplicateEntities(scene, [entity.id]);
+    if (result.entities.length === 0) return;
+    if (session.execute({ kind: 'insertEntities', entities: result.entities, label: `Duplicate ${entity.name}` })) {
+      session.selectMany(result.selectIds);
     }
-    const copies = subtree.map((member) => ({
-      ...structuredClone(member),
-      id: idMap.get(member.id)!,
-      name: member.id === entity.id ? `${member.name} copy` : member.name,
-      parentId: member.parentId && idMap.has(member.parentId) ? idMap.get(member.parentId)! : member.parentId,
-    }));
-    session.execute({ kind: 'insertEntities', entities: copies, label: `Duplicate ${entity.name}` });
-    session.select(idMap.get(entity.id)!);
   };
 
   const groupSelection = () => {
@@ -482,7 +474,19 @@ export function Hierarchy({ locked }: { locked: boolean }): JSX.Element {
                 isSelected && DOM_STATE.selected,
               )}
               style={{ paddingInlineStart: 4 + depth * 10 }}
-              onClick={(event) => session.select(entity.id, { additive: event.shiftKey || event.metaKey || event.ctrlKey })}
+              onClick={(event) => {
+                if (event.shiftKey) {
+                  const primaryIndex = rows.findIndex((row) => row.entity.id === snapshot.primarySelection);
+                  const clickedIndex = rows.findIndex((row) => row.entity.id === entity.id);
+                  if (primaryIndex >= 0 && clickedIndex >= 0) {
+                    const start = Math.min(primaryIndex, clickedIndex);
+                    const end = Math.max(primaryIndex, clickedIndex);
+                    session.selectMany(rows.slice(start, end + 1).map((row) => row.entity.id), { additive: true });
+                    return;
+                  }
+                }
+                session.select(entity.id, { additive: event.metaKey || event.ctrlKey });
+              }}
               onDoubleClick={() => !locked && setRenaming(entity.id)}
               onMouseEnter={() => setHovered(entity.id)}
               onMouseLeave={() => setHovered((current) => (current === entity.id ? null : current))}
@@ -496,8 +500,9 @@ export function Hierarchy({ locked }: { locked: boolean }): JSX.Element {
                 if (locked || !payload) return;
                 event.preventDefault();
                 event.stopPropagation();
-                const target: AssetDropTarget =
-                  payload.kind === 'model' ? { entityId: null, point: [0, 0, 0] } : { entityId: entity.id, point: [0, 0, 0] };
+                const target: AssetDropTarget = payload.kind === 'model'
+                  ? { entityId: null, point: [0, 0, 0] }
+                  : { entityId: entity.id, point: [0, 0, 0] };
                 const result = applyAssetDrop(session, payload, target);
                 session.log(result.ok ? 'info' : 'warning', result.message);
               }}

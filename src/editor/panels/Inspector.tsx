@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { JSX } from 'react';
 import * as stylex from '@stylexjs/stylex';
 import type { AssetEntry, Component, ComponentType, Entity, JsonValue, Quat, Vec2, Vec3 } from '@schema/index.js';
@@ -408,6 +408,21 @@ const styles = stylex.create({
     textAlign: 'center',
     fontSize: fontSize.sm,
   },
+  multiHint: {
+    color: color.dim,
+    fontSize: fontSize.xs,
+    paddingInline: space.lg,
+    paddingBlock: space.sm,
+  },
+  selectedNames: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: space.xs,
+    paddingInline: space.lg,
+    paddingBlock: space.sm,
+    color: color.muted,
+    fontSize: fontSize.sm,
+  },
 });
 
 export function Inspector({ locked }: { locked: boolean }): JSX.Element {
@@ -415,6 +430,14 @@ export function Inspector({ locked }: { locked: boolean }): JSX.Element {
   const snapshot = useSessionSnapshot();
   const scene = session.scene;
   const entity = scene?.entities.find((candidate) => candidate.id === snapshot.primarySelection) ?? null;
+  const selectedEntities = scene ? snapshot.selectedIds.map((id) => scene.entities.find((candidate) => candidate.id === id)).filter((candidate): candidate is Entity => Boolean(candidate)) : [];
+  const multi = selectedEntities.length > 1;
+  const enabledInput = useRef<HTMLInputElement | null>(null);
+  const allEnabled = multi && selectedEntities.every((candidate) => candidate.enabled);
+  const mixedEnabled = multi && selectedEntities.some((candidate) => candidate.enabled) && !allEnabled;
+  useEffect(() => {
+    if (enabledInput.current) enabledInput.current.indeterminate = mixedEnabled;
+  }, [mixedEnabled]);
 
   if (!entity || !scene) {
     return (
@@ -422,6 +445,62 @@ export function Inspector({ locked }: { locked: boolean }): JSX.Element {
         <div {...withDomClass(styles.empty, DOM.panelEmpty)}>
           Select an object to see its properties
         </div>
+      </div>
+    );
+  }
+
+  if (multi) {
+    const applyEnabled = (enabled: boolean) => {
+      session.transaction(
+        'Set enabled state',
+        selectedEntities
+          .filter((candidate) => candidate.enabled !== enabled)
+          .map((candidate) => ({ kind: 'setEntityEnabled' as const, entityId: candidate.id, enabled })),
+      );
+    };
+    const applyTransform = (patch: { position?: Vec3; rotation?: Quat; scale?: Vec3 }, label: string) => {
+      session.transaction(
+        label,
+        selectedEntities
+          .filter((candidate) =>
+            (patch.position !== undefined && JSON.stringify(candidate.transform.position) !== JSON.stringify(patch.position)) ||
+            (patch.rotation !== undefined && JSON.stringify(candidate.transform.rotation) !== JSON.stringify(patch.rotation)) ||
+            (patch.scale !== undefined && JSON.stringify(candidate.transform.scale) !== JSON.stringify(patch.scale)),
+          )
+          .map((candidate) => ({ kind: 'setTransform' as const, entityId: candidate.id, transform: patch })),
+      );
+    };
+    return (
+      <div {...withDomClass(styles.inspector, DOM.inspector)}>
+        <div {...withDomClass(styles.inspectorTitle, DOM.inspectorTitle)}>
+          <strong>{selectedEntities.length} objects selected</strong>
+          <label {...stylex.props(styles.enabledToggle)} title="Whether these objects exist in the game">
+            <input
+              ref={enabledInput}
+              type="checkbox"
+              checked={allEnabled}
+              disabled={locked}
+              onChange={(event) => applyEnabled(event.target.checked)}
+            />
+            In game
+          </label>
+        </div>
+        <Section title="Transform" defaultOpen>
+          <VectorField label="Position (m)" value={entity.transform.position} step={0.1} disabled={locked} onChange={(value) => {
+            if (value.length === 3) applyTransform({ position: value }, 'Set position');
+          }} />
+          <RotationField value={entity.transform.rotation} disabled={locked} onChange={(value) => applyTransform({ rotation: value }, 'Set rotation')} />
+          <VectorField label="Scale" value={entity.transform.scale} step={0.05} disabled={locked} onChange={(value) => {
+            if (value.length === 3) applyTransform({ scale: value }, 'Set scale');
+          }} />
+        </Section>
+        <div {...stylex.props(styles.multiHint)}>Edits apply to all selected objects</div>
+        <div {...stylex.props(styles.selectedNames)}>
+          {selectedEntities.map((candidate) => <div key={candidate.id}>{candidate.name}</div>)}
+        </div>
+        <Button disabled={locked} onClick={() => session.execute({ kind: 'deleteEntities', entityIds: selectedEntities.map((candidate) => candidate.id) })}>
+          Delete {selectedEntities.length} objects
+        </Button>
       </div>
     );
   }

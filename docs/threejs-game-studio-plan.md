@@ -47,7 +47,7 @@ Separate editor-only visibility/locking from whether an object is enabled in the
 
 Essential interactions are click selection, orbit/pan/zoom, focus selection, drag to place, numeric transforms, duplicate, delete, and keyboard undo/redo. Use W/E/R for transform tools only while the viewport has authoring focus; text fields and Play mode must not trigger editor shortcuts. Include trackpad-friendly camera navigation.
 
-Start with single-object transforms. Parent/group movement provides a simple way to move assemblies; advanced multi-selection transforms and complicated pivot modes can wait.
+Support single-object and multi-selection transforms. Parent/group movement provides a simple way to move assemblies, while multi-selection uses an editor-only centroid pivot and preserves authored local transforms.
 
 ### Example inspector
 
