@@ -59,13 +59,41 @@ export const fogSchema = z.discriminatedUnion('type', [
   }),
 ]);
 
+/**
+ * The procedural sky: an atmosphere shaded from a sun direction. It is a document setting rather
+ * than an asset so a game gets a believable sky and image-based lighting without importing an HDR.
+ */
+export const skySchema = z.object({
+  /** Sun height above the horizon in degrees; below zero is dusk. */
+  elevation: finiteNumber.min(-10).max(90).default(20),
+  /** Sun heading in degrees, clockwise from +Z. */
+  azimuth: finiteNumber.min(0).max(360).default(180),
+  /** Haze, 1 (clear) to 20 (overcast). */
+  turbidity: finiteNumber.min(1).max(20).default(6),
+  /** Blue-sky scattering, 0 to 4. */
+  rayleigh: finiteNumber.min(0).max(4).default(1.5),
+});
+
+/**
+ * Image-based lighting applied to every PBR material: `studio` is a neutral indoor light box,
+ * `sky` lights the scene from the procedural sky above (so the sun's colour reaches the ground).
+ */
+export const environmentLightingSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('none') }),
+  z.object({ type: z.literal('studio'), intensity: finiteNumber.min(0).max(10).default(1) }),
+  z.object({ type: z.literal('sky'), intensity: finiteNumber.min(0).max(10).default(1) }),
+]);
+
 export const environmentSchema = z.object({
   background: z
     .discriminatedUnion('type', [
       z.object({ type: z.literal('color'), color: hexColor.default('#202431') }),
+      z.object({ type: z.literal('sky'), blur: finiteNumber.min(0).max(1).default(0) }),
       z.object({ type: z.literal('none') }),
     ])
     .default({ type: 'color', color: '#202431' }),
+  sky: skySchema.prefault({}),
+  lighting: environmentLightingSchema.default({ type: 'none' }),
   fog: fogSchema.default({ type: 'none' }),
   /** Scene-level gravity in metres per second squared. */
   gravity: vec3.default([0, -9.81, 0]),
@@ -90,3 +118,5 @@ export type SceneDocument = z.infer<typeof sceneSchema>;
 export type SceneDocumentInput = z.input<typeof sceneSchema>;
 export type Environment = z.infer<typeof environmentSchema>;
 export type Fog = z.infer<typeof fogSchema>;
+export type Sky = z.infer<typeof skySchema>;
+export type EnvironmentLighting = z.infer<typeof environmentLightingSchema>;

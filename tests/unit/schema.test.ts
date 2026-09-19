@@ -87,6 +87,39 @@ describe('scene schema', () => {
     expect(ground?.editor.helper).toBe(false);
   });
 
+  it('fills in sky and environment lighting for documents written before they existed', () => {
+    const result = parseScene(
+      sceneWith([], {
+        environment: { background: { type: 'color', color: '#181d29' }, fog: { type: 'none' }, gravity: [0, -9.81, 0] },
+      }),
+    );
+    expect(result.ok, formatIssues(result.issues)).toBe(true);
+    const scene = result.value as SceneDocument;
+    expect(scene.environment.lighting).toEqual({ type: 'none' });
+    expect(scene.environment.sky).toEqual({ elevation: 20, azimuth: 180, turbidity: 6, rayleigh: 1.5 });
+  });
+
+  it('accepts a sky background lit from the sky, and rejects a sun below the schema floor', () => {
+    const ok = parseScene(
+      sceneWith([], {
+        environment: {
+          background: { type: 'sky', blur: 0.3 },
+          lighting: { type: 'sky', intensity: 1.5 },
+          sky: { elevation: 45 },
+        },
+      }),
+    );
+    expect(ok.ok, formatIssues(ok.issues)).toBe(true);
+    const scene = ok.value as SceneDocument;
+    expect(scene.environment.background).toEqual({ type: 'sky', blur: 0.3 });
+    expect(scene.environment.sky.elevation).toBe(45);
+    expect(scene.environment.sky.azimuth).toBe(180);
+
+    const bad = parseScene(sceneWith([], { environment: { sky: { elevation: -45 } } }));
+    expect(bad.ok).toBe(false);
+    expect(bad.issues.some((issue) => issue.path.includes('elevation'))).toBe(true);
+  });
+
   it('rejects non-finite transforms', () => {
     const result = parseScene(
       sceneWith([minimalEntity('a', { transform: { position: [Number.NaN, 0, 0] } })]),

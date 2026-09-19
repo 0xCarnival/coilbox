@@ -9,6 +9,15 @@
       "type": "color",
       "color": "#141a25"
     },
+    "sky": {
+      "elevation": 20,
+      "azimuth": 180,
+      "turbidity": 6,
+      "rayleigh": 1.5
+    },
+    "lighting": {
+      "type": "none"
+    },
     "fog": {
       "type": "none"
     },
@@ -63,6 +72,17 @@
           "emissive": "#000000",
           "emissiveIntensity": 1,
           "opacity": 1,
+          "map": null,
+          "normalMap": null,
+          "emissiveMap": null,
+          "textureRepeat": [
+            1,
+            1
+          ],
+          "textureOffset": [
+            0,
+            0
+          ],
           "transparent": false,
           "doubleSided": false,
           "flatShading": false,
@@ -156,6 +176,17 @@
           "emissive": "#000000",
           "emissiveIntensity": 1,
           "opacity": 1,
+          "map": null,
+          "normalMap": null,
+          "emissiveMap": null,
+          "textureRepeat": [
+            1,
+            1
+          ],
+          "textureOffset": [
+            0,
+            0
+          ],
           "transparent": false,
           "doubleSided": false,
           "flatShading": false,
@@ -258,6 +289,17 @@
           "emissive": "#000000",
           "emissiveIntensity": 1,
           "opacity": 1,
+          "map": null,
+          "normalMap": null,
+          "emissiveMap": null,
+          "textureRepeat": [
+            1,
+            1
+          ],
+          "textureOffset": [
+            0,
+            0
+          ],
           "transparent": false,
           "doubleSided": false,
           "flatShading": false,
@@ -360,6 +402,17 @@
           "emissive": "#000000",
           "emissiveIntensity": 1,
           "opacity": 1,
+          "map": null,
+          "normalMap": null,
+          "emissiveMap": null,
+          "textureRepeat": [
+            1,
+            1
+          ],
+          "textureOffset": [
+            0,
+            0
+          ],
           "transparent": false,
           "doubleSided": false,
           "flatShading": false,
@@ -462,6 +515,17 @@
           "emissive": "#000000",
           "emissiveIntensity": 1,
           "opacity": 1,
+          "map": null,
+          "normalMap": null,
+          "emissiveMap": null,
+          "textureRepeat": [
+            1,
+            1
+          ],
+          "textureOffset": [
+            0,
+            0
+          ],
           "transparent": false,
           "doubleSided": false,
           "flatShading": false,
@@ -564,6 +628,17 @@
           "emissive": "#000000",
           "emissiveIntensity": 1,
           "opacity": 1,
+          "map": null,
+          "normalMap": null,
+          "emissiveMap": null,
+          "textureRepeat": [
+            1,
+            1
+          ],
+          "textureOffset": [
+            0,
+            0
+          ],
           "transparent": false,
           "doubleSided": false,
           "flatShading": false,
@@ -666,6 +741,17 @@
           "emissive": "#000000",
           "emissiveIntensity": 1,
           "opacity": 1,
+          "map": null,
+          "normalMap": null,
+          "emissiveMap": null,
+          "textureRepeat": [
+            1,
+            1
+          ],
+          "textureOffset": [
+            0,
+            0
+          ],
           "transparent": false,
           "doubleSided": false,
           "flatShading": false,
