@@ -152,7 +152,6 @@ const styles = stylex.create({
     insetBlockStart: 0,
     insetInlineStart: 0,
     insetInlineEnd: 0,
-    display: 'flex',
   },
   /** The rail spans both rows, so it is a full-height spine down the left edge. */
   railHost: {

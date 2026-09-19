@@ -50,10 +50,10 @@ const styles = stylex.create({
     width: 'auto',
     height: '7px',
     marginInline: 0,
-    marginBlock: '-3px',
+    marginBlock: 0,
     cursor: 'row-resize',
     '::after': {
-      insetBlockStart: '3px',
+      insetBlockStart: 0,
       bottom: 'auto',
       insetInlineStart: 0,
       insetInlineEnd: 0,
