@@ -15,7 +15,8 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
  * loader.
  *
  * KTX2 additionally needs a renderer to pick the GPU texture format to transcode into, which
- * is why it is bound late through `bindRenderer` rather than at construction.
+ * is why it is bound late through `bindRenderer` rather than at construction. Loaders (and their
+ * worker pools) are created on the first `configure` and released by `dispose`.
  */
 export interface DecoderSelection {
   draco?: boolean;
@@ -27,45 +28,46 @@ export const DECODER_EXTENSIONS = ['KHR_draco_mesh_compression', 'EXT_meshopt_co
 export type DecoderExtension = (typeof DECODER_EXTENSIONS)[number];
 
 export class GltfDecoders {
-  private readonly draco: DRACOLoader | null;
-  private readonly ktx2: KTX2Loader | null;
-  private readonly meshopt: boolean;
-  private rendererBound = false;
+  private readonly selection: DecoderSelection;
+  private renderer: THREE.WebGLRenderer | null = null;
+  private draco: DRACOLoader | null = null;
+  private ktx2: KTX2Loader | null = null;
 
   constructor(selection: DecoderSelection = { draco: true, meshopt: true, ktx2: true }) {
-    this.draco = selection.draco === true ? new DRACOLoader() : null;
-    this.ktx2 = selection.ktx2 === true ? new KTX2Loader() : null;
-    this.meshopt = selection.meshopt === true;
+    this.selection = selection;
   }
 
   /** KTX2 transcoding targets the formats this renderer's GPU accepts; call before the first load. */
   bindRenderer(renderer: THREE.WebGLRenderer): void {
-    if (!this.ktx2 || this.rendererBound) return;
-    this.ktx2.detectSupport(renderer);
-    this.rendererBound = true;
+    this.renderer = renderer;
   }
 
   supports(extension: string): boolean {
     switch (extension) {
       case 'KHR_draco_mesh_compression':
-        return this.draco !== null;
+        return this.selection.draco === true;
       case 'EXT_meshopt_compression':
-        return this.meshopt;
+        return this.selection.meshopt === true;
       case 'KHR_texture_basisu':
-        return this.ktx2 !== null && this.rendererBound;
+        return this.selection.ktx2 === true && this.renderer !== null;
       default:
         return false;
     }
   }
 
   configure(loader: GLTFLoader): void {
-    if (this.draco) loader.setDRACOLoader(this.draco);
-    if (this.meshopt) loader.setMeshoptDecoder(MeshoptDecoder);
-    if (this.ktx2 && this.rendererBound) loader.setKTX2Loader(this.ktx2);
+    if (this.selection.draco) loader.setDRACOLoader((this.draco ??= new DRACOLoader()));
+    if (this.selection.meshopt) loader.setMeshoptDecoder(MeshoptDecoder);
+    if (this.selection.ktx2 && this.renderer) {
+      loader.setKTX2Loader((this.ktx2 ??= new KTX2Loader().detectSupport(this.renderer)));
+    }
   }
 
+  /** Terminates the codec workers. The next `configure` starts fresh ones, so a host may reuse the object. */
   dispose(): void {
     this.draco?.dispose();
+    this.draco = null;
     this.ktx2?.dispose();
+    this.ktx2 = null;
   }
 }

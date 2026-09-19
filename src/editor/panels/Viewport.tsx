@@ -269,13 +269,15 @@ export function Viewport({ handleRef, tool, snap, onPlayStateChange, onStatus }:
   sessionRef.current = session;
 
   /** One asset cache per editor session: models stay loaded across Play/Stop cycles. */
+  const decodersRef = useRef<GltfDecoders | null>(null);
   const assetCache = (() => {
     if (!assetCacheRef.current) {
+      decodersRef.current = new GltfDecoders();
       assetCacheRef.current = new AssetCache({
         resolver: session.assetResolver,
         describe: (assetId) => session.assetResolver.getEntry(assetId),
         onWarning: (message) => setError((current) => current ?? message),
-        decoders: new GltfDecoders(),
+        decoders: decodersRef.current,
       });
     }
     return assetCacheRef.current;
@@ -343,6 +345,7 @@ export function Viewport({ handleRef, tool, snap, onPlayStateChange, onStatus }:
       sessionRef.current.setThumbnailRenderer(null);
       unsubscribeAssetReplaced();
       void assetCache.dispose();
+      decodersRef.current?.dispose();
       viewportRef.current = null;
     };
     // The viewport is created once; document changes flow through the sync effect below.

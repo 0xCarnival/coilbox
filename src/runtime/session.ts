@@ -26,7 +26,10 @@ export interface RuntimeSessionOptions {
   assets?: AssetResolver;
   /** Reuse loaded models across scene changes. */
   assetCache?: AssetCache;
-  /** Decoders for compressed glTF, used when the session's worlds create their own cache. */
+  /**
+   * Decoders for compressed glTF, used when the session's worlds create their own cache. The
+   * session owns them: they outlive scene changes and are released by `dispose()`.
+   */
   decoders?: GltfDecoders;
   registry?: BehaviorRegistry;
   hudRoot?: HTMLElement | null;
@@ -107,6 +110,7 @@ export class RuntimeSession {
     if (this.disposed) return;
     this.disposed = true;
     await this.stop();
+    this.options.decoders?.dispose();
   }
 
   /** Load a scene by id, replacing the running world. */
