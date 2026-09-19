@@ -176,6 +176,24 @@ describe('history', () => {
     expect(documentStore.canRedo).toBe(false);
   });
 
+  it('edits the scene environment as one undoable, coalesced step', () => {
+    const documentStore = store();
+    const before = documentStore.scene.environment;
+    for (const elevation of [30, 40, 50]) {
+      documentStore.execute(
+        { kind: 'setSceneEnvironment', patch: { sky: { ...before.sky, elevation }, lighting: { type: 'sky', intensity: 1 } } },
+        { coalesceKey: 'environment:sky' },
+      );
+    }
+    expect(documentStore.currentHistory.size).toBe(1);
+    expect(documentStore.scene.environment.sky.elevation).toBe(50);
+    expect(documentStore.scene.environment.lighting).toEqual({ type: 'sky', intensity: 1 });
+    expect(documentStore.scene.environment.background).toEqual(before.background);
+
+    documentStore.undo();
+    expect(documentStore.scene.environment).toEqual(before);
+  });
+
   it('coalesces consecutive edits that share a coalesce key into one entry', () => {
     const documentStore = store();
     for (const x of [1, 2, 3, 4]) {

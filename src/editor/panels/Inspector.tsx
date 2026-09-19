@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { JSX } from 'react';
 import * as stylex from '@stylexjs/stylex';
-import type { AssetEntry, Component, ComponentType, Entity, JsonValue, Quat, Vec2, Vec3 } from '@schema/index.js';
+import type { AssetEntry, Component, ComponentType, Entity, Environment, JsonValue, Quat, Vec2, Vec3 } from '@schema/index.js';
 import { COMPONENT_TYPES, COMPONENT_LABELS, IDENTITY_QUAT, ZERO_VEC3 } from '@schema/index.js';
 import { color, control, fontFamily, fontSize, space } from '../styles/tokens.stylex.js';
 import { DOM, withDomClass } from '../dom-contract.js';
@@ -452,12 +452,22 @@ export function Inspector({ locked }: { locked: boolean }): JSX.Element {
     if (enabledInput.current) enabledInput.current.indeterminate = mixedEnabled;
   }, [mixedEnabled]);
 
-  if (!entity || !scene) {
+  if (!scene) {
     return (
       <div {...withDomClass(styles.inspector, DOM.inspector)}>
-        <div {...withDomClass(styles.empty, DOM.panelEmpty)}>
-          Select an object to see its properties
+        <div {...withDomClass(styles.empty, DOM.panelEmpty)}>No scene open</div>
+      </div>
+    );
+  }
+
+  if (!entity) {
+    return (
+      <div {...withDomClass(styles.inspector, DOM.inspector)}>
+        <div {...withDomClass(styles.inspectorTitle, DOM.inspectorTitle)}>
+          <strong>{scene.name}</strong>
         </div>
+        <SceneEnvironmentSections environment={scene.environment} locked={locked} />
+        <div {...stylex.props(styles.multiHint)}>Select an object to edit its properties</div>
       </div>
     );
   }
@@ -636,6 +646,161 @@ export function Inspector({ locked }: { locked: boolean }): JSX.Element {
       </div>
     </div>
   );
+}
+
+const BACKGROUND_OPTIONS = [
+  { value: 'color', label: 'Solid colour' },
+  { value: 'sky', label: 'Sky' },
+  { value: 'none', label: 'Transparent' },
+];
+const LIGHTING_OPTIONS = [
+  { value: 'none', label: 'Scene lights only' },
+  { value: 'studio', label: 'Studio' },
+  { value: 'sky', label: 'Sky' },
+];
+const FOG_OPTIONS = [
+  { value: 'none', label: 'None' },
+  { value: 'linear', label: 'Linear' },
+  { value: 'exponential', label: 'Exponential' },
+];
+const SKY_FIELDS: FieldDescriptor[] = [
+  { key: 'elevation', label: 'Sun height (°)', kind: 'number', min: -10, max: 90, step: 1 },
+  { key: 'azimuth', label: 'Sun heading (°)', kind: 'number', min: 0, max: 360, step: 1 },
+  { key: 'turbidity', label: 'Haze', kind: 'number', min: 1, max: 20, step: 0.5 },
+  { key: 'rayleigh', label: 'Blue', kind: 'number', min: 0, max: 4, step: 0.1 },
+];
+const INTENSITY_FIELD: FieldDescriptor = { key: 'intensity', label: 'Intensity', kind: 'number', min: 0, max: 10, step: 0.1 };
+const FOG_COLOR_FIELD: FieldDescriptor = { key: 'color', label: 'Colour', kind: 'color' };
+const FOG_NEAR_FIELD: FieldDescriptor = { key: 'near', label: 'Start (m)', kind: 'number', min: 0, step: 1 };
+const FOG_FAR_FIELD: FieldDescriptor = { key: 'far', label: 'End (m)', kind: 'number', min: 0, step: 1 };
+const FOG_DENSITY_FIELD: FieldDescriptor = { key: 'density', label: 'Density', kind: 'number', min: 0, max: 1, step: 0.005 };
+const BACKGROUND_COLOR_FIELD: FieldDescriptor = { key: 'color', label: 'Colour', kind: 'color' };
+const BACKGROUND_BLUR_FIELD: FieldDescriptor = { key: 'blur', label: 'Blur', kind: 'number', min: 0, max: 1, step: 0.05 };
+
+/**
+ * Scene-wide settings, shown when nothing is selected: the environment is a property of the scene
+ * document, and the inspector is where properties are edited. Each edit is one
+ * `setSceneEnvironment` command, coalesced per field so a scrub is one undo step.
+ */
+function SceneEnvironmentSections({ environment, locked }: { environment: Environment; locked: boolean }): JSX.Element {
+  const session = useSession();
+  const patch = (next: Partial<Environment>, key: string) => {
+    session.execute({ kind: 'setSceneEnvironment', patch: next }, { coalesceKey: `environment:${key}` });
+  };
+  const { background, lighting, fog, sky } = environment;
+  const usesSky = background.type === 'sky' || lighting.type === 'sky';
+  const numberOf = (value: JsonValue, fallback: number) => (isFiniteJsonNumber(value) ? value : fallback);
+
+  return (
+    <>
+      <Section title="Background" defaultOpen>
+        <SelectField
+          label="Background"
+          value={background.type}
+          disabled={locked}
+          options={BACKGROUND_OPTIONS}
+          onValueChange={(next) => {
+            if (next === background.type) return;
+            if (next === 'color') patch({ background: { type: 'color', color: '#202431' } }, 'background');
+            else if (next === 'sky') patch({ background: { type: 'sky', blur: 0 } }, 'background');
+            else patch({ background: { type: 'none' } }, 'background');
+          }}
+        />
+        {background.type === 'color' && (
+          <Field field={BACKGROUND_COLOR_FIELD} value={background.color} disabled={locked} onChange={(value) => {
+            if (isJsonString(value)) patch({ background: { type: 'color', color: value } }, 'background.color');
+          }} />
+        )}
+        {background.type === 'sky' && (
+          <Field field={BACKGROUND_BLUR_FIELD} value={background.blur} disabled={locked} onChange={(value) => {
+            patch({ background: { type: 'sky', blur: numberOf(value, 0) } }, 'background.blur');
+          }} />
+        )}
+      </Section>
+
+      <Section title="Environment light" subtitle={lighting.type === 'none' ? undefined : LIGHTING_OPTIONS.find((option) => option.value === lighting.type)?.label} defaultOpen>
+        <SelectField
+          label="Source"
+          value={lighting.type}
+          disabled={locked}
+          options={LIGHTING_OPTIONS}
+          onValueChange={(next) => {
+            if (next === lighting.type) return;
+            const intensity = lighting.type === 'none' ? 1 : lighting.intensity;
+            if (next === 'studio') patch({ lighting: { type: 'studio', intensity } }, 'lighting');
+            else if (next === 'sky') patch({ lighting: { type: 'sky', intensity } }, 'lighting');
+            else patch({ lighting: { type: 'none' } }, 'lighting');
+          }}
+        />
+        {lighting.type !== 'none' && (
+          <Field field={INTENSITY_FIELD} value={lighting.intensity} disabled={locked} onChange={(value) => {
+            patch({ lighting: { type: lighting.type, intensity: numberOf(value, 1) } }, 'lighting.intensity');
+          }} />
+        )}
+      </Section>
+
+      {usesSky && (
+        <Section title="Sky" defaultOpen>
+          {SKY_FIELDS.map((field) => (
+            <Field
+              key={field.key}
+              field={field}
+              value={sky[skyKey(field.key)]}
+              disabled={locked}
+              onChange={(value) => patch({ sky: { ...sky, [skyKey(field.key)]: numberOf(value, sky[skyKey(field.key)]) } }, `sky.${field.key}`)}
+            />
+          ))}
+        </Section>
+      )}
+
+      <Section title="Fog" subtitle={fog.type === 'none' ? undefined : FOG_OPTIONS.find((option) => option.value === fog.type)?.label} defaultOpen>
+        <SelectField
+          label="Fog"
+          value={fog.type}
+          disabled={locked}
+          options={FOG_OPTIONS}
+          onValueChange={(next) => {
+            if (next === fog.type) return;
+            const color = fog.type === 'none' ? '#dfe6ee' : fog.color;
+            if (next === 'linear') patch({ fog: { type: 'linear', color, near: 10, far: 80 } }, 'fog');
+            else if (next === 'exponential') patch({ fog: { type: 'exponential', color, density: 0.02 } }, 'fog');
+            else patch({ fog: { type: 'none' } }, 'fog');
+          }}
+        />
+        {fog.type !== 'none' && (
+          <Field field={FOG_COLOR_FIELD} value={fog.color} disabled={locked} onChange={(value) => {
+            if (isJsonString(value)) patch({ fog: { ...fog, color: value } }, 'fog.color');
+          }} />
+        )}
+        {fog.type === 'linear' && (
+          <>
+            <Field field={FOG_NEAR_FIELD} value={fog.near} disabled={locked} onChange={(value) => patch({ fog: { ...fog, near: numberOf(value, fog.near) } }, 'fog.near')} />
+            <Field field={FOG_FAR_FIELD} value={fog.far} disabled={locked} onChange={(value) => patch({ fog: { ...fog, far: numberOf(value, fog.far) } }, 'fog.far')} />
+          </>
+        )}
+        {fog.type === 'exponential' && (
+          <Field field={FOG_DENSITY_FIELD} value={fog.density} disabled={locked} onChange={(value) => patch({ fog: { ...fog, density: numberOf(value, fog.density) } }, 'fog.density')} />
+        )}
+      </Section>
+
+      <Section title="Physics">
+        <VectorField
+          label="Gravity (m/s²)"
+          value={environment.gravity}
+          step={0.1}
+          disabled={locked}
+          onChange={(value) => {
+            if (value.length === 3) patch({ gravity: value }, 'gravity');
+          }}
+        />
+      </Section>
+    </>
+  );
+}
+
+const SKY_KEYS = ['elevation', 'azimuth', 'turbidity', 'rayleigh'] as const;
+function skyKey(key: string): (typeof SKY_KEYS)[number] {
+  return SKY_KEYS.find((candidate) => candidate === key) ?? 'elevation';
 }
 
 const SINGLETON: ComponentType[] = ['primitive', 'model', 'camera', 'rigidBody', 'collider', 'animation', 'audio'];
@@ -897,7 +1062,8 @@ function Field({
   field: FieldDescriptor;
   value: JsonValue;
   disabled: boolean;
-  entity: Entity;
+  /** The owning entity, for fields that reference its clips or its siblings. */
+  entity?: Entity;
   onChange(value: JsonValue): void;
 }): JSX.Element {
   const session = useSession();
@@ -1010,7 +1176,7 @@ function Field({
       );
     }
     case 'clip-reference': {
-      const clips = snapshot.modelClips[entity.id] ?? [];
+      const clips = (entity && snapshot.modelClips[entity.id]) ?? [];
       return (
         <SelectField
           label={field.label}
@@ -1036,7 +1202,7 @@ function Field({
           >
             <option value="">None</option>
             {(scene?.entities ?? [])
-              .filter((candidate) => candidate.id !== entity.id)
+              .filter((candidate) => candidate.id !== entity?.id)
               .map((candidate) => (
                 <option key={candidate.id} value={candidate.id}>
                   {candidate.name}

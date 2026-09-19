@@ -4,6 +4,7 @@ import { TransformControls } from 'three/addons/controls/TransformControls.js';
 import type { Entity, SceneDocument, Transform, MaterialComponent } from '@schema/index.js';
 import { applyMaterial, createLight, createPrimitiveMesh, RuntimeWorldError } from '@runtime/scene-graph.js';
 import { disposeSceneResources } from '@runtime/render/viewport.js';
+import { EnvironmentProjection } from '@runtime/render/environment.js';
 import { AnimationController } from '@runtime/animation.js';
 import { loadMaterialTextures, type MaterialTextures, type ModelInstance } from '@runtime/assets/loader.js';
 import type { AssetDropTarget } from '../assets/asset-drop.js';
@@ -356,6 +357,9 @@ export class EditorViewport {
   private width = 1;
   private height = 1;
   private assetProvider: ViewportAssetProvider | null = null;
+  private readonly environment: EnvironmentProjection;
+  /** Editor-only fill, switched off once the document lights itself with an environment. */
+  private readonly fillLights: THREE.Light[] = [];
   private readonly clock = new THREE.Clock();
   private readonly pendingLoads = new Map<string, number>();
   private nextLoadToken = 0;
@@ -372,6 +376,7 @@ export class EditorViewport {
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
 
     this.scene.background = new THREE.Color(SCENE.background);
+    this.environment = new EnvironmentProjection(this.renderer, this.scene);
 
     this.camera = createCamera('perspective');
     this.camera.position.set(7, 5.5, 9);
@@ -400,6 +405,7 @@ export class EditorViewport {
     editorKey.position.set(6, 10, 6);
     editorKey.userData[EDITOR_ONLY] = true;
     this.helpers.add(editorAmbient, editorKey);
+    this.fillLights.push(editorAmbient, editorKey);
 
     this.scene.add(this.root, this.helpers);
     this.pivot.userData[EDITOR_ONLY] = true;
@@ -475,6 +481,7 @@ export class EditorViewport {
     disposeSceneResources(this.root);
     this.boxHelper.geometry.dispose();
     if (this.boxHelper.material instanceof THREE.Material) this.boxHelper.material.dispose();
+    this.environment.dispose();
     this.scene.clear();
     this.renderer.dispose();
   }
@@ -507,9 +514,9 @@ export class EditorViewport {
       // Sibling order in the document drives render order and the hierarchy listing.
       projection.object.renderOrder = entity.order;
     }
-    this.scene.background = new THREE.Color(
-      scene.environment.background.type === 'color' ? scene.environment.background.color : SCENE.background,
-    );
+    this.environment.apply(scene.environment);
+    if (scene.environment.background.type === 'none') this.scene.background = new THREE.Color(SCENE.background);
+    for (const light of this.fillLights) light.visible = scene.environment.lighting.type === 'none';
     this.updateSelectionHelper();
     this.attachTransform();
     /**

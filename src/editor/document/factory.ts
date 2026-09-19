@@ -233,6 +233,8 @@ export function createStarterScene(sceneId: string, name: string): SceneDocument
     activeCameraId: camera.id,
     environment: {
       background: { type: 'color', color: '#202431' },
+      sky: { elevation: 20, azimuth: 180, turbidity: 6, rayleigh: 1.5 },
+      lighting: { type: 'none' },
       fog: { type: 'none' },
       gravity: [0, -9.81, 0],
     },
