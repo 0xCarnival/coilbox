@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { JSX } from 'react';
 import * as stylex from '@stylexjs/stylex';
 import { color } from '../styles/tokens.stylex.js';
@@ -105,6 +105,13 @@ export function ResizeHandle({
   const active = useRef(false);
   const startPointer = useRef(0);
   const startSize = useRef(size);
+  const release = useCallback(() => {
+    if (!active.current) return;
+    active.current = false;
+    setDragging(false);
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+  }, []);
 
   const onPointerDown = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
@@ -126,6 +133,7 @@ export function ResizeHandle({
       const pointer = axis === 'x' ? event.clientX : event.clientY;
       const raw = startSize.current + direction * (pointer - startPointer.current);
       if (onCollapse && collapseBelow !== undefined && raw < collapseBelow) {
+        release();
         onCollapse();
         return;
       }
@@ -138,7 +146,7 @@ export function ResizeHandle({
         max,
       }));
     },
-    [axis, collapseBelow, direction, max, min, onCollapse, onResize],
+    [axis, collapseBelow, direction, max, min, onCollapse, onResize, release],
   );
 
   const onKeyDown = useCallback(
@@ -150,22 +158,30 @@ export function ResizeHandle({
       const pointer = positive ? 16 : -16;
       const raw = size + direction * pointer;
       if (onCollapse && collapseBelow !== undefined && raw < collapseBelow) {
+        release();
         onCollapse();
         return;
       }
       onResize(nextSize({ startSize: size, startPointer: 0, pointer, direction, min, max }));
     },
-    [axis, collapseBelow, direction, max, min, onCollapse, onResize, size],
+    [axis, collapseBelow, direction, max, min, onCollapse, onResize, release, size],
   );
 
   const end = useCallback(() => {
     if (!active.current) return;
-    active.current = false;
-    setDragging(false);
-    document.body.style.cursor = '';
-    document.body.style.userSelect = '';
+    release();
     onCommit?.();
-  }, [onCommit]);
+  }, [onCommit, release]);
+
+  useEffect(
+    () => () => {
+      if (!active.current) return;
+      active.current = false;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    },
+    [],
+  );
 
   return (
     <div
