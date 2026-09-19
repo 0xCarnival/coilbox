@@ -908,7 +908,7 @@ function Field({
               ? [{ value, label: `${value} (missing)` }]
               : []),
           ]}
-          onValueChange={(next) => onChange(next)}
+          onValueChange={(next) => onChange(next === '' && field.nullable ? null : next)}
         />
       );
     }
