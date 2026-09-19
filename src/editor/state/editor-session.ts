@@ -2,6 +2,7 @@ import type { AssetEntry, BehaviorComponent, GameDocument, JsonValue, SceneDocum
 import type { EditorCommand } from '../document/commands.js';
 import { SceneDocumentStore, type SaveState } from '../document/store.js';
 import { SelectionStore } from '../document/selection.js';
+import { duplicateEntities } from '../document/duplicate.js';
 import { WorkspaceClient, WorkspaceClientError, type ProjectDetail, type ProjectSummary } from '../api/client.js';
 import { ApiAssetResolver } from '../api/asset-resolver.js';
 import { BehaviorRegistry } from '@runtime/behaviors/registry.js';
@@ -712,6 +713,23 @@ export class EditorSession {
 
   selectMany(ids: string[], options: { additive?: boolean } = {}): void {
     this.selection.selectMany(ids, options);
+  }
+
+  duplicateSelection(entityIds: string[] = [...this.selection.selectedIds]): boolean {
+    const scene = this.scene;
+    if (!scene || entityIds.length === 0) return false;
+    const duplicate = duplicateEntities(scene, entityIds);
+    if (duplicate.entities.length === 0) return false;
+    const primary = scene.entities.find((entity) => entity.id === entityIds[0]);
+    if (!this.execute({
+      kind: 'insertEntities',
+      entities: duplicate.entities,
+      label: entityIds.length === 1 ? `Duplicate ${primary?.name ?? 'object'}` : `Duplicate ${entityIds.length} objects`,
+    })) {
+      return false;
+    }
+    this.selectMany(duplicate.selectIds);
+    return true;
   }
 
   setThumbnailRenderer(render: ((assetId: string) => Promise<string | null>) | null): void {

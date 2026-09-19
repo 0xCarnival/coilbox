@@ -26,7 +26,6 @@ import { DOM, DOM_STATE, withDomClass } from '../dom-contract.js';
 import { useSession, useSessionSnapshot } from '../hooks.js';
 import { createEntity, reparentPreservingWorldTransform } from '../document/factory.js';
 import { subtreeOf } from '../document/commands.js';
-import { duplicateEntities } from '../document/duplicate.js';
 import { applyAssetDrop, hasAssetDrag, readAssetDrag, type AssetDropTarget } from '../assets/asset-drop.js';
 
 
@@ -393,11 +392,7 @@ export function Hierarchy({ locked }: { locked: boolean }): JSX.Element {
   };
 
   const duplicate = (entity: Entity) => {
-    const result = duplicateEntities(scene, [entity.id]);
-    if (result.entities.length === 0) return;
-    if (session.execute({ kind: 'insertEntities', entities: result.entities, label: `Duplicate ${entity.name}` })) {
-      session.selectMany(result.selectIds);
-    }
+    session.duplicateSelection([entity.id]);
   };
 
   const groupSelection = () => {
@@ -500,9 +495,8 @@ export function Hierarchy({ locked }: { locked: boolean }): JSX.Element {
                 if (locked || !payload) return;
                 event.preventDefault();
                 event.stopPropagation();
-                const target: AssetDropTarget = payload.kind === 'model'
-                  ? { entityId: null, point: [0, 0, 0] }
-                  : { entityId: entity.id, point: [0, 0, 0] };
+                const target: AssetDropTarget =
+                  payload.kind === 'model' ? { entityId: null, point: [0, 0, 0] } : { entityId: entity.id, point: [0, 0, 0] };
                 const result = applyAssetDrop(session, payload, target);
                 session.log(result.ok ? 'info' : 'warning', result.message);
               }}

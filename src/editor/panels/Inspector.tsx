@@ -425,6 +425,10 @@ const styles = stylex.create({
   },
 });
 
+function sameTuple(a: readonly number[], b: readonly number[]): boolean {
+  return a.length === b.length && a.every((value, index) => value === b[index]);
+}
+
 export function Inspector({ locked }: { locked: boolean }): JSX.Element {
   const session = useSession();
   const snapshot = useSessionSnapshot();
@@ -451,24 +455,20 @@ export function Inspector({ locked }: { locked: boolean }): JSX.Element {
 
   if (multi) {
     const applyEnabled = (enabled: boolean) => {
-      session.transaction(
-        'Set enabled state',
-        selectedEntities
-          .filter((candidate) => candidate.enabled !== enabled)
-          .map((candidate) => ({ kind: 'setEntityEnabled' as const, entityId: candidate.id, enabled })),
-      );
+      const commands = selectedEntities
+        .filter((candidate) => candidate.enabled !== enabled)
+        .map((candidate) => ({ kind: 'setEntityEnabled' as const, entityId: candidate.id, enabled }));
+      if (commands.length > 0) session.transaction('Set enabled state', commands);
     };
     const applyTransform = (patch: { position?: Vec3; rotation?: Quat; scale?: Vec3 }, label: string) => {
-      session.transaction(
-        label,
-        selectedEntities
-          .filter((candidate) =>
-            (patch.position !== undefined && JSON.stringify(candidate.transform.position) !== JSON.stringify(patch.position)) ||
-            (patch.rotation !== undefined && JSON.stringify(candidate.transform.rotation) !== JSON.stringify(patch.rotation)) ||
-            (patch.scale !== undefined && JSON.stringify(candidate.transform.scale) !== JSON.stringify(patch.scale)),
-          )
-          .map((candidate) => ({ kind: 'setTransform' as const, entityId: candidate.id, transform: patch })),
-      );
+      const commands = selectedEntities
+        .filter((candidate) =>
+          (patch.position !== undefined && !sameTuple(candidate.transform.position, patch.position)) ||
+          (patch.rotation !== undefined && !sameTuple(candidate.transform.rotation, patch.rotation)) ||
+          (patch.scale !== undefined && !sameTuple(candidate.transform.scale, patch.scale)),
+        )
+        .map((candidate) => ({ kind: 'setTransform' as const, entityId: candidate.id, transform: patch }));
+      if (commands.length > 0) session.transaction(label, commands);
     };
     return (
       <div {...withDomClass(styles.inspector, DOM.inspector)}>

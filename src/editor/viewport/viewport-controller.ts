@@ -1104,13 +1104,21 @@ export class EditorViewport {
     if (event.button === 0 && event.shiftKey && this.transform.axis === null) {
       this.marqueeStart = { x: event.clientX, y: event.clientY };
       this.marqueeActive = false;
+      this.orbit.enabled = false;
     }
   };
 
   private handlePointerMove = (event: PointerEvent): void => {
     if (!this.marqueeStart || this.dragging || this.transform.axis !== null) return;
     if (!this.marqueeActive && Math.hypot(event.clientX - this.marqueeStart.x, event.clientY - this.marqueeStart.y) <= 4) return;
-    this.marqueeActive = true;
+    if (!this.marqueeActive) {
+      this.marqueeActive = true;
+      try {
+        this.canvas.setPointerCapture(event.pointerId);
+      } catch {
+        // Pointer capture can fail when the browser has already cancelled the pointer.
+      }
+    }
     this.orbit.enabled = false;
     const bounds = this.container.getBoundingClientRect();
     const x = this.marqueeStart.x - bounds.left;
@@ -1120,7 +1128,12 @@ export class EditorViewport {
     this.callbacks.onMarquee?.({ x, y, width: currentX - x, height: currentY - y });
   };
 
-  private handlePointerCancel = (): void => {
+  private handlePointerCancel = (event: PointerEvent): void => {
+    try {
+      if (this.canvas.hasPointerCapture(event.pointerId)) this.canvas.releasePointerCapture(event.pointerId);
+    } catch {
+      // The pointer may already have been released by the browser.
+    }
     this.pointerDownAt = null;
     this.marqueeStart = null;
     if (this.marqueeActive) this.callbacks.onMarquee?.(null);
@@ -1135,6 +1148,13 @@ export class EditorViewport {
     this.marqueeActive = false;
     const marqueeStart = this.marqueeStart;
     this.marqueeStart = null;
+    const hadMarqueeStart = marqueeStart !== null;
+    try {
+      if (this.canvas.hasPointerCapture(event.pointerId)) this.canvas.releasePointerCapture(event.pointerId);
+    } catch {
+      // The pointer may already have been released by the browser.
+    }
+    if (hadMarqueeStart) this.orbit.enabled = this.cameraView === null;
     if (marquee && marqueeStart) {
       const bounds = this.container.getBoundingClientRect();
       const current = { x: event.clientX - bounds.left, y: event.clientY - bounds.top };
