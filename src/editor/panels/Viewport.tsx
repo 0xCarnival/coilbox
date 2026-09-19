@@ -140,7 +140,11 @@ const styles = stylex.create({
   },
 });
 
-export type PlayState = 'stopped' | 'running' | 'paused';
+/**
+ * `starting` covers the await between Play being pressed and the runtime existing. The scene
+ * snapshot is taken at the start of it, so the editor has to be locked for the whole interval.
+ */
+export type PlayState = 'stopped' | 'starting' | 'running' | 'paused';
 
 /**
  * The editor view's display settings, as an overlay reads them back.
@@ -255,6 +259,8 @@ export function Viewport({ handleRef, tool, snap, onPlayStateChange, onStatus }:
   const playCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const viewportRef = useRef<EditorViewport | null>(null);
   const sessionRef2 = useRef<RuntimeSession | null>(null);
+  /** True from Play being pressed until the runtime exists or failed; a second Play in that window is ignored. */
+  const startingRef = useRef(false);
   const assetCacheRef = useRef<AssetCache | null>(null);
   const hudRootRef = useRef<HTMLDivElement | null>(null);
   const [playState, setPlayState] = useState<PlayState>('stopped');
@@ -373,6 +379,7 @@ export function Viewport({ handleRef, tool, snap, onPlayStateChange, onStatus }:
   }, [snap]);
 
   const stopPlay = useCallback(() => {
+    if (startingRef.current) return;
     void sessionRef2.current?.dispose();
     sessionRef2.current = null;
     viewportRef.current?.resume();
@@ -381,7 +388,7 @@ export function Viewport({ handleRef, tool, snap, onPlayStateChange, onStatus }:
   }, [onPlayStateChange]);
 
   const play = useCallback(async () => {
-    if (sessionRef2.current) return;
+    if (sessionRef2.current || startingRef.current) return;
     const canvas = playCanvasRef.current;
     const currentScene: SceneDocument | null = sessionRef.current.scene;
     const game = sessionRef.current.game;
@@ -390,6 +397,9 @@ export function Viewport({ handleRef, tool, snap, onPlayStateChange, onStatus }:
       return;
     }
     setError(null);
+    startingRef.current = true;
+    setPlayState('starting');
+    onPlayStateChange('starting');
     try {
       viewportRef.current?.suspend();
       const runtimeSession = await RuntimeSession.create({
@@ -429,6 +439,8 @@ export function Viewport({ handleRef, tool, snap, onPlayStateChange, onStatus }:
       sessionRef.current.log('error', 'Play failed', message);
       setPlayState('stopped');
       onPlayStateChange('stopped');
+    } finally {
+      startingRef.current = false;
     }
   }, [assetCache, onPlayStateChange]);
 
@@ -625,7 +637,7 @@ export function Viewport({ handleRef, tool, snap, onPlayStateChange, onStatus }:
       {playState !== 'stopped' && (
         <div {...withDomClass(styles.badge, DOM.viewportBadge)}>
           <span {...stylex.props(styles.badgeDot)} />
-          {playState === 'paused' ? 'Paused' : 'Play mode'}
+          {playState === 'paused' ? 'Paused' : playState === 'starting' ? 'Starting…' : 'Play mode'}
         </div>
       )}
       {error && (

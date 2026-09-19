@@ -39,7 +39,7 @@ describe('declaredPanels', () => {
 describe('railPanelsFor', () => {
   it('shows every built-in when the project declares none', () => {
     const all = railPanelsFor(null).map((panel) => panel.id);
-    expect(all).toEqual(['objects', 'assets', 'scenes', 'console']);
+    expect(all).toEqual(['objects', 'assets', 'scenes', 'history', 'console']);
   });
 
   it('shows exactly what was declared, in the declared order', () => {
@@ -59,7 +59,7 @@ describe('railPanelsFor', () => {
    */
   it('falls through to every panel when no declared id exists in this build', () => {
     const fallback = railPanelsFor([{ id: 'not-a-panel' }]).map((panel) => panel.id);
-    expect(fallback).toEqual(['objects', 'assets', 'scenes', 'console']);
+    expect(fallback).toEqual(['objects', 'assets', 'scenes', 'history', 'console']);
   });
 
   it('drops unknown ids but keeps the known ones around them', () => {

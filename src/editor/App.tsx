@@ -210,7 +210,7 @@ const styles = stylex.create({
  * arrived from a click handler.
  */
 function isBottomTab(id: string): id is BottomTab {
-  return id === 'assets' || id === 'scenes' || id === 'console';
+  return id === 'assets' || id === 'scenes' || id === 'history' || id === 'console';
 }
 
 
@@ -696,6 +696,7 @@ function StudioShell(): JSX.Element {
                 onReloadScene={() => void session.reloadScene()}
                 tab={bottomTab}
                 onTabChange={setBottomTab}
+                locked={editorLocked}
               />
               <div {...stylex.props(styles.resizeTop)}>
                 <ResizeHandle

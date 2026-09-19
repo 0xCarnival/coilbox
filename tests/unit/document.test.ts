@@ -187,6 +187,50 @@ describe('history', () => {
     expect(documentStore.canRedo).toBe(false);
   });
 
+  it('jumps to any position in the history with one notification', () => {
+    const documentStore = store();
+    const changes: Array<ReturnType<typeof documentStore.snapshot>> = [];
+    documentStore.subscribe((snapshot) => changes.push(snapshot));
+    for (const x of [1, 2, 3]) {
+      documentStore.execute({ kind: 'setTransform', entityId: 'falling-box', transform: { position: [x, 4, 0] } }, { coalesceKey: `step-${x}` });
+    }
+    const position = () => documentStore.scene.entities.find((e) => e.id === 'falling-box')?.transform.position;
+    expect(documentStore.snapshot().historyEntries.map((entry) => entry.label)).toEqual(['Transform Falling Box', 'Transform Falling Box', 'Transform Falling Box']);
+    expect(documentStore.snapshot().historyPosition).toBe(3);
+
+    changes.length = 0;
+    expect(documentStore.jumpTo(1)).toBe(true);
+    expect(position()).toEqual([1, 4, 0]);
+    expect(changes).toHaveLength(1);
+    expect(changes[0]?.historyPosition).toBe(1);
+    expect(documentStore.canRedo).toBe(true);
+
+    expect(documentStore.jumpTo(3)).toBe(true);
+    expect(position()).toEqual([3, 4, 0]);
+    expect(documentStore.jumpTo(3)).toBe(false);
+
+    expect(documentStore.jumpTo(0)).toBe(true);
+    expect(position()).toEqual([0, 4, 0]);
+    // A jump past the ends clamps rather than throwing.
+    expect(documentStore.jumpTo(99)).toBe(true);
+    expect(position()).toEqual([3, 4, 0]);
+  });
+
+  it('reports how many entries were dropped past the history limit', () => {
+    const documentStore = new SceneDocumentStore(probeGame, freshScene(), { history: new CommandHistory({ limit: 2 }) });
+    expect(documentStore.snapshot().historyTrimmed).toBe(0);
+    for (const x of [1, 2, 3, 4]) {
+      documentStore.execute({ kind: 'setTransform', entityId: 'falling-box', transform: { position: [x, 4, 0] } });
+    }
+    expect(documentStore.snapshot().historyEntries).toHaveLength(2);
+    expect(documentStore.snapshot().historyTrimmed).toBe(2);
+    documentStore.jumpTo(0);
+    // The two dropped edits stay applied: position 0 is the oldest kept state, not the opened scene.
+    expect(documentStore.scene.entities.find((e) => e.id === 'falling-box')?.transform.position).toEqual([2, 4, 0]);
+    documentStore.reset(probeGame, freshScene());
+    expect(documentStore.snapshot().historyTrimmed).toBe(0);
+  });
+
   it('edits the scene environment as one undoable, coalesced step', () => {
     const documentStore = store();
     const before = documentStore.scene.environment;

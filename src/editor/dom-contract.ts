@@ -40,6 +40,8 @@ export const DOM = {
   tabs: 'tabs',
   /** Stage 2, 5: log entries are read after a build or a failed load. */
   logList: 'log-list',
+  /** The undo history list; rows jump the document to that step. */
+  historyList: 'history-list',
   /** Stage 1-5: the editor shell is asserted to exist before anything else is driven. */
   studio: 'studio',
   /**

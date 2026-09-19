@@ -38,6 +38,8 @@ export class CommandHistory {
   /** Number of entries that are currently applied; entries beyond it are redoable. */
   private cursor = 0;
   private nextId = 1;
+  /** Entries dropped past the limit; their changes stay applied, so position 0 is not the opened scene. */
+  private trimmed = 0;
   private readonly limit: number;
   private readonly coalesceWindowMs: number;
   private readonly now: () => number;
@@ -80,6 +82,7 @@ export class CommandHistory {
     };
     this.entries.push(entry);
     if (this.entries.length > this.limit) {
+      this.trimmed += this.entries.length - this.limit;
       this.entries = this.entries.slice(this.entries.length - this.limit);
     }
     this.cursor = this.entries.length;
@@ -142,9 +145,15 @@ export class CommandHistory {
     return this.entries.length;
   }
 
+  /** How many older entries were dropped to stay under the limit. */
+  get trimmedCount(): number {
+    return this.trimmed;
+  }
+
   clear(): void {
     this.entries = [];
     this.cursor = 0;
+    this.trimmed = 0;
   }
 
   /** Break coalescing so the next edit starts a new entry. */

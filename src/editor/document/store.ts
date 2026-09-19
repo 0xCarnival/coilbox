@@ -35,6 +35,19 @@ export interface StoreSnapshot {
   undoLabel: string | null;
   redoLabel: string | null;
   historySize: number;
+  /** Every undoable step, oldest first; entries at or beyond `historyPosition` are undone. */
+  historyEntries: readonly HistoryItem[];
+  /** How many of `historyEntries` are currently applied. */
+  historyPosition: number;
+  /** Older entries dropped past the history limit; their changes are applied but not undoable. */
+  historyTrimmed: number;
+}
+
+/** A history entry as panels see it: the label and time, never the commands. */
+export interface HistoryItem {
+  id: number;
+  label: string;
+  timestamp: number;
 }
 
 export interface StoreOptions {
@@ -113,6 +126,9 @@ export class SceneDocumentStore {
       undoLabel: this.undoLabel(),
       redoLabel: this.redoLabel(),
       historySize: this.history.size,
+      historyEntries: this.history.entriesFromOldest().map(({ id, label, timestamp }) => ({ id, label, timestamp })),
+      historyPosition: this.history.position,
+      historyTrimmed: this.history.trimmedCount,
     };
   }
 
@@ -185,6 +201,26 @@ export class SceneDocumentStore {
     return true;
   }
 
+  /**
+   * Undo or redo as many steps as it takes to have exactly `position` entries applied. One
+   * notification at the end, so a jump across ten entries is one re-render and one autosave.
+   */
+  jumpTo(position: number): boolean {
+    const target = Math.max(0, Math.min(position, this.history.size));
+    const from = this.history.position;
+    if (target === from) return false;
+    while (this.history.position > target) {
+      const entry = this.history.undo();
+      if (!entry || !this.applyCommands([...entry.inverses].reverse())) break;
+    }
+    while (this.history.position < target) {
+      const entry = this.history.redo();
+      if (!entry || !this.applyCommands(entry.commands)) break;
+    }
+    this.emit(target < from ? 'undo' : 'redo');
+    return true;
+  }
+
   /** Mark the document as written by the workspace service. */
   markSaved(revision?: number): void {
     if (revision !== undefined) this.sceneDocument = { ...this.sceneDocument, revision };
@@ -212,20 +248,24 @@ export class SceneDocumentStore {
 
   /** Apply an entry's commands or inverses without touching the undo stack. */
   private applyEntry(entry: HistoryEntry, direction: 'undo' | 'redo'): void {
-    const commands = direction === 'undo' ? [...entry.inverses].reverse() : entry.commands;
+    this.applyCommands(direction === 'undo' ? [...entry.inverses].reverse() : entry.commands);
+    this.emit(direction);
+  }
+
+  /** Apply commands in order; on the first that no longer plans, stop and mark the store errored. */
+  private applyCommands(commands: readonly EditorCommand[]): boolean {
     for (const command of commands) {
       const plan = planCommand(this.sceneDocument, command);
       if (!plan.ok) {
         // A history entry that no longer applies means the document was changed behind
         // the editor's back; stop rather than applying half an entry.
         this.saveState = 'error';
-        this.emit(direction === 'undo' ? 'undo' : 'redo');
-        return;
+        return false;
       }
       this.sceneDocument = plan.next;
     }
     this.saveState = 'dirty';
-    this.emit(direction === 'undo' ? 'undo' : 'redo');
+    return true;
   }
 
   private emit(cause: 'execute' | 'undo' | 'redo' | 'reset' | 'saved'): void {
