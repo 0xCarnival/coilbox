@@ -3,7 +3,7 @@ import { parseScene, type SceneDocument } from '@schema/index.js';
 import { createEntityId, planCommand, subtreeOf } from '@editor/document/commands.js';
 import { CommandHistory } from '@editor/document/history.js';
 import { SceneDocumentStore } from '@editor/document/store.js';
-import { createEntity, createStarterScene, reparentPreservingWorldTransform, worldMatrix } from '@editor/document/factory.js';
+import { createEntity, createStarterEntities, createStarterScene, reparentPreservingWorldTransform, worldMatrix } from '@editor/document/factory.js';
 import { probeGame, probeScene } from '@runtime/probe/scene.js';
 
 /**
@@ -25,6 +25,17 @@ function freshScene(): SceneDocument {
 function store(): SceneDocumentStore {
   return new SceneDocumentStore(probeGame, freshScene());
 }
+
+describe('starter entities', () => {
+  it('keeps the canonical ids for a fresh scene and renames around reserved ones', () => {
+    expect(createStarterEntities().map((entity) => entity.id)).toEqual(['ground', 'player', 'game-camera', 'sun']);
+    const renamed = createStarterEntities(['ground', 'sun']);
+    expect(renamed.map((entity) => entity.id)).toEqual(['ground-2', 'player', 'game-camera', 'sun-2']);
+    const scene = freshScene();
+    const result = planCommand(scene, { kind: 'insertEntities', entities: createStarterEntities(scene.entities.map((entity) => entity.id)) });
+    expect(result.ok).toBe(true);
+  });
+});
 
 describe('commands', () => {
   it('plans a transform change with an inverse that restores the previous value', () => {
