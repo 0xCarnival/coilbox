@@ -320,7 +320,6 @@ export function Viewport({ handleRef, tool, snap, onPlayStateChange, onStatus }:
       sessionRef.current.setThumbnailRenderer(null);
       unsubscribeAssetReplaced();
       void assetCache.dispose();
-      assetCacheRef.current = null;
       viewportRef.current = null;
     };
     // The viewport is created once; document changes flow through the sync effect below.
