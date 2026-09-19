@@ -158,6 +158,8 @@ export const fontFamily = stylex.defineVars({
  * uses `defineVars` below.
  */
 export const control = {
+  /** `h-7` — the editor's compact control: toolbar buttons and panel actions. */
+  xs: '28px',
   /** `h-8` — the compact control: toolbar buttons, icon buttons, the scrub field. */
   sm: '32px',
   /** `h-9` — the default control: buttons and inputs in forms and menus. */
@@ -178,6 +180,7 @@ export const control = {
  */
 export const controlSize = stylex.defineVars({
   rail: '56px',
+  xs: '28px',
   sm: '32px',
   md: '36px',
   row: '24px',
@@ -290,10 +293,10 @@ export const button = stylex.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: space.sm,
-    height: control.sm,
-    paddingInline: space.lg,
+    height: control.xs,
+    paddingInline: space.md,
     borderRadius: radius.md,
-    fontSize: fontSize.md,
+    fontSize: fontSize.sm,
     fontWeight: 500,
     whiteSpace: 'nowrap',
     flexShrink: 0,
@@ -344,8 +347,8 @@ export const button = stylex.create({
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    height: control.sm,
-    width: control.sm,
+    height: control.xs,
+    width: control.xs,
     paddingInline: 0,
     borderRadius: radius.md,
     flexShrink: 0,

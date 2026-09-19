@@ -36,7 +36,7 @@ export const segmentedStyles = stylex.create({
   root: {
     display: 'flex',
     alignItems: 'center',
-    height: controlSize.md,
+    height: controlSize.sm,
     padding: '3px',
     borderRadius: radius.lg,
     borderWidth: '1px',
@@ -170,7 +170,7 @@ const action = stylex.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: space.sm,
-    height: controlSize.md,
+    height: controlSize.sm,
     flex: 1,
     minWidth: 0,
     paddingInline: space.lg,

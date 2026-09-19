@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { JSX } from 'react';
 import * as stylex from '@stylexjs/stylex';
 import type { AssetEntry, Component, ComponentType, Entity, JsonValue, Quat, Vec2, Vec3 } from '@schema/index.js';
@@ -18,11 +18,10 @@ import type { BehaviorPropertyDescriptor } from '@runtime/behaviors/types.js';
 import { componentsFor, type CreatableKind } from '../document/factory.js';
 import { isFiniteJsonNumber, isJsonString, jsonQuaternion, jsonVec2, jsonVec3 } from '../json-values.js';
 import { ChevronRight, Plus, Trash2 } from 'lucide-react';
-import { ActionButton, ActionGroup } from '../ui/Controls.js';
 import { useScrub } from '../ui/useScrub.js';
 import { FieldShell, ScrubLabel, Select } from '../ui/Field.js';
 import { Switch } from '../ui/Field.js';
-import { Button } from '../ui/Button.js';
+import { Button, IconButton } from '../ui/Button.js';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -103,8 +102,10 @@ const styles = stylex.create({
     display: 'flex',
     flexDirection: 'column',
   },
-  /** The hairline under a header, separating this section from the next. */
-  sectionHeaderRule: {
+  sectionHeaderRow: {
+    display: 'flex',
+    alignItems: 'center',
+    width: '100%',
     borderBlockEndWidth: '1px',
     borderBlockEndStyle: 'solid',
     borderBlockEndColor: color.border,
@@ -146,6 +147,14 @@ const styles = stylex.create({
       backgroundColor: color.wash,
       color: color.text,
     },
+  },
+  sectionHeaderToggle: {
+    flex: 1,
+    minWidth: 0,
+  },
+  sectionAction: {
+    flexShrink: 0,
+    marginInlineEnd: space.sm,
   },
   /** An open section's header sits on a faint fill: the title belongs to what it opened. */
   sectionHeaderOpen: {
@@ -408,13 +417,40 @@ const styles = stylex.create({
     textAlign: 'center',
     fontSize: fontSize.sm,
   },
+  multiHint: {
+    color: color.dim,
+    fontSize: fontSize.xs,
+    paddingInline: space.lg,
+    paddingBlock: space.sm,
+  },
+  selectedNames: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: space.xs,
+    paddingInline: space.lg,
+    paddingBlock: space.sm,
+    color: color.muted,
+    fontSize: fontSize.sm,
+  },
 });
+
+function sameTuple(a: readonly number[], b: readonly number[]): boolean {
+  return a.length === b.length && a.every((value, index) => value === b[index]);
+}
 
 export function Inspector({ locked }: { locked: boolean }): JSX.Element {
   const session = useSession();
   const snapshot = useSessionSnapshot();
   const scene = session.scene;
   const entity = scene?.entities.find((candidate) => candidate.id === snapshot.primarySelection) ?? null;
+  const selectedEntities = scene ? snapshot.selectedIds.map((id) => scene.entities.find((candidate) => candidate.id === id)).filter((candidate): candidate is Entity => Boolean(candidate)) : [];
+  const multi = selectedEntities.length > 1;
+  const enabledInput = useRef<HTMLInputElement | null>(null);
+  const allEnabled = multi && selectedEntities.every((candidate) => candidate.enabled);
+  const mixedEnabled = multi && selectedEntities.some((candidate) => candidate.enabled) && !allEnabled;
+  useEffect(() => {
+    if (enabledInput.current) enabledInput.current.indeterminate = mixedEnabled;
+  }, [mixedEnabled]);
 
   if (!entity || !scene) {
     return (
@@ -422,6 +458,62 @@ export function Inspector({ locked }: { locked: boolean }): JSX.Element {
         <div {...withDomClass(styles.empty, DOM.panelEmpty)}>
           Select an object to see its properties
         </div>
+      </div>
+    );
+  }
+
+  if (multi) {
+    const applyEnabled = (enabled: boolean) => {
+      const commands = selectedEntities
+        .filter((candidate) => candidate.enabled !== enabled)
+        .map((candidate) => ({ kind: 'setEntityEnabled' as const, entityId: candidate.id, enabled }));
+      if (commands.length > 0) session.transaction('Set enabled state', commands);
+    };
+    const applyTransform = (patch: { position?: Vec3; rotation?: Quat; scale?: Vec3 }, label: string) => {
+      const commands = selectedEntities
+        .filter((candidate) =>
+          (patch.position !== undefined && !sameTuple(candidate.transform.position, patch.position)) ||
+          (patch.rotation !== undefined && !sameTuple(candidate.transform.rotation, patch.rotation)) ||
+          (patch.scale !== undefined && !sameTuple(candidate.transform.scale, patch.scale)),
+        )
+        .map((candidate) => ({ kind: 'setTransform' as const, entityId: candidate.id, transform: patch }));
+      if (commands.length > 0) {
+        session.transaction(label, commands, {
+          coalesceKey: `transform:${selectedEntities.map((candidate) => candidate.id).join(',')}`,
+        });
+      }
+    };
+    return (
+      <div {...withDomClass(styles.inspector, DOM.inspector)}>
+        <div {...withDomClass(styles.inspectorTitle, DOM.inspectorTitle)}>
+          <strong>{selectedEntities.length} objects selected</strong>
+          <label {...stylex.props(styles.enabledToggle)} title="Whether these objects exist in the game">
+            <input
+              ref={enabledInput}
+              type="checkbox"
+              checked={allEnabled}
+              disabled={locked}
+              onChange={(event) => applyEnabled(event.target.checked)}
+            />
+            In game
+          </label>
+        </div>
+        <Section title="Transform" defaultOpen>
+          <VectorField label="Position (m)" value={entity.transform.position} step={0.1} disabled={locked} onChange={(value) => {
+            if (value.length === 3) applyTransform({ position: value }, 'Set position');
+          }} />
+          <RotationField value={entity.transform.rotation} disabled={locked} onChange={(value) => applyTransform({ rotation: value }, 'Set rotation')} />
+          <VectorField label="Scale" value={entity.transform.scale} step={0.05} disabled={locked} onChange={(value) => {
+            if (value.length === 3) applyTransform({ scale: value }, 'Set scale');
+          }} />
+        </Section>
+        <div {...stylex.props(styles.multiHint)}>Edits apply to all selected objects</div>
+        <div {...stylex.props(styles.selectedNames)}>
+          {selectedEntities.map((candidate) => <div key={candidate.id}>{candidate.name}</div>)}
+        </div>
+        <Button disabled={locked} onClick={() => session.execute({ kind: 'deleteEntities', entityIds: selectedEntities.map((candidate) => candidate.id) })}>
+          Delete {selectedEntities.length} objects
+        </Button>
       </div>
     );
   }
@@ -628,7 +720,24 @@ function BehaviorSection({ entity, component, locked }: { entity: Entity; compon
     );
 
   return (
-    <Section title={descriptor?.name ?? component.behaviorId} subtitle={component.behaviorId} defaultOpen>
+    <Section
+      title={descriptor?.name ?? component.behaviorId}
+      subtitle={component.behaviorId}
+      defaultOpen
+      actions={
+        <IconButton
+          label={`Remove ${descriptor?.name ?? component.behaviorId}`}
+          variant="danger"
+          size="row"
+          disabled={locked}
+          onClick={() =>
+            session.execute({ kind: 'removeComponent', entityId: entity.id, componentType: 'behavior' })
+          }
+        >
+          <Trash2 size={control.iconSm} />
+        </IconButton>
+      }
+    >
       {!descriptor && (
         <p {...stylex.props(styles.warn)}>
           “{component.behaviorId}” is not declared in scripts/registry.json, so its properties cannot be edited here.
@@ -682,16 +791,6 @@ function BehaviorSection({ entity, component, locked }: { entity: Entity; compon
             ))}
         </div>
       )}
-      <ActionGroup>
-        <ActionButton
-          label={`Remove ${descriptor?.name ?? component.behaviorId}`}
-          icon={<Trash2 size={control.iconSm} />}
-          disabled={locked}
-          onClick={() =>
-            session.execute({ kind: 'removeComponent', entityId: entity.id, componentType: 'behavior' })
-          }
-        />
-      </ActionGroup>
     </Section>
   );
 }
@@ -737,7 +836,24 @@ function ComponentSection({
   const values: Record<string, JsonValue> = component;
 
   return (
-    <Section title={componentLabel(component)} subtitle={descriptor.summary(component)} defaultOpen>
+    <Section
+      title={componentLabel(component)}
+      subtitle={descriptor.summary(component)}
+      defaultOpen
+      actions={
+        <IconButton
+          label={`Remove ${componentLabel(component)}`}
+          variant="danger"
+          size="row"
+          disabled={locked}
+          onClick={() =>
+            session.execute({ kind: 'removeComponent', entityId: entity.id, componentType: component.type })
+          }
+        >
+          <Trash2 size={control.iconSm} />
+        </IconButton>
+      }
+    >
       {basic.map((field) => (
         <Field
           key={field.key}
@@ -767,25 +883,6 @@ function ComponentSection({
             ))}
         </div>
       )}
-      {/**
-       * The label names the component it removes.
-       *
-       * Each of these read just "Remove", so an entity with four components rendered four identical
-       * full-width danger buttons stacked down the panel with nothing on screen saying which removed
-       * what. The section title above is the only context, and it is a collapsing header, so it is
-       * not reliably there to read.
-       */}
-      <ActionGroup>
-        <ActionButton
-          label={`Remove ${componentLabel(component)}`}
-          icon={<Trash2 size={control.iconSm} />}
-          danger
-          disabled={locked}
-          onClick={() =>
-            session.execute({ kind: 'removeComponent', entityId: entity.id, componentType: component.type })
-          }
-        />
-      </ActionGroup>
     </Section>
   );
 }
@@ -1281,33 +1378,38 @@ function Section({
   title,
   subtitle,
   defaultOpen,
+  actions,
   children,
 }: {
   title: string;
   subtitle?: string;
   defaultOpen?: boolean;
+  actions?: React.ReactNode;
   children: React.ReactNode;
 }): JSX.Element {
   const [open, setOpen] = useState(Boolean(defaultOpen));
   return (
     <section {...withDomClass(styles.section, DOM.section)}>
-      <button
-        {...stylex.props(styles.sectionHeader, styles.sectionHeaderRule, open && styles.sectionHeaderOpen)}
-        type="button"
-        onClick={() => setOpen((value) => !value)}
-        aria-expanded={open}
-      >
-        <span {...withDomClass(styles.sectionTitle, DOM.sectionTitle)}>{title}</span>
-        {subtitle && <span {...stylex.props(styles.sectionSubtitle)}>{subtitle}</span>}
-        {/**
-         * The disclosure sits after the subtitle, not before the title. A leading chevron indents
-         * every heading by its own width, which breaks the left edge the labels below depend on;
-         * trailing it keeps one alignment line down the whole panel.
-         */}
-        <span {...stylex.props(subtitle ? undefined : styles.chevronTrailing)}>
-          <ChevronRight size={14} style={{ transform: open ? 'rotate(90deg)' : undefined, transition: 'transform 120ms ease' }} />
-        </span>
-      </button>
+      <div {...stylex.props(styles.sectionHeaderRow)} role="presentation">
+        <button
+          {...stylex.props(styles.sectionHeader, styles.sectionHeaderToggle, open && styles.sectionHeaderOpen)}
+          type="button"
+          onClick={() => setOpen((value) => !value)}
+          aria-expanded={open}
+        >
+          <span {...withDomClass(styles.sectionTitle, DOM.sectionTitle)}>{title}</span>
+          {subtitle && <span {...stylex.props(styles.sectionSubtitle)}>{subtitle}</span>}
+          {/**
+           * The disclosure sits after the subtitle, not before the title. A leading chevron indents
+           * every heading by its own width, which breaks the left edge the labels below depend on;
+           * trailing it keeps one alignment line down the whole panel.
+           */}
+          <span {...stylex.props(subtitle ? undefined : styles.chevronTrailing)}>
+            <ChevronRight size={14} style={{ transform: open ? 'rotate(90deg)' : undefined, transition: 'transform 120ms ease' }} />
+          </span>
+        </button>
+        {actions && <span {...stylex.props(styles.sectionAction)}>{actions}</span>}
+      </div>
       {open && <div {...stylex.props(styles.sectionBody)}>{children}</div>}
     </section>
   );

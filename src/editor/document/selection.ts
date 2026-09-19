@@ -51,6 +51,15 @@ export class SelectionStore {
     this.set([entityId]);
   }
 
+  selectMany(ids: EntityId[], options: { additive?: boolean } = {}): void {
+    const unique = ids.filter((id, index) => ids.indexOf(id) === index);
+    const next = options.additive
+      ? [...this.ids, ...unique.filter((id) => !this.ids.includes(id))]
+      : unique;
+    if (next.length === this.ids.length && next.every((id, index) => id === this.ids[index])) return;
+    this.set(next);
+  }
+
   clear(): void {
     this.set([]);
   }

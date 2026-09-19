@@ -48,7 +48,7 @@ export class CommandHistory {
     this.now = options.now ?? (() => Date.now());
   }
 
-  push(command: EditorCommand, inverse: EditorCommand[], options: PushOptions = {}): HistoryEntry {
+  push(command: EditorCommand | EditorCommand[], inverse: EditorCommand[], options: PushOptions = {}): HistoryEntry {
     const commands = Array.isArray(command) ? command : [command];
     const timestamp = this.now();
 
@@ -90,8 +90,13 @@ export class CommandHistory {
    * Push a group of commands as one entry. The caller supplies the inverses in the same
    * order as the commands; undo applies them in reverse.
    */
-  pushGroup(label: string, commands: EditorCommand[], inverses: EditorCommand[]): HistoryEntry {
-    return this.push(commands[0] ?? { kind: 'setSceneName', name: label }, inverses, { label });
+  pushGroup(
+    label: string,
+    commands: EditorCommand[],
+    inverses: EditorCommand[],
+    options?: { coalesceKey?: string },
+  ): HistoryEntry {
+    return this.push(commands, inverses, { label, ...options });
   }
 
   canUndo(): boolean {

@@ -143,7 +143,7 @@ export class SceneDocumentStore {
    * The transaction is all-or-nothing: if any command fails to plan, earlier commands in
    * the transaction are rolled back and the failure is reported.
    */
-  transaction(label: string, commands: EditorCommand[]): ExecuteResult {
+  transaction(label: string, commands: EditorCommand[], options?: { coalesceKey?: string }): ExecuteResult {
     const appliedCommands: EditorCommand[] = [];
     const appliedInverses: EditorCommand[] = [];
     const original = this.sceneDocument;
@@ -165,7 +165,7 @@ export class SceneDocumentStore {
       return { ok: false, issues: [{ code: 'empty-transaction', path: 'command', message: 'nothing to do', severity: 'error' }] };
     }
 
-    this.history.pushGroup(label, appliedCommands, appliedInverses);
+    this.history.pushGroup(label, appliedCommands, appliedInverses, options);
     this.saveState = 'dirty';
     this.emit('execute');
     return lastPlan ? { ok: true, plan: lastPlan } : { ok: false, issues: [] };

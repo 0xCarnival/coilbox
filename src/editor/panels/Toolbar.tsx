@@ -61,9 +61,9 @@ const TOOL_LABELS: Record<TransformTool, string> = {
 };
 
 const TOOL_KEYS: Record<TransformTool, string> = {
-  translate: 'W',
-  rotate: 'E',
-  scale: 'R',
+  translate: 'G',
+  rotate: 'R',
+  scale: 'S',
 };
 
 const styles = stylex.create({
@@ -106,7 +106,7 @@ const styles = stylex.create({
     display: 'flex',
     alignItems: 'center',
     gap: space.xs,
-    height: control.sm,
+    height: control.xs,
     paddingInline: space.md,
     borderRadius: radius.md,
     color: color.text,
@@ -127,7 +127,7 @@ const styles = stylex.create({
   /** The scene name is a quieter, secondary identity beside the project. */
   sceneName: {
     width: '150px',
-    height: control.sm,
+    height: control.xs,
     fontSize: fontSize.xs,
     color: color.muted,
     backgroundColor: 'transparent',
@@ -146,7 +146,7 @@ const styles = stylex.create({
     display: 'flex',
     alignItems: 'center',
     gap: space.xs,
-    height: control.sm,
+    height: control.xs,
     paddingInline: space.md,
     borderRadius: radius.md,
     color: color.muted,
@@ -165,7 +165,7 @@ const styles = stylex.create({
     display: 'flex',
     alignItems: 'center',
     gap: space.sm,
-    height: control.sm,
+    height: control.xs,
     paddingInline: space.md,
     borderRadius: radius.md,
     color: color.muted,
