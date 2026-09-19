@@ -125,9 +125,9 @@ const styles = stylex.create({
  * tool. `satisfies` keeps the keys checked while leaving the values as literals.
  */
 const TOOL_HINTS = {
-  translate: 'Drag an arrow to move it. Hold G to snap to the grid.',
-  rotate: 'Drag a ring to rotate it. Hold Shift while dragging for 15° steps.',
-  scale: 'Drag a handle to resize it. Drag the centre to scale uniformly.',
+  translate: 'Drag an arrow to move it. Turn on Snap in the toolbar to snap to the grid.',
+  rotate: 'Drag a ring to rotate it. Turn on Snap in the toolbar to snap to the grid.',
+  scale: 'Drag a handle to resize it. Turn on Snap in the toolbar to snap to the grid.',
 } satisfies Partial<Record<TransformTool, string>>;
 
 export interface HintCardProps {

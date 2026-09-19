@@ -305,7 +305,7 @@ export function CommandPalette({
         id: 'edit:duplicate',
         label: 'Duplicate the selection',
         group: 'Edit',
-        shortcut: '⌘D',
+        shortcut: '⇧D',
         run: () => { session.duplicateSelection(); },
       },
       { id: 'file:save', label: 'Save the scene', group: 'File', shortcut: '⌘S', run: () => void session.save() },
