@@ -953,7 +953,16 @@ export class EditorViewport {
     object.updateWorldMatrix(true, true);
     const box = new THREE.Box3();
     expandContentBounds(object, box);
+    if (box.isEmpty()) box.expandByPoint(new THREE.Vector3().setFromMatrixPosition(object.matrixWorld));
     return box;
+  }
+
+  private isEffectivelyVisible(object: THREE.Object3D): boolean {
+    for (let current: THREE.Object3D | null = object; current !== null; current = current.parent) {
+      if (!current.visible) return false;
+      if (current === this.scene) break;
+    }
+    return true;
   }
 
   private frameBox(box: THREE.Box3): void {
@@ -1170,16 +1179,8 @@ export class EditorViewport {
           !projection.entity.editor.visible ||
           projection.entity.editor.locked ||
           !projection.entity.enabled ||
-          !projection.object.visible
+          !this.isEffectivelyVisible(projection.object)
         ) continue;
-        let visible = true;
-        for (let object: THREE.Object3D | null = projection.object.parent; object && object !== this.scene; object = object.parent) {
-          if (!object.visible) {
-            visible = false;
-            break;
-          }
-        }
-        if (!visible) continue;
         const box = this.entityBounds(projection.object);
         if (box.isEmpty()) continue;
         const center = box.getCenter(new THREE.Vector3()).project(this.camera);
@@ -1207,9 +1208,9 @@ export class EditorViewport {
     this.raycaster.setFromCamera(this.pointer, this.camera);
     const hits = this.raycaster.intersectObjects(this.root.children, true);
     for (const hit of hits) {
-      if (hit.object.userData[EDITOR_ONLY] === true) continue;
+      if (hit.object.userData[EDITOR_ONLY] === true || !this.isEffectivelyVisible(hit.object)) continue;
       const entityId = findEntityId(hit.object);
-      if (entityId) {
+      if (entityId && this.projections.get(entityId)?.entity.enabled) {
         this.callbacks.onSelect(entityId, event.shiftKey || event.metaKey || event.ctrlKey);
         return;
       }
@@ -1223,9 +1224,11 @@ export class EditorViewport {
     this.raycaster.setFromCamera(this.pointer, this.camera);
     const hits = this.raycaster.intersectObjects(this.root.children, true);
     for (const hit of hits) {
-      if (hit.object.userData[EDITOR_ONLY] === true) continue;
+      if (hit.object.userData[EDITOR_ONLY] === true || !this.isEffectivelyVisible(hit.object)) continue;
       const entityId = findEntityId(hit.object);
-      if (entityId) return { entityId, point: [hit.point.x, hit.point.y, hit.point.z] };
+      if (entityId && this.projections.get(entityId)?.entity.enabled) {
+        return { entityId, point: [hit.point.x, hit.point.y, hit.point.z] };
+      }
     }
     const ray = this.raycaster.ray;
     const distance = Math.abs(ray.direction.y) > 1e-6 ? -ray.origin.y / ray.direction.y : 5;
