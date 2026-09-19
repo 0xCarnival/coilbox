@@ -7,6 +7,8 @@ import { disposeSceneResources } from '@runtime/render/viewport.js';
 import { AnimationController } from '@runtime/animation.js';
 import { loadMaterialTextures, type MaterialTextures, type ModelInstance } from '@runtime/assets/loader.js';
 import type { AssetDropTarget } from '../assets/asset-drop.js';
+import { selectionRoots } from '../document/selection-roots.js';
+import { applyPivotDelta, pointsInRect } from './group-transform.js';
 
 /**
  * Editor viewport: an imperative Three.js authoring view owned by one React component.
@@ -30,7 +32,9 @@ export interface SnapSettings {
 
 export interface ViewportCallbacks {
   onSelect(entityId: string | null, additive: boolean): void;
-  onCommitTransform(entityId: string, transform: Partial<Transform>): void;
+  onSelectMany(ids: string[], additive: boolean): void;
+  onCommitTransforms(entries: Array<{ entityId: string; transform: Transform }>): void;
+  onMarquee?(rect: { x: number; y: number; width: number; height: number } | null): void;
   onDragStateChange?(dragging: boolean): void;
   onWarning?(message: string): void;
   /** Reported after a model finishes loading so the inspector can list its clips. */
@@ -328,7 +332,9 @@ export class EditorViewport {
   private readonly helpers = new THREE.Group();
   private readonly grid: THREE.GridHelper;
   private readonly projections = new Map<string, EntityProjection>();
-  private readonly boxHelper: THREE.BoxHelper;
+  private readonly pivot = new THREE.Group();
+  private readonly selectionBox = new THREE.Box3();
+  private readonly boxHelper: THREE.Box3Helper;
 
   private frameHandle: number | null = null;
   private running = false;
@@ -339,6 +345,10 @@ export class EditorViewport {
   private selection: string[] = [];
   private snap: SnapSettings = { enabled: false, translate: 0.5, rotateDegrees: 15, scale: 0.25 };
   private pointerDownAt: { x: number; y: number } | null = null;
+  private marqueeStart: { x: number; y: number } | null = null;
+  private marqueeActive = false;
+  private pivotStart: THREE.Matrix4 | null = null;
+  private readonly rootStartWorlds = new Map<string, THREE.Matrix4>();
   private disposed = false;
   private lastSyncedScene: SceneDocument | null = null;
   private resizeObserver: ResizeObserver | null = null;
@@ -392,21 +402,25 @@ export class EditorViewport {
     this.helpers.add(editorAmbient, editorKey);
 
     this.scene.add(this.root, this.helpers);
+    this.pivot.userData[EDITOR_ONLY] = true;
+    this.scene.add(this.pivot);
 
     this.transform = new TransformControls(this.camera, this.canvas);
     this.transform.setSize(0.9);
     this.transform.addEventListener('dragging-changed', this.handleDraggingChanged);
+    this.transform.addEventListener('objectChange', this.handleTransformObjectChange);
     this.transform.addEventListener('mouseUp', this.handleTransformCommit);
     const helper = this.transform.getHelper();
     helper.userData[EDITOR_ONLY] = true;
     this.scene.add(helper);
 
-    this.boxHelper = new THREE.BoxHelper(new THREE.Object3D(), new THREE.Color(SCENE.selection));
+    this.boxHelper = new THREE.Box3Helper(this.selectionBox, new THREE.Color(SCENE.selection));
     this.boxHelper.visible = false;
     this.boxHelper.userData[EDITOR_ONLY] = true;
     this.scene.add(this.boxHelper);
 
     this.canvas.addEventListener('pointerdown', this.handlePointerDown);
+    this.canvas.addEventListener('pointermove', this.handlePointerMove);
     this.canvas.addEventListener('pointerup', this.handlePointerUp);
     this.canvas.addEventListener('pointercancel', this.handlePointerCancel);
 
@@ -447,9 +461,11 @@ export class EditorViewport {
     for (const projection of this.projections.values()) this.disposeProjectionChildren(projection);
     this.stop();
     this.canvas.removeEventListener('pointerdown', this.handlePointerDown);
+    this.canvas.removeEventListener('pointermove', this.handlePointerMove);
     this.canvas.removeEventListener('pointerup', this.handlePointerUp);
     this.canvas.removeEventListener('pointercancel', this.handlePointerCancel);
     this.transform.removeEventListener('dragging-changed', this.handleDraggingChanged);
+    this.transform.removeEventListener('objectChange', this.handleTransformObjectChange);
     this.transform.removeEventListener('mouseUp', this.handleTransformCommit);
     this.transform.detach();
     this.transform.dispose();
@@ -495,6 +511,7 @@ export class EditorViewport {
       scene.environment.background.type === 'color' ? scene.environment.background.color : SCENE.background,
     );
     this.updateSelectionHelper();
+    this.attachTransform();
     /**
      * Last, because it reads the transforms just written.
      *
@@ -840,6 +857,26 @@ export class EditorViewport {
         return;
       }
     }
+    if (this.selection.length > 1) {
+      const parentOf = (id: string): string | null =>
+        this.lastSyncedScene?.entities.find((entity) => entity.id === id)?.parentId ?? null;
+      const roots = selectionRoots(this.selection, parentOf);
+      const objects = roots.map((id) => this.projections.get(id)?.object).filter((object): object is THREE.Group => Boolean(object));
+      if (objects.length > 0) {
+        const center = new THREE.Vector3();
+        for (const object of objects) {
+          object.updateWorldMatrix(true, false);
+          center.add(new THREE.Vector3().setFromMatrixPosition(object.matrixWorld));
+        }
+        center.multiplyScalar(1 / objects.length);
+        this.pivot.position.copy(center);
+        this.pivot.quaternion.identity();
+        this.pivot.scale.setScalar(1);
+        this.pivot.updateMatrixWorld(true);
+        this.transform.attach(this.pivot);
+        return;
+      }
+    }
     this.transform.detach();
   }
 
@@ -848,12 +885,17 @@ export class EditorViewport {
       this.boxHelper.visible = false;
       return;
     }
-    const object = this.projections.get(this.selection[0]!)?.object;
-    if (!object) {
+    this.selectionBox.makeEmpty();
+    for (const id of this.selection) {
+      const object = this.projections.get(id)?.object;
+      if (!object) continue;
+      this.selectionBox.union(new THREE.Box3().setFromObject(object));
+    }
+    if (this.selectionBox.isEmpty()) {
       this.boxHelper.visible = false;
       return;
     }
-    this.boxHelper.setFromObject(object);
+    this.boxHelper.box.copy(this.selectionBox);
     this.boxHelper.visible = true;
   }
 
@@ -879,8 +921,21 @@ export class EditorViewport {
   }
 
   focusSelection(): void {
-    const object = this.selection.length === 1 ? this.projections.get(this.selection[0]!)?.object : this.root;
-    if (object) this.frame(object);
+    if (this.selection.length === 1) {
+      const object = this.projections.get(this.selection[0]!)?.object;
+      if (object) this.frame(object);
+      return;
+    }
+    if (this.selection.length > 1) {
+      const box = new THREE.Box3();
+      for (const id of this.selection) {
+        const object = this.projections.get(id)?.object;
+        if (object) box.union(new THREE.Box3().setFromObject(object));
+      }
+      this.frameBox(box);
+      return;
+    }
+    this.frame(this.root);
   }
 
   /**
@@ -891,10 +946,14 @@ export class EditorViewport {
    * the part with the trigonometry in it.
    */
   private frame(object: THREE.Object3D): void {
-    this.exitCameraView();
     object.updateWorldMatrix(false, true);
     const box = new THREE.Box3();
     expandContentBounds(object, box);
+    this.frameBox(box);
+  }
+
+  private frameBox(box: THREE.Box3): void {
+    this.exitCameraView();
     if (box.isEmpty()) {
       this.orbit.target.set(0, 0.5, 0);
       return;
@@ -930,6 +989,22 @@ export class EditorViewport {
 
   private handleDraggingChanged = (event: { value: unknown }): void => {
     this.dragging = Boolean(event.value);
+    if (this.dragging && this.selection.length > 1) {
+      const parentOf = (id: string): string | null =>
+        this.lastSyncedScene?.entities.find((entity) => entity.id === id)?.parentId ?? null;
+      this.rootStartWorlds.clear();
+      this.pivot.updateMatrixWorld(true);
+      this.pivotStart = this.pivot.matrixWorld.clone();
+      for (const id of selectionRoots(this.selection, parentOf)) {
+        const object = this.projections.get(id)?.object;
+        if (!object) continue;
+        object.updateWorldMatrix(true, false);
+        this.rootStartWorlds.set(id, object.matrixWorld.clone());
+      }
+    } else if (!this.dragging) {
+      this.pivotStart = null;
+      this.rootStartWorlds.clear();
+    }
     /**
      * Orbit stays off while the game camera's view is held.
      *
@@ -941,21 +1016,43 @@ export class EditorViewport {
     this.callbacks.onDragStateChange?.(this.dragging);
   };
 
+  private handleTransformObjectChange = (): void => {
+    if (!this.dragging || !this.pivotStart || this.rootStartWorlds.size === 0) return;
+    this.pivot.updateMatrixWorld(true);
+    const worlds = applyPivotDelta(this.pivotStart, this.pivot.matrixWorld, this.rootStartWorlds);
+    for (const [id, world] of worlds) {
+      const object = this.projections.get(id)?.object;
+      if (!object || !object.parent) continue;
+      object.parent.updateWorldMatrix(true, false);
+      const local = object.parent.matrixWorld.clone().invert().multiply(world);
+      local.decompose(object.position, object.quaternion, object.scale);
+    }
+    this.updateSelectionHelper();
+  };
+
   private handleTransformCommit = (): void => {
     // A cancelled drag still ends with a release; it must not become an undoable command.
     if (this.cancelPending) {
       this.cancelPending = false;
       return;
     }
-    const entityId = this.selection[0];
-    if (!entityId) return;
-    const object = this.projections.get(entityId)?.object;
-    if (!object) return;
-    this.callbacks.onCommitTransform(entityId, {
-      position: [object.position.x, object.position.y, object.position.z],
-      rotation: [object.quaternion.x, object.quaternion.y, object.quaternion.z, object.quaternion.w],
-      scale: [object.scale.x, object.scale.y, object.scale.z],
-    });
+    const parentOf = (id: string): string | null =>
+      this.lastSyncedScene?.entities.find((entity) => entity.id === id)?.parentId ?? null;
+    const ids = this.selection.length > 1 ? selectionRoots(this.selection, parentOf) : this.selection;
+    const entries: Array<{ entityId: string; transform: Transform }> = [];
+    for (const entityId of ids) {
+      const object = this.projections.get(entityId)?.object;
+      if (!object) continue;
+      entries.push({
+        entityId,
+        transform: {
+          position: [object.position.x, object.position.y, object.position.z],
+          rotation: [object.quaternion.x, object.quaternion.y, object.quaternion.z, object.quaternion.w],
+          scale: [object.scale.x, object.scale.y, object.scale.z],
+        },
+      });
+    }
+    if (entries.length > 0) this.callbacks.onCommitTransforms(entries);
   };
 
   /**
@@ -972,8 +1069,10 @@ export class EditorViewport {
     if (!this.dragging) return false;
     this.cancelPending = true;
     this.transform.reset();
-    const entityId = this.selection[0];
-    if (scene && entityId) this.restoreProjection(scene, entityId);
+    const parentOf = (id: string): string | null =>
+      scene?.entities.find((entity) => entity.id === id)?.parentId ?? null;
+    const ids = this.selection.length > 1 ? selectionRoots(this.selection, parentOf) : this.selection;
+    if (scene) for (const entityId of ids) this.restoreProjection(scene, entityId);
     try {
       this.canvas.dispatchEvent(new PointerEvent('pointerup', { pointerId: this.pointerId, button: 0, bubbles: true }));
     } catch {
@@ -983,6 +1082,7 @@ export class EditorViewport {
     /** Guarded for the same reason as `handleDraggingChanged`: camera view keeps orbit switched off. */
     this.orbit.enabled = this.cameraView === null;
     this.callbacks.onDragStateChange?.(false);
+    this.attachTransform();
     return true;
   }
 
@@ -1001,15 +1101,59 @@ export class EditorViewport {
   private handlePointerDown = (event: PointerEvent): void => {
     this.pointerDownAt = { x: event.clientX, y: event.clientY };
     this.pointerId = event.pointerId;
+    if (event.button === 0 && event.shiftKey && this.transform.axis === null) {
+      this.marqueeStart = { x: event.clientX, y: event.clientY };
+      this.marqueeActive = false;
+    }
+  };
+
+  private handlePointerMove = (event: PointerEvent): void => {
+    if (!this.marqueeStart || this.dragging || this.transform.axis !== null) return;
+    if (!this.marqueeActive && Math.hypot(event.clientX - this.marqueeStart.x, event.clientY - this.marqueeStart.y) <= 4) return;
+    this.marqueeActive = true;
+    this.orbit.enabled = false;
+    const bounds = this.container.getBoundingClientRect();
+    const x = this.marqueeStart.x - bounds.left;
+    const y = this.marqueeStart.y - bounds.top;
+    const currentX = event.clientX - bounds.left;
+    const currentY = event.clientY - bounds.top;
+    this.callbacks.onMarquee?.({ x, y, width: currentX - x, height: currentY - y });
   };
 
   private handlePointerCancel = (): void => {
     this.pointerDownAt = null;
+    this.marqueeStart = null;
+    if (this.marqueeActive) this.callbacks.onMarquee?.(null);
+    this.marqueeActive = false;
+    this.orbit.enabled = this.cameraView === null;
   };
 
   private handlePointerUp = (event: PointerEvent): void => {
     const down = this.pointerDownAt;
     this.pointerDownAt = null;
+    const marquee = this.marqueeActive;
+    this.marqueeActive = false;
+    const marqueeStart = this.marqueeStart;
+    this.marqueeStart = null;
+    if (marquee && marqueeStart) {
+      const bounds = this.container.getBoundingClientRect();
+      const current = { x: event.clientX - bounds.left, y: event.clientY - bounds.top };
+      const start = { x: marqueeStart.x - bounds.left, y: marqueeStart.y - bounds.top };
+      const projected = new Map<string, { x: number; y: number }>();
+      for (const [id, projection] of this.projections) {
+        if (projection.object.userData[EDITOR_ONLY] === true || !projection.entity.editor.visible || projection.entity.editor.locked) continue;
+        const center = new THREE.Box3().setFromObject(projection.object).getCenter(new THREE.Vector3()).project(this.camera);
+        if (center.z > 1) continue;
+        projected.set(id, {
+          x: ((center.x + 1) / 2) * bounds.width,
+          y: ((-center.y + 1) / 2) * bounds.height,
+        });
+      }
+      this.callbacks.onSelectMany(pointsInRect(projected, { x: start.x, y: start.y, width: current.x - start.x, height: current.y - start.y }), true);
+      this.callbacks.onMarquee?.(null);
+      this.orbit.enabled = this.cameraView === null;
+      return;
+    }
     if (!down || this.dragging) return;
     // Treat anything beyond a few pixels as an orbit/pan gesture, not a click.
     if (Math.hypot(event.clientX - down.x, event.clientY - down.y) > 4) return;
@@ -1135,6 +1279,7 @@ export class EditorViewport {
     const helper = this.transform.getHelper();
     this.transform.detach();
     this.transform.removeEventListener('dragging-changed', this.handleDraggingChanged);
+    this.transform.removeEventListener('objectChange', this.handleTransformObjectChange);
     this.transform.removeEventListener('mouseUp', this.handleTransformCommit);
     this.scene.remove(helper);
     this.transform.dispose();
@@ -1164,6 +1309,7 @@ export class EditorViewport {
     this.transform = new TransformControls(this.camera, this.canvas);
     this.transform.setSize(0.9);
     this.transform.addEventListener('dragging-changed', this.handleDraggingChanged);
+    this.transform.addEventListener('objectChange', this.handleTransformObjectChange);
     this.transform.addEventListener('mouseUp', this.handleTransformCommit);
     const nextHelper = this.transform.getHelper();
     nextHelper.userData[EDITOR_ONLY] = true;
@@ -1564,7 +1710,7 @@ export class EditorViewport {
     this.frameHandle = requestAnimationFrame(this.renderLoop);
     const delta = Math.min(this.clock.getDelta(), 0.1);
     for (const projection of this.projections.values()) projection.animation?.update(delta);
-    if (this.selection.length > 0) this.boxHelper.setFromObject(this.projections.get(this.selection[0]!)?.object ?? this.boxHelper);
+    if (this.selection.length > 0) this.updateSelectionHelper();
     this.renderNow();
   };
 

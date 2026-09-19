@@ -710,6 +710,10 @@ export class EditorSession {
     this.selection.select(entityId, options);
   }
 
+  selectMany(ids: string[], options: { additive?: boolean } = {}): void {
+    this.selection.selectMany(ids, options);
+  }
+
   setThumbnailRenderer(render: ((assetId: string) => Promise<string | null>) | null): void {
     this.thumbnailRenderer = render;
   }
