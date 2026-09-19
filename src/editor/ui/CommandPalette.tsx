@@ -238,9 +238,9 @@ export function CommandPalette({
 
     return [
       ...createActions,
-      { id: 'tool:translate', label: 'Tool: Move', group: 'Tools', shortcut: 'W', run: () => onToolChange('translate') },
-      { id: 'tool:rotate', label: 'Tool: Rotate', group: 'Tools', shortcut: 'E', run: () => onToolChange('rotate') },
-      { id: 'tool:scale', label: 'Tool: Scale', group: 'Tools', shortcut: 'R', run: () => onToolChange('scale') },
+      { id: 'tool:translate', label: 'Tool: Move', group: 'Tools', shortcut: 'G', run: () => onToolChange('translate') },
+      { id: 'tool:rotate', label: 'Tool: Rotate', group: 'Tools', shortcut: 'R', run: () => onToolChange('rotate') },
+      { id: 'tool:scale', label: 'Tool: Scale', group: 'Tools', shortcut: 'S', run: () => onToolChange('scale') },
       { id: 'tool:focus', label: 'Focus the selection', group: 'Tools', shortcut: 'F', run: onFocusSelection },
       { id: 'view:front', label: 'View: front', group: 'View', shortcut: '1', run: () => view.face({ axis: 'z', sign: 1 }) },
       { id: 'view:right', label: 'View: right', group: 'View', shortcut: '3', run: () => view.face({ axis: 'x', sign: 1 }) },
@@ -284,6 +284,29 @@ export function CommandPalette({
           if (!primary) return;
           session.execute({ kind: 'deleteEntities', entityIds: [...snapshot.selectedIds] });
         },
+      },
+      {
+        id: 'edit:select-all',
+        label: 'Select all objects',
+        group: 'Edit',
+        shortcut: 'A',
+        run: () => {
+          if (scene) session.selectMany(scene.entities.map((candidate) => candidate.id));
+        },
+      },
+      {
+        id: 'edit:deselect',
+        label: 'Deselect',
+        group: 'Edit',
+        shortcut: '⌥A',
+        run: () => session.select(null),
+      },
+      {
+        id: 'edit:duplicate',
+        label: 'Duplicate the selection',
+        group: 'Edit',
+        shortcut: '⇧D',
+        run: () => { session.duplicateSelection(); },
       },
       { id: 'file:save', label: 'Save the scene', group: 'File', shortcut: '⌘S', run: () => void session.save() },
       { id: 'file:reload', label: 'Reload the scene from disk', group: 'File', run: () => void session.reloadScene() },

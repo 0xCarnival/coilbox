@@ -200,6 +200,35 @@ describe('history', () => {
     expect(entity?.transform.position).toEqual([0, 4, 0]);
   });
 
+  it('redos every command in a transaction', () => {
+    const documentStore = store();
+    expect(documentStore.transaction('Move two objects', [
+      { kind: 'setTransform', entityId: 'falling-box', transform: { position: [2, 1, 0] } },
+      { kind: 'setTransform', entityId: 'ground', transform: { position: [0, -1, 0] } },
+    ]).ok).toBe(true);
+    documentStore.undo();
+    documentStore.redo();
+    expect(documentStore.scene.entities.find((entity) => entity.id === 'falling-box')?.transform.position).toEqual([2, 1, 0]);
+    expect(documentStore.scene.entities.find((entity) => entity.id === 'ground')?.transform.position).toEqual([0, -1, 0]);
+  });
+
+  it('coalesces transactions with the same key into one history entry', () => {
+    const documentStore = store();
+    const initialGround = documentStore.scene.entities.find((entity) => entity.id === 'ground')?.transform.position;
+    expect(documentStore.transaction('Move two objects', [
+      { kind: 'setTransform', entityId: 'falling-box', transform: { position: [1, 1, 0] } },
+      { kind: 'setTransform', entityId: 'ground', transform: { position: [0, -1, 0] } },
+    ], { coalesceKey: 'transform:falling-box,ground' }).ok).toBe(true);
+    expect(documentStore.transaction('Move two objects', [
+      { kind: 'setTransform', entityId: 'falling-box', transform: { position: [2, 2, 0] } },
+      { kind: 'setTransform', entityId: 'ground', transform: { position: [0, -2, 0] } },
+    ], { coalesceKey: 'transform:falling-box,ground' }).ok).toBe(true);
+    expect(documentStore.currentHistory.size).toBe(1);
+    documentStore.undo();
+    expect(documentStore.scene.entities.find((entity) => entity.id === 'falling-box')?.transform.position).toEqual([0, 4, 0]);
+    expect(documentStore.scene.entities.find((entity) => entity.id === 'ground')?.transform.position).toEqual(initialGround);
+  });
+
   it('rolls a transaction back entirely when one command fails', () => {
     const documentStore = store();
     const result = documentStore.transaction('Bad move', [

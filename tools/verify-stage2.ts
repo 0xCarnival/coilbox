@@ -294,7 +294,8 @@ async function main(): Promise<void> {
     });
 
     // --- keyboard focus (plan §16) ------------------------------------------------
-    // Typing in a field must not reach the editor's shortcuts: W/E/R switch tools and Delete
+    // Typing in a field must not reach the editor's shortcuts: G/R/S switch tools, X deletes,
+    // A selects all, and Shift+D duplicates, so a rename that triggered them would silently edit the scene.
     // removes the selection, so a rename that triggered them would silently edit the scene.
     await page.click('.tree-row:has-text("Crate A")');
     await page.locator('.toolbar-group[aria-label="Transform tool"] button:has-text("Move")').click();
@@ -304,6 +305,11 @@ async function main(): Promise<void> {
     await nameField.press('w');
     await nameField.press('e');
     await nameField.press('r');
+    await nameField.press('g');
+    await nameField.press('s');
+    await nameField.press('x');
+    await nameField.press('a');
+    await nameField.press('Shift+D');
     await nameField.press('Delete');
     const focusState = await page.evaluate(() => {
       const session = window.__STUDIO__?.session;

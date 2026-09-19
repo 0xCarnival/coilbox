@@ -61,9 +61,9 @@ const TOOL_LABELS: Record<TransformTool, string> = {
 };
 
 const TOOL_KEYS: Record<TransformTool, string> = {
-  translate: 'W',
-  rotate: 'E',
-  scale: 'R',
+  translate: 'G',
+  rotate: 'R',
+  scale: 'S',
 };
 
 const styles = stylex.create({

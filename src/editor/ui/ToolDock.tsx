@@ -149,9 +149,9 @@ export interface ToolDockProps {
 }
 
 const TOOLS: ReadonlyArray<{ tool: TransformTool; label: string; key: string; Icon: typeof Move }> = [
-  { tool: 'translate', label: 'Move', key: 'W', Icon: Move },
-  { tool: 'rotate', label: 'Rotate', key: 'E', Icon: RotateCw },
-  { tool: 'scale', label: 'Scale', key: 'R', Icon: Maximize2 },
+  { tool: 'translate', label: 'Move', key: 'G', Icon: Move },
+  { tool: 'rotate', label: 'Rotate', key: 'R', Icon: RotateCw },
+  { tool: 'scale', label: 'Scale', key: 'S', Icon: Maximize2 },
 ];
 
 export function ToolDock({
@@ -251,7 +251,7 @@ export function ToolDock({
       <button
         {...stylex.props(styles.tool)}
         type="button"
-        title="Duplicate (Ctrl+D)"
+        title="Duplicate (Shift+D)"
         aria-label="Duplicate"
         disabled={!entity || busy}
         onClick={duplicate}
@@ -295,7 +295,6 @@ export function ToolDock({
         onClick={() => onSnapChange({ ...snap, enabled: !snap.enabled })}
       >
         <Ruler size={16} />
-        <span {...stylex.props(styles.key, snap.enabled && styles.keyActive)}>G</span>
       </button>
     </div>
   );
