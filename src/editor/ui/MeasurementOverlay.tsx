@@ -61,7 +61,7 @@ const styles = stylex.create({
     borderWidth: '1px',
     borderStyle: 'solid',
     borderColor: color.border,
-    backgroundColor: 'rgba(23, 23, 23, 0.9)',
+    backgroundColor: color.overlay,
     backdropFilter: 'blur(6px)',
     whiteSpace: 'nowrap',
     pointerEvents: 'none',

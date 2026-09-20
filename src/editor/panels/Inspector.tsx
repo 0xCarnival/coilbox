@@ -3,7 +3,7 @@ import type { JSX } from 'react';
 import * as stylex from '@stylexjs/stylex';
 import type { AssetEntry, Component, ComponentType, Entity, Environment, JsonValue, Quat, Vec2, Vec3 } from '@schema/index.js';
 import { COMPONENT_TYPES, COMPONENT_LABELS, IDENTITY_QUAT, ZERO_VEC3 } from '@schema/index.js';
-import { color, control, fontFamily, fontSize, space } from '../styles/tokens.stylex.js';
+import { color, control, controlSize, fontFamily, fontSize, space } from '../styles/tokens.stylex.js';
 import { DOM, withDomClass } from '../dom-contract.js';
 import { useSession, useSessionSnapshot } from '../hooks.js';
 import {
@@ -238,7 +238,7 @@ const styles = stylex.create({
   fieldInput: {
     flex: 1,
     minWidth: 0,
-    height: '24px',
+    height: controlSize.row,
     paddingInline: space.xs,
     backgroundColor: 'transparent',
     borderWidth: 0,

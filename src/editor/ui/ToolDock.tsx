@@ -53,9 +53,9 @@ const styles = stylex.create({
      * A translucent surface with a blur, not an opaque one. The dock floats over the render, and a
      * solid plate in the middle of the canvas reads as part of the scene rather than as UI above it.
      */
-    backgroundColor: 'rgba(23, 23, 23, 0.88)',
+    backgroundColor: color.overlay,
     backdropFilter: 'blur(10px)',
-    boxShadow: '0 12px 32px rgba(0, 0, 0, 0.5)',
+    boxShadow: `0 12px 32px ${color.shadow}`,
     zIndex: 40,
   },
   divider: {

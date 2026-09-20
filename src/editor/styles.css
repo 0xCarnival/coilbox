@@ -12,7 +12,9 @@
  *    rectangle around itself has to say so deliberately, in a component.
  * 2. **The design tokens** — the `:root` custom properties below are emitted by
  *    `styles/tokens.stylex.ts` via `stylex.defineVars`, and are duplicated here so plain CSS can read
- *    them too. They are the same names and values; the token file is the place to change them.
+ *    them too. They are the same names and values; the token file is the place to change them. The
+ *    `[data-theme='light']` block mirrors `styles/themes.stylex.ts` the same way: `state/theme.ts`
+ *    writes the resolved theme onto `<html>`, and these rules are how the element defaults follow.
  * 3. **Descendant rules over non-StyleX markup** — `.hud-host .coilbox-hud` positions the runtime
  *    HUD, whose elements are created by `src/runtime/hud/hud.ts` and therefore carry no `stylex`
  *    class. This is the one seam where editor CSS legitimately reaches runtime DOM.
@@ -53,11 +55,41 @@
   --wash: rgba(255, 255, 255, 0.05);
   --wash-strong: rgba(255, 255, 255, 0.1);
   --ring: #8a8a8a;
+  --ring-soft: rgba(138, 138, 138, 0.5);
+  --field: rgba(255, 255, 255, 0.045);
   --danger: #ff6467;
   --warn: #e8b04b;
   --ok: #77b892;
 
   font-synthesis: none;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --bg: #ffffff;
+  --panel: #ffffff;
+  --panel-2: #f5f5f5;
+  --surface: #ebebeb;
+  --sunken: #fafafa;
+  --elevated: #ffffff;
+  --line: #e5e5e5;
+  --border: rgba(0, 0, 0, 0.1);
+  --border-input: rgba(0, 0, 0, 0.15);
+  --border-strong: rgba(0, 0, 0, 0.25);
+  --text: #0a0a0a;
+  --muted: #737373;
+  --dim: #767676;
+  --primary: #171717;
+  --primary-ink: #fafafa;
+  --wash: rgba(0, 0, 0, 0.05);
+  --wash-strong: rgba(0, 0, 0, 0.1);
+  --ring: #a3a3a3;
+  --ring-soft: rgba(115, 115, 115, 0.5);
+  --field: rgba(0, 0, 0, 0.035);
+  --danger: #e7000b;
+  --warn: #a16207;
+  --ok: #15803d;
 }
 
 * {
@@ -168,7 +200,7 @@ button:disabled {
  * only thing on screen with a colour.
  */
 :focus-visible {
-  outline: 3px solid rgba(138, 138, 138, 0.5);
+  outline: 3px solid var(--ring-soft);
   outline-offset: 0;
 }
 
@@ -180,7 +212,7 @@ button:disabled {
 input,
 select,
 textarea {
-  background: rgba(255, 255, 255, 0.045);
+  background: var(--field);
   color: var(--text);
   border: 1px solid var(--border-input);
   border-radius: 6px;
@@ -212,7 +244,7 @@ textarea:focus {
    * the UA's colour. It is suppressed for pointer focus below: the caret already says which field
    * is live, and an always-on ring inside a panel that clips overflow is noise.
    */
-  outline: 3px solid rgba(138, 138, 138, 0.5);
+  outline: 3px solid var(--ring-soft);
   outline-offset: 0;
 }
 
