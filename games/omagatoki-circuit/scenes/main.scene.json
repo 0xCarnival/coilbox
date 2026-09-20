@@ -35004,11 +35004,11 @@
         },
         {
           "type": "material",
-          "color": "#241238",
+          "color": "#7a4aa8",
           "roughness": 0.9,
           "metalness": 0,
-          "emissive": "#3a1650",
-          "emissiveIntensity": 0.25,
+          "emissive": "#9a6ad0",
+          "emissiveIntensity": 0.45,
           "opacity": 1,
           "map": null,
           "normalMap": null,
@@ -35035,10 +35035,3274 @@
       }
     },
     {
+      "id": "cloud-01",
+      "name": "Cloud Bank 01",
+      "parentId": null,
+      "order": 395,
+      "enabled": true,
+      "transform": {
+        "position": [
+          297.94285813346505,
+          -17.719666676595807,
+          -54.41773253958672
+        ],
+        "rotation": [
+          0,
+          0.9541203137279307,
+          0,
+          0.29942349094838094
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            85.49517913954332,
+            3.2461638683453202,
+            81.20224393904209
+          ],
+          "castShadow": false,
+          "receiveShadow": false
+        },
+        {
+          "type": "material",
+          "color": "#e6c7ff",
+          "roughness": 0.9,
+          "metalness": 0,
+          "emissive": "#e6c7ff",
+          "emissiveIntensity": 0.35,
+          "opacity": 0.85,
+          "map": null,
+          "normalMap": null,
+          "emissiveMap": null,
+          "textureRepeat": [
+            1,
+            1
+          ],
+          "textureOffset": [
+            0,
+            0
+          ],
+          "transparent": true,
+          "doubleSided": false,
+          "flatShading": true,
+          "visible": true
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "cloud-02",
+      "name": "Cloud Bank 02",
+      "parentId": null,
+      "order": 396,
+      "enabled": true,
+      "transform": {
+        "position": [
+          209.7772987978533,
+          -34.04626070242375,
+          193.33961972035468
+        ],
+        "rotation": [
+          0,
+          0.9901667571220838,
+          0,
+          0.139892076581686
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            101.54543211683631,
+            3.220050048083067,
+            79.42692967597395
+          ],
+          "castShadow": false,
+          "receiveShadow": false
+        },
+        {
+          "type": "material",
+          "color": "#e6c7ff",
+          "roughness": 0.9,
+          "metalness": 0,
+          "emissive": "#e6c7ff",
+          "emissiveIntensity": 0.35,
+          "opacity": 0.85,
+          "map": null,
+          "normalMap": null,
+          "emissiveMap": null,
+          "textureRepeat": [
+            1,
+            1
+          ],
+          "textureOffset": [
+            0,
+            0
+          ],
+          "transparent": true,
+          "doubleSided": false,
+          "flatShading": true,
+          "visible": true
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "cloud-03",
+      "name": "Cloud Bank 03",
+      "parentId": null,
+      "order": 397,
+      "enabled": true,
+      "transform": {
+        "position": [
+          -73.90173609368503,
+          -19.89220553636551,
+          81.70097600203007
+        ],
+        "rotation": [
+          0,
+          0.03537659825545373,
+          0,
+          0.9993740522426386
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            74.44236999144778,
+            5.251569929532707,
+            43.10408811084926
+          ],
+          "castShadow": false,
+          "receiveShadow": false
+        },
+        {
+          "type": "material",
+          "color": "#b48cff",
+          "roughness": 0.9,
+          "metalness": 0,
+          "emissive": "#b48cff",
+          "emissiveIntensity": 0.35,
+          "opacity": 0.85,
+          "map": null,
+          "normalMap": null,
+          "emissiveMap": null,
+          "textureRepeat": [
+            1,
+            1
+          ],
+          "textureOffset": [
+            0,
+            0
+          ],
+          "transparent": true,
+          "doubleSided": false,
+          "flatShading": true,
+          "visible": true
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "cloud-04",
+      "name": "Cloud Bank 04",
+      "parentId": null,
+      "order": 398,
+      "enabled": true,
+      "transform": {
+        "position": [
+          31.964236716739833,
+          -59.32001013401896,
+          273.40281303972006
+        ],
+        "rotation": [
+          0,
+          0.5009930577835424,
+          0,
+          0.8654513019533198
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            58.07471910957247,
+            4.647846145555377,
+            33.71465244796127
+          ],
+          "castShadow": false,
+          "receiveShadow": false
+        },
+        {
+          "type": "material",
+          "color": "#e6c7ff",
+          "roughness": 0.9,
+          "metalness": 0,
+          "emissive": "#e6c7ff",
+          "emissiveIntensity": 0.35,
+          "opacity": 0.85,
+          "map": null,
+          "normalMap": null,
+          "emissiveMap": null,
+          "textureRepeat": [
+            1,
+            1
+          ],
+          "textureOffset": [
+            0,
+            0
+          ],
+          "transparent": true,
+          "doubleSided": false,
+          "flatShading": true,
+          "visible": true
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "cloud-05",
+      "name": "Cloud Bank 05",
+      "parentId": null,
+      "order": 399,
+      "enabled": true,
+      "transform": {
+        "position": [
+          150.8471604436636,
+          -82.43948110751808,
+          -19.566875672899187
+        ],
+        "rotation": [
+          0,
+          0.9926419135457539,
+          0,
+          0.12108687572244961
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            126.60560667747632,
+            5.096624729223549,
+            77.46729588136077
+          ],
+          "castShadow": false,
+          "receiveShadow": false
+        },
+        {
+          "type": "material",
+          "color": "#b48cff",
+          "roughness": 0.9,
+          "metalness": 0,
+          "emissive": "#b48cff",
+          "emissiveIntensity": 0.35,
+          "opacity": 0.85,
+          "map": null,
+          "normalMap": null,
+          "emissiveMap": null,
+          "textureRepeat": [
+            1,
+            1
+          ],
+          "textureOffset": [
+            0,
+            0
+          ],
+          "transparent": true,
+          "doubleSided": false,
+          "flatShading": true,
+          "visible": true
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "cloud-06",
+      "name": "Cloud Bank 06",
+      "parentId": null,
+      "order": 400,
+      "enabled": true,
+      "transform": {
+        "position": [
+          171.36395438108593,
+          -19.977863802574575,
+          -252.92821728624403
+        ],
+        "rotation": [
+          0,
+          0.9666866565627822,
+          0,
+          0.25596270826718037
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            111.23886751942337,
+            5.8517464101314545,
+            43.135923822410405
+          ],
+          "castShadow": false,
+          "receiveShadow": false
+        },
+        {
+          "type": "material",
+          "color": "#e6c7ff",
+          "roughness": 0.9,
+          "metalness": 0,
+          "emissive": "#e6c7ff",
+          "emissiveIntensity": 0.35,
+          "opacity": 0.85,
+          "map": null,
+          "normalMap": null,
+          "emissiveMap": null,
+          "textureRepeat": [
+            1,
+            1
+          ],
+          "textureOffset": [
+            0,
+            0
+          ],
+          "transparent": true,
+          "doubleSided": false,
+          "flatShading": true,
+          "visible": true
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "cloud-07",
+      "name": "Cloud Bank 07",
+      "parentId": null,
+      "order": 401,
+      "enabled": true,
+      "transform": {
+        "position": [
+          -61.26009074039757,
+          -3.6526176147162914,
+          93.64073710050434
+        ],
+        "rotation": [
+          0,
+          0.9068868796600008,
+          0,
+          0.42137416567766367
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            49.69834684161469,
+            4.330728239379823,
+            53.01510416902602
+          ],
+          "castShadow": false,
+          "receiveShadow": false
+        },
+        {
+          "type": "material",
+          "color": "#e6c7ff",
+          "roughness": 0.9,
+          "metalness": 0,
+          "emissive": "#e6c7ff",
+          "emissiveIntensity": 0.35,
+          "opacity": 0.85,
+          "map": null,
+          "normalMap": null,
+          "emissiveMap": null,
+          "textureRepeat": [
+            1,
+            1
+          ],
+          "textureOffset": [
+            0,
+            0
+          ],
+          "transparent": true,
+          "doubleSided": false,
+          "flatShading": true,
+          "visible": true
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "cloud-08",
+      "name": "Cloud Bank 08",
+      "parentId": null,
+      "order": 402,
+      "enabled": true,
+      "transform": {
+        "position": [
+          -55.18657656852156,
+          -31.48836607206613,
+          265.91916332021356
+        ],
+        "rotation": [
+          0,
+          0.9348424433948654,
+          0,
+          0.35506281983265686
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            77.07638605963439,
+            3.204453559592366,
+            66.834686989896
+          ],
+          "castShadow": false,
+          "receiveShadow": false
+        },
+        {
+          "type": "material",
+          "color": "#e6c7ff",
+          "roughness": 0.9,
+          "metalness": 0,
+          "emissive": "#e6c7ff",
+          "emissiveIntensity": 0.35,
+          "opacity": 0.85,
+          "map": null,
+          "normalMap": null,
+          "emissiveMap": null,
+          "textureRepeat": [
+            1,
+            1
+          ],
+          "textureOffset": [
+            0,
+            0
+          ],
+          "transparent": true,
+          "doubleSided": false,
+          "flatShading": true,
+          "visible": true
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "cloud-09",
+      "name": "Cloud Bank 09",
+      "parentId": null,
+      "order": 403,
+      "enabled": true,
+      "transform": {
+        "position": [
+          127.15030765160918,
+          -48.706432024016976,
+          160.28405122924596
+        ],
+        "rotation": [
+          0,
+          0.000615716579593419,
+          0,
+          0.9999998104465289
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            59.56843466730788,
+            5.768822462297976,
+            84.97381214052439
+          ],
+          "castShadow": false,
+          "receiveShadow": false
+        },
+        {
+          "type": "material",
+          "color": "#e6c7ff",
+          "roughness": 0.9,
+          "metalness": 0,
+          "emissive": "#e6c7ff",
+          "emissiveIntensity": 0.35,
+          "opacity": 0.85,
+          "map": null,
+          "normalMap": null,
+          "emissiveMap": null,
+          "textureRepeat": [
+            1,
+            1
+          ],
+          "textureOffset": [
+            0,
+            0
+          ],
+          "transparent": true,
+          "doubleSided": false,
+          "flatShading": true,
+          "visible": true
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "cloud-10",
+      "name": "Cloud Bank 10",
+      "parentId": null,
+      "order": 404,
+      "enabled": true,
+      "transform": {
+        "position": [
+          133.55459426064044,
+          -16.744742969982326,
+          285.7396534550935
+        ],
+        "rotation": [
+          0,
+          0.8883797208192635,
+          0,
+          0.45910943318242475
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            66.80861473083496,
+            6.376572418957949,
+            32.12064041290432
+          ],
+          "castShadow": false,
+          "receiveShadow": false
+        },
+        {
+          "type": "material",
+          "color": "#e6c7ff",
+          "roughness": 0.9,
+          "metalness": 0,
+          "emissive": "#e6c7ff",
+          "emissiveIntensity": 0.35,
+          "opacity": 0.85,
+          "map": null,
+          "normalMap": null,
+          "emissiveMap": null,
+          "textureRepeat": [
+            1,
+            1
+          ],
+          "textureOffset": [
+            0,
+            0
+          ],
+          "transparent": true,
+          "doubleSided": false,
+          "flatShading": true,
+          "visible": true
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "cloud-11",
+      "name": "Cloud Bank 11",
+      "parentId": null,
+      "order": 405,
+      "enabled": true,
+      "transform": {
+        "position": [
+          182.48347253538668,
+          -49.645029745996,
+          79.98709432315081
+        ],
+        "rotation": [
+          0,
+          0.698368299072989,
+          0,
+          0.7157385827590267
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            113.92485029762611,
+            6.4550526244565845,
+            73.45851576887071
+          ],
+          "castShadow": false,
+          "receiveShadow": false
+        },
+        {
+          "type": "material",
+          "color": "#b48cff",
+          "roughness": 0.9,
+          "metalness": 0,
+          "emissive": "#b48cff",
+          "emissiveIntensity": 0.35,
+          "opacity": 0.85,
+          "map": null,
+          "normalMap": null,
+          "emissiveMap": null,
+          "textureRepeat": [
+            1,
+            1
+          ],
+          "textureOffset": [
+            0,
+            0
+          ],
+          "transparent": true,
+          "doubleSided": false,
+          "flatShading": true,
+          "visible": true
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "cloud-12",
+      "name": "Cloud Bank 12",
+      "parentId": null,
+      "order": 406,
+      "enabled": true,
+      "transform": {
+        "position": [
+          164.36879161279649,
+          -26.341971279121935,
+          137.95404367148876
+        ],
+        "rotation": [
+          0,
+          0.998044786334988,
+          0,
+          0.06250283569205546
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            58.18358544725925,
+            5.743355831131339,
+            60.875144503079355
+          ],
+          "castShadow": false,
+          "receiveShadow": false
+        },
+        {
+          "type": "material",
+          "color": "#b48cff",
+          "roughness": 0.9,
+          "metalness": 0,
+          "emissive": "#b48cff",
+          "emissiveIntensity": 0.35,
+          "opacity": 0.85,
+          "map": null,
+          "normalMap": null,
+          "emissiveMap": null,
+          "textureRepeat": [
+            1,
+            1
+          ],
+          "textureOffset": [
+            0,
+            0
+          ],
+          "transparent": true,
+          "doubleSided": false,
+          "flatShading": true,
+          "visible": true
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "cloud-13",
+      "name": "Cloud Bank 13",
+      "parentId": null,
+      "order": 407,
+      "enabled": true,
+      "transform": {
+        "position": [
+          231.13482672721148,
+          7.401879141107202,
+          -144.66943429317325
+        ],
+        "rotation": [
+          0,
+          0.49204411589369157,
+          0,
+          0.8705702659833929
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            105.68009035894647,
+            5.48098159302026,
+            40.76722862198949
+          ],
+          "castShadow": false,
+          "receiveShadow": false
+        },
+        {
+          "type": "material",
+          "color": "#b48cff",
+          "roughness": 0.9,
+          "metalness": 0,
+          "emissive": "#b48cff",
+          "emissiveIntensity": 0.35,
+          "opacity": 0.85,
+          "map": null,
+          "normalMap": null,
+          "emissiveMap": null,
+          "textureRepeat": [
+            1,
+            1
+          ],
+          "textureOffset": [
+            0,
+            0
+          ],
+          "transparent": true,
+          "doubleSided": false,
+          "flatShading": true,
+          "visible": true
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "cloud-14",
+      "name": "Cloud Bank 14",
+      "parentId": null,
+      "order": 408,
+      "enabled": true,
+      "transform": {
+        "position": [
+          -49.98214619513601,
+          0.5082167321816087,
+          -128.20934888906777
+        ],
+        "rotation": [
+          0,
+          0.9557894452041521,
+          0,
+          0.29405192812892617
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            42.78500107116997,
+            5.488533087074757,
+            28.436071169562638
+          ],
+          "castShadow": false,
+          "receiveShadow": false
+        },
+        {
+          "type": "material",
+          "color": "#b48cff",
+          "roughness": 0.9,
+          "metalness": 0,
+          "emissive": "#b48cff",
+          "emissiveIntensity": 0.35,
+          "opacity": 0.85,
+          "map": null,
+          "normalMap": null,
+          "emissiveMap": null,
+          "textureRepeat": [
+            1,
+            1
+          ],
+          "textureOffset": [
+            0,
+            0
+          ],
+          "transparent": true,
+          "doubleSided": false,
+          "flatShading": true,
+          "visible": true
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "cloud-15",
+      "name": "Cloud Bank 15",
+      "parentId": null,
+      "order": 409,
+      "enabled": true,
+      "transform": {
+        "position": [
+          222.11572646163404,
+          -16.9092816747725,
+          114.44312212523073
+        ],
+        "rotation": [
+          0,
+          0.3949068477469209,
+          0,
+          0.9187211664061029
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            44.00022060377523,
+            5.070955171249807,
+            37.297744350507855
+          ],
+          "castShadow": false,
+          "receiveShadow": false
+        },
+        {
+          "type": "material",
+          "color": "#b48cff",
+          "roughness": 0.9,
+          "metalness": 0,
+          "emissive": "#b48cff",
+          "emissiveIntensity": 0.35,
+          "opacity": 0.85,
+          "map": null,
+          "normalMap": null,
+          "emissiveMap": null,
+          "textureRepeat": [
+            1,
+            1
+          ],
+          "textureOffset": [
+            0,
+            0
+          ],
+          "transparent": true,
+          "doubleSided": false,
+          "flatShading": true,
+          "visible": true
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "cloud-16",
+      "name": "Cloud Bank 16",
+      "parentId": null,
+      "order": 410,
+      "enabled": true,
+      "transform": {
+        "position": [
+          108.78889629151672,
+          -62.89719366747886,
+          -92.75270158424973
+        ],
+        "rotation": [
+          0,
+          0.9995723910264548,
+          0,
+          0.029240983185524948
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            60.16692855861038,
+            3.159615406766534,
+            83.67009233217686
+          ],
+          "castShadow": false,
+          "receiveShadow": false
+        },
+        {
+          "type": "material",
+          "color": "#e6c7ff",
+          "roughness": 0.9,
+          "metalness": 0,
+          "emissive": "#e6c7ff",
+          "emissiveIntensity": 0.35,
+          "opacity": 0.85,
+          "map": null,
+          "normalMap": null,
+          "emissiveMap": null,
+          "textureRepeat": [
+            1,
+            1
+          ],
+          "textureOffset": [
+            0,
+            0
+          ],
+          "transparent": true,
+          "doubleSided": false,
+          "flatShading": true,
+          "visible": true
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "cloud-17",
+      "name": "Cloud Bank 17",
+      "parentId": null,
+      "order": 411,
+      "enabled": true,
+      "transform": {
+        "position": [
+          -87.26051871106029,
+          -35.10558211989701,
+          -205.2430623350665
+        ],
+        "rotation": [
+          0,
+          0.18188408598818803,
+          0,
+          0.9833199780662658
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            114.13315731333569,
+            3.319872179068625,
+            48.2820650935173
+          ],
+          "castShadow": false,
+          "receiveShadow": false
+        },
+        {
+          "type": "material",
+          "color": "#b48cff",
+          "roughness": 0.9,
+          "metalness": 0,
+          "emissive": "#b48cff",
+          "emissiveIntensity": 0.35,
+          "opacity": 0.85,
+          "map": null,
+          "normalMap": null,
+          "emissiveMap": null,
+          "textureRepeat": [
+            1,
+            1
+          ],
+          "textureOffset": [
+            0,
+            0
+          ],
+          "transparent": true,
+          "doubleSided": false,
+          "flatShading": true,
+          "visible": true
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "cloud-18",
+      "name": "Cloud Bank 18",
+      "parentId": null,
+      "order": 412,
+      "enabled": true,
+      "transform": {
+        "position": [
+          87.40161833632737,
+          -36.255185219459236,
+          97.90119112469256
+        ],
+        "rotation": [
+          0,
+          0.5974748573143296,
+          0,
+          0.8018876447964649
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            92.45800504460931,
+            6.698604252189398,
+            53.06199724320322
+          ],
+          "castShadow": false,
+          "receiveShadow": false
+        },
+        {
+          "type": "material",
+          "color": "#e6c7ff",
+          "roughness": 0.9,
+          "metalness": 0,
+          "emissive": "#e6c7ff",
+          "emissiveIntensity": 0.35,
+          "opacity": 0.85,
+          "map": null,
+          "normalMap": null,
+          "emissiveMap": null,
+          "textureRepeat": [
+            1,
+            1
+          ],
+          "textureOffset": [
+            0,
+            0
+          ],
+          "transparent": true,
+          "doubleSided": false,
+          "flatShading": true,
+          "visible": true
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "cloud-19",
+      "name": "Cloud Bank 19",
+      "parentId": null,
+      "order": 413,
+      "enabled": true,
+      "transform": {
+        "position": [
+          -78.24803831987083,
+          -0.2615460008382797,
+          -19.826110866852105
+        ],
+        "rotation": [
+          0,
+          0.6381124420795377,
+          0,
+          0.7699431870360882
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            126.07987472554669,
+            4.597519475035369,
+            61.48243877105415
+          ],
+          "castShadow": false,
+          "receiveShadow": false
+        },
+        {
+          "type": "material",
+          "color": "#b48cff",
+          "roughness": 0.9,
+          "metalness": 0,
+          "emissive": "#b48cff",
+          "emissiveIntensity": 0.35,
+          "opacity": 0.85,
+          "map": null,
+          "normalMap": null,
+          "emissiveMap": null,
+          "textureRepeat": [
+            1,
+            1
+          ],
+          "textureOffset": [
+            0,
+            0
+          ],
+          "transparent": true,
+          "doubleSided": false,
+          "flatShading": true,
+          "visible": true
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "cloud-20",
+      "name": "Cloud Bank 20",
+      "parentId": null,
+      "order": 414,
+      "enabled": true,
+      "transform": {
+        "position": [
+          97.3195670498535,
+          5.948987430892885,
+          140.32299924641848
+        ],
+        "rotation": [
+          0,
+          0.8767444442375355,
+          0,
+          0.48095652558065466
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            96.5652838209644,
+            6.772809503600001,
+            51.86547221150249
+          ],
+          "castShadow": false,
+          "receiveShadow": false
+        },
+        {
+          "type": "material",
+          "color": "#b48cff",
+          "roughness": 0.9,
+          "metalness": 0,
+          "emissive": "#b48cff",
+          "emissiveIntensity": 0.35,
+          "opacity": 0.85,
+          "map": null,
+          "normalMap": null,
+          "emissiveMap": null,
+          "textureRepeat": [
+            1,
+            1
+          ],
+          "textureOffset": [
+            0,
+            0
+          ],
+          "transparent": true,
+          "doubleSided": false,
+          "flatShading": true,
+          "visible": true
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "cloud-21",
+      "name": "Cloud Bank 21",
+      "parentId": null,
+      "order": 415,
+      "enabled": true,
+      "transform": {
+        "position": [
+          33.344980984926224,
+          -21.761129153892398,
+          -154.9328360473737
+        ],
+        "rotation": [
+          0,
+          0.49797480639892383,
+          0,
+          0.8671914968402045
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            122.80800137901679,
+            5.168788325972855,
+            38.16101698204875
+          ],
+          "castShadow": false,
+          "receiveShadow": false
+        },
+        {
+          "type": "material",
+          "color": "#b48cff",
+          "roughness": 0.9,
+          "metalness": 0,
+          "emissive": "#b48cff",
+          "emissiveIntensity": 0.35,
+          "opacity": 0.85,
+          "map": null,
+          "normalMap": null,
+          "emissiveMap": null,
+          "textureRepeat": [
+            1,
+            1
+          ],
+          "textureOffset": [
+            0,
+            0
+          ],
+          "transparent": true,
+          "doubleSided": false,
+          "flatShading": true,
+          "visible": true
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "cloud-22",
+      "name": "Cloud Bank 22",
+      "parentId": null,
+      "order": 416,
+      "enabled": true,
+      "transform": {
+        "position": [
+          -1.2400149693712592,
+          -40.06088399793953,
+          181.8101546075195
+        ],
+        "rotation": [
+          0,
+          0.06614044707754026,
+          0,
+          0.9978103232881403
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            108.42230028472841,
+            4.812515780329704,
+            65.41837007272989
+          ],
+          "castShadow": false,
+          "receiveShadow": false
+        },
+        {
+          "type": "material",
+          "color": "#b48cff",
+          "roughness": 0.9,
+          "metalness": 0,
+          "emissive": "#b48cff",
+          "emissiveIntensity": 0.35,
+          "opacity": 0.85,
+          "map": null,
+          "normalMap": null,
+          "emissiveMap": null,
+          "textureRepeat": [
+            1,
+            1
+          ],
+          "textureOffset": [
+            0,
+            0
+          ],
+          "transparent": true,
+          "doubleSided": false,
+          "flatShading": true,
+          "visible": true
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "cloud-23",
+      "name": "Cloud Bank 23",
+      "parentId": null,
+      "order": 417,
+      "enabled": true,
+      "transform": {
+        "position": [
+          252.99076999537647,
+          -24.80431505665183,
+          81.31560960318893
+        ],
+        "rotation": [
+          0,
+          0.9848230798434793,
+          0,
+          0.17356123244435695
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            51.607658888679,
+            5.270494780503213,
+            64.77186397649348
+          ],
+          "castShadow": false,
+          "receiveShadow": false
+        },
+        {
+          "type": "material",
+          "color": "#e6c7ff",
+          "roughness": 0.9,
+          "metalness": 0,
+          "emissive": "#e6c7ff",
+          "emissiveIntensity": 0.35,
+          "opacity": 0.85,
+          "map": null,
+          "normalMap": null,
+          "emissiveMap": null,
+          "textureRepeat": [
+            1,
+            1
+          ],
+          "textureOffset": [
+            0,
+            0
+          ],
+          "transparent": true,
+          "doubleSided": false,
+          "flatShading": true,
+          "visible": true
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "cloud-24",
+      "name": "Cloud Bank 24",
+      "parentId": null,
+      "order": 418,
+      "enabled": true,
+      "transform": {
+        "position": [
+          53.41536607500166,
+          -1.555242826230824,
+          -32.35518215224147
+        ],
+        "rotation": [
+          0,
+          0.8471198107364362,
+          0,
+          0.5314019441607875
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            112.99351606052369,
+            4.775516437366605,
+            27.377840499393642
+          ],
+          "castShadow": false,
+          "receiveShadow": false
+        },
+        {
+          "type": "material",
+          "color": "#b48cff",
+          "roughness": 0.9,
+          "metalness": 0,
+          "emissive": "#b48cff",
+          "emissiveIntensity": 0.35,
+          "opacity": 0.85,
+          "map": null,
+          "normalMap": null,
+          "emissiveMap": null,
+          "textureRepeat": [
+            1,
+            1
+          ],
+          "textureOffset": [
+            0,
+            0
+          ],
+          "transparent": true,
+          "doubleSided": false,
+          "flatShading": true,
+          "visible": true
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "cloud-25",
+      "name": "Cloud Bank 25",
+      "parentId": null,
+      "order": 419,
+      "enabled": true,
+      "transform": {
+        "position": [
+          101.76839296147227,
+          -45.97722133435309,
+          -84.4774667872116
+        ],
+        "rotation": [
+          0,
+          0.5757963724947004,
+          0,
+          0.8175931368486066
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            92.98041229369119,
+            6.983182952739298,
+            39.67951592057943
+          ],
+          "castShadow": false,
+          "receiveShadow": false
+        },
+        {
+          "type": "material",
+          "color": "#e6c7ff",
+          "roughness": 0.9,
+          "metalness": 0,
+          "emissive": "#e6c7ff",
+          "emissiveIntensity": 0.35,
+          "opacity": 0.85,
+          "map": null,
+          "normalMap": null,
+          "emissiveMap": null,
+          "textureRepeat": [
+            1,
+            1
+          ],
+          "textureOffset": [
+            0,
+            0
+          ],
+          "transparent": true,
+          "doubleSided": false,
+          "flatShading": true,
+          "visible": true
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "cloud-26",
+      "name": "Cloud Bank 26",
+      "parentId": null,
+      "order": 420,
+      "enabled": true,
+      "transform": {
+        "position": [
+          -55.30314234178513,
+          -46.32210191618651,
+          -170.46716245822608
+        ],
+        "rotation": [
+          0,
+          0.8195380229870186,
+          0,
+          0.5730248065123611
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            118.09300262480974,
+            4.553066018968821,
+            62.62678599450737
+          ],
+          "castShadow": false,
+          "receiveShadow": false
+        },
+        {
+          "type": "material",
+          "color": "#e6c7ff",
+          "roughness": 0.9,
+          "metalness": 0,
+          "emissive": "#e6c7ff",
+          "emissiveIntensity": 0.35,
+          "opacity": 0.85,
+          "map": null,
+          "normalMap": null,
+          "emissiveMap": null,
+          "textureRepeat": [
+            1,
+            1
+          ],
+          "textureOffset": [
+            0,
+            0
+          ],
+          "transparent": true,
+          "doubleSided": false,
+          "flatShading": true,
+          "visible": true
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "cloud-27",
+      "name": "Cloud Bank 27",
+      "parentId": null,
+      "order": 421,
+      "enabled": true,
+      "transform": {
+        "position": [
+          275.4677572194487,
+          -31.64668060094118,
+          -93.54916736949235
+        ],
+        "rotation": [
+          0,
+          0.7287382943930039,
+          0,
+          0.6847923030271117
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            50.758841743227094,
+            5.990196372382343,
+            26.532508423551917
+          ],
+          "castShadow": false,
+          "receiveShadow": false
+        },
+        {
+          "type": "material",
+          "color": "#b48cff",
+          "roughness": 0.9,
+          "metalness": 0,
+          "emissive": "#b48cff",
+          "emissiveIntensity": 0.35,
+          "opacity": 0.85,
+          "map": null,
+          "normalMap": null,
+          "emissiveMap": null,
+          "textureRepeat": [
+            1,
+            1
+          ],
+          "textureOffset": [
+            0,
+            0
+          ],
+          "transparent": true,
+          "doubleSided": false,
+          "flatShading": true,
+          "visible": true
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "cloud-28",
+      "name": "Cloud Bank 28",
+      "parentId": null,
+      "order": 422,
+      "enabled": true,
+      "transform": {
+        "position": [
+          306.4431842742488,
+          -21.891881928779185,
+          -183.86788561940193
+        ],
+        "rotation": [
+          0,
+          0.88219033010537,
+          0,
+          0.470893004268038
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            107.62405388522893,
+            4.35758320055902,
+            44.69295216258615
+          ],
+          "castShadow": false,
+          "receiveShadow": false
+        },
+        {
+          "type": "material",
+          "color": "#e6c7ff",
+          "roughness": 0.9,
+          "metalness": 0,
+          "emissive": "#e6c7ff",
+          "emissiveIntensity": 0.35,
+          "opacity": 0.85,
+          "map": null,
+          "normalMap": null,
+          "emissiveMap": null,
+          "textureRepeat": [
+            1,
+            1
+          ],
+          "textureOffset": [
+            0,
+            0
+          ],
+          "transparent": true,
+          "doubleSided": false,
+          "flatShading": true,
+          "visible": true
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "cloud-29",
+      "name": "Cloud Bank 29",
+      "parentId": null,
+      "order": 423,
+      "enabled": true,
+      "transform": {
+        "position": [
+          -103.88434577733278,
+          7.41564073599875,
+          75.52538251969963
+        ],
+        "rotation": [
+          0,
+          0.8816340911500404,
+          0,
+          0.47193360690042213
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            90.60151091078296,
+            6.976458807475865,
+            32.46325904503465
+          ],
+          "castShadow": false,
+          "receiveShadow": false
+        },
+        {
+          "type": "material",
+          "color": "#e6c7ff",
+          "roughness": 0.9,
+          "metalness": 0,
+          "emissive": "#e6c7ff",
+          "emissiveIntensity": 0.35,
+          "opacity": 0.85,
+          "map": null,
+          "normalMap": null,
+          "emissiveMap": null,
+          "textureRepeat": [
+            1,
+            1
+          ],
+          "textureOffset": [
+            0,
+            0
+          ],
+          "transparent": true,
+          "doubleSided": false,
+          "flatShading": true,
+          "visible": true
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "cloud-30",
+      "name": "Cloud Bank 30",
+      "parentId": null,
+      "order": 424,
+      "enabled": true,
+      "transform": {
+        "position": [
+          -17.198933786712587,
+          -47.185608497820795,
+          6.673626257106662
+        ],
+        "rotation": [
+          0,
+          0.9856615781569499,
+          0,
+          0.1687342684375375
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            53.72337029315531,
+            3.6394675001502037,
+            34.45555460173637
+          ],
+          "castShadow": false,
+          "receiveShadow": false
+        },
+        {
+          "type": "material",
+          "color": "#b48cff",
+          "roughness": 0.9,
+          "metalness": 0,
+          "emissive": "#b48cff",
+          "emissiveIntensity": 0.35,
+          "opacity": 0.85,
+          "map": null,
+          "normalMap": null,
+          "emissiveMap": null,
+          "textureRepeat": [
+            1,
+            1
+          ],
+          "textureOffset": [
+            0,
+            0
+          ],
+          "transparent": true,
+          "doubleSided": false,
+          "flatShading": true,
+          "visible": true
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "cloud-31",
+      "name": "Cloud Bank 31",
+      "parentId": null,
+      "order": 425,
+      "enabled": true,
+      "transform": {
+        "position": [
+          264.7209720965475,
+          -52.038695085793734,
+          224.67411597725004
+        ],
+        "rotation": [
+          0,
+          0.9046394520662658,
+          0,
+          0.4261777349478105
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            102.22099815262482,
+            5.235812216065824,
+            43.79741025157273
+          ],
+          "castShadow": false,
+          "receiveShadow": false
+        },
+        {
+          "type": "material",
+          "color": "#e6c7ff",
+          "roughness": 0.9,
+          "metalness": 0,
+          "emissive": "#e6c7ff",
+          "emissiveIntensity": 0.35,
+          "opacity": 0.85,
+          "map": null,
+          "normalMap": null,
+          "emissiveMap": null,
+          "textureRepeat": [
+            1,
+            1
+          ],
+          "textureOffset": [
+            0,
+            0
+          ],
+          "transparent": true,
+          "doubleSided": false,
+          "flatShading": true,
+          "visible": true
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "cloud-32",
+      "name": "Cloud Bank 32",
+      "parentId": null,
+      "order": 426,
+      "enabled": true,
+      "transform": {
+        "position": [
+          227.81074316706508,
+          -36.90540371555835,
+          -25.132817644625902
+        ],
+        "rotation": [
+          0,
+          0.5980346226858758,
+          0,
+          0.8014702677385869
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            75.62353519257158,
+            6.318674290552735,
+            62.4416885105893
+          ],
+          "castShadow": false,
+          "receiveShadow": false
+        },
+        {
+          "type": "material",
+          "color": "#e6c7ff",
+          "roughness": 0.9,
+          "metalness": 0,
+          "emissive": "#e6c7ff",
+          "emissiveIntensity": 0.35,
+          "opacity": 0.85,
+          "map": null,
+          "normalMap": null,
+          "emissiveMap": null,
+          "textureRepeat": [
+            1,
+            1
+          ],
+          "textureOffset": [
+            0,
+            0
+          ],
+          "transparent": true,
+          "doubleSided": false,
+          "flatShading": true,
+          "visible": true
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "cloud-33",
+      "name": "Cloud Bank 33",
+      "parentId": null,
+      "order": 427,
+      "enabled": true,
+      "transform": {
+        "position": [
+          136.70096898451447,
+          1.3291859161108732,
+          -337.73852858226746
+        ],
+        "rotation": [
+          0,
+          0.2283903766641707,
+          0,
+          0.9735696358490225
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            49.30617205100134,
+            5.278415733017027,
+            43.18620704114437
+          ],
+          "castShadow": false,
+          "receiveShadow": false
+        },
+        {
+          "type": "material",
+          "color": "#e6c7ff",
+          "roughness": 0.9,
+          "metalness": 0,
+          "emissive": "#e6c7ff",
+          "emissiveIntensity": 0.35,
+          "opacity": 0.85,
+          "map": null,
+          "normalMap": null,
+          "emissiveMap": null,
+          "textureRepeat": [
+            1,
+            1
+          ],
+          "textureOffset": [
+            0,
+            0
+          ],
+          "transparent": true,
+          "doubleSided": false,
+          "flatShading": true,
+          "visible": true
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "cloud-34",
+      "name": "Cloud Bank 34",
+      "parentId": null,
+      "order": 428,
+      "enabled": true,
+      "transform": {
+        "position": [
+          53.12205394078046,
+          -12.136689501814544,
+          -116.26560336910188
+        ],
+        "rotation": [
+          0,
+          0.9049499357908201,
+          0,
+          0.4255180533328646
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            128.95570723339915,
+            3.636223893612623,
+            44.88586085382849
+          ],
+          "castShadow": false,
+          "receiveShadow": false
+        },
+        {
+          "type": "material",
+          "color": "#b48cff",
+          "roughness": 0.9,
+          "metalness": 0,
+          "emissive": "#b48cff",
+          "emissiveIntensity": 0.35,
+          "opacity": 0.85,
+          "map": null,
+          "normalMap": null,
+          "emissiveMap": null,
+          "textureRepeat": [
+            1,
+            1
+          ],
+          "textureOffset": [
+            0,
+            0
+          ],
+          "transparent": true,
+          "doubleSided": false,
+          "flatShading": true,
+          "visible": true
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "cloud-35",
+      "name": "Cloud Bank 35",
+      "parentId": null,
+      "order": 429,
+      "enabled": true,
+      "transform": {
+        "position": [
+          61.17427040822804,
+          -41.5022157728672,
+          250.26822503190488
+        ],
+        "rotation": [
+          0,
+          0.9720119070964047,
+          0,
+          0.23493159102770822
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            100.7190336077474,
+            5.108615848235786,
+            78.77470220439136
+          ],
+          "castShadow": false,
+          "receiveShadow": false
+        },
+        {
+          "type": "material",
+          "color": "#e6c7ff",
+          "roughness": 0.9,
+          "metalness": 0,
+          "emissive": "#e6c7ff",
+          "emissiveIntensity": 0.35,
+          "opacity": 0.85,
+          "map": null,
+          "normalMap": null,
+          "emissiveMap": null,
+          "textureRepeat": [
+            1,
+            1
+          ],
+          "textureOffset": [
+            0,
+            0
+          ],
+          "transparent": true,
+          "doubleSided": false,
+          "flatShading": true,
+          "visible": true
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "cloud-36",
+      "name": "Cloud Bank 36",
+      "parentId": null,
+      "order": 430,
+      "enabled": true,
+      "transform": {
+        "position": [
+          79.28202838730067,
+          -35.93933216575533,
+          -272.0341630652547
+        ],
+        "rotation": [
+          0,
+          0.7398220820911812,
+          0,
+          0.6728025615663704
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            110.82578080240637,
+            3.9816017877310514,
+            47.690828680060804
+          ],
+          "castShadow": false,
+          "receiveShadow": false
+        },
+        {
+          "type": "material",
+          "color": "#b48cff",
+          "roughness": 0.9,
+          "metalness": 0,
+          "emissive": "#b48cff",
+          "emissiveIntensity": 0.35,
+          "opacity": 0.85,
+          "map": null,
+          "normalMap": null,
+          "emissiveMap": null,
+          "textureRepeat": [
+            1,
+            1
+          ],
+          "textureOffset": [
+            0,
+            0
+          ],
+          "transparent": true,
+          "doubleSided": false,
+          "flatShading": true,
+          "visible": true
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "cloud-37",
+      "name": "Cloud Bank 37",
+      "parentId": null,
+      "order": 431,
+      "enabled": true,
+      "transform": {
+        "position": [
+          306.5010876208544,
+          -32.693020997568965,
+          -218.70029044803232
+        ],
+        "rotation": [
+          0,
+          0.39812907600446423,
+          0,
+          0.9173294058514813
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            72.8062129789032,
+            6.628854182548821,
+            26.936550941318274
+          ],
+          "castShadow": false,
+          "receiveShadow": false
+        },
+        {
+          "type": "material",
+          "color": "#b48cff",
+          "roughness": 0.9,
+          "metalness": 0,
+          "emissive": "#b48cff",
+          "emissiveIntensity": 0.35,
+          "opacity": 0.85,
+          "map": null,
+          "normalMap": null,
+          "emissiveMap": null,
+          "textureRepeat": [
+            1,
+            1
+          ],
+          "textureOffset": [
+            0,
+            0
+          ],
+          "transparent": true,
+          "doubleSided": false,
+          "flatShading": true,
+          "visible": true
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "cloud-38",
+      "name": "Cloud Bank 38",
+      "parentId": null,
+      "order": 432,
+      "enabled": true,
+      "transform": {
+        "position": [
+          10.929961488582194,
+          -46.863645060919225,
+          224.0781047102064
+        ],
+        "rotation": [
+          0,
+          0.3311565646163042,
+          0,
+          0.9435758208599495
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            96.43671954981983,
+            4.884038209915161,
+            66.2365209357813
+          ],
+          "castShadow": false,
+          "receiveShadow": false
+        },
+        {
+          "type": "material",
+          "color": "#b48cff",
+          "roughness": 0.9,
+          "metalness": 0,
+          "emissive": "#b48cff",
+          "emissiveIntensity": 0.35,
+          "opacity": 0.85,
+          "map": null,
+          "normalMap": null,
+          "emissiveMap": null,
+          "textureRepeat": [
+            1,
+            1
+          ],
+          "textureOffset": [
+            0,
+            0
+          ],
+          "transparent": true,
+          "doubleSided": false,
+          "flatShading": true,
+          "visible": true
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "cloud-39",
+      "name": "Cloud Bank 39",
+      "parentId": null,
+      "order": 433,
+      "enabled": true,
+      "transform": {
+        "position": [
+          243.49922674708068,
+          -47.42134357616305,
+          -80.78886149916798
+        ],
+        "rotation": [
+          0,
+          0.6149307433783285,
+          0,
+          0.7885811187494768
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            106.19059926597401,
+            4.56658551748842,
+            83.99287530221045
+          ],
+          "castShadow": false,
+          "receiveShadow": false
+        },
+        {
+          "type": "material",
+          "color": "#b48cff",
+          "roughness": 0.9,
+          "metalness": 0,
+          "emissive": "#b48cff",
+          "emissiveIntensity": 0.35,
+          "opacity": 0.85,
+          "map": null,
+          "normalMap": null,
+          "emissiveMap": null,
+          "textureRepeat": [
+            1,
+            1
+          ],
+          "textureOffset": [
+            0,
+            0
+          ],
+          "transparent": true,
+          "doubleSided": false,
+          "flatShading": true,
+          "visible": true
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "cloud-40",
+      "name": "Cloud Bank 40",
+      "parentId": null,
+      "order": 434,
+      "enabled": true,
+      "transform": {
+        "position": [
+          247.29618502315134,
+          -45.58289972413331,
+          -198.03838020190597
+        ],
+        "rotation": [
+          0,
+          0.15339640437715119,
+          0,
+          0.9881647348110342
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            120.42234621476382,
+            3.2189366836100817,
+            36.38616486918181
+          ],
+          "castShadow": false,
+          "receiveShadow": false
+        },
+        {
+          "type": "material",
+          "color": "#b48cff",
+          "roughness": 0.9,
+          "metalness": 0,
+          "emissive": "#b48cff",
+          "emissiveIntensity": 0.35,
+          "opacity": 0.85,
+          "map": null,
+          "normalMap": null,
+          "emissiveMap": null,
+          "textureRepeat": [
+            1,
+            1
+          ],
+          "textureOffset": [
+            0,
+            0
+          ],
+          "transparent": true,
+          "doubleSided": false,
+          "flatShading": true,
+          "visible": true
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "cloud-41",
+      "name": "Cloud Bank 41",
+      "parentId": null,
+      "order": 435,
+      "enabled": true,
+      "transform": {
+        "position": [
+          149.1685970686376,
+          -37.04708577133715,
+          160.2397320466116
+        ],
+        "rotation": [
+          0,
+          0.4622464426837529,
+          0,
+          0.8867515019588159
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            96.8245975044556,
+            6.668834985233843,
+            47.93814767152071
+          ],
+          "castShadow": false,
+          "receiveShadow": false
+        },
+        {
+          "type": "material",
+          "color": "#b48cff",
+          "roughness": 0.9,
+          "metalness": 0,
+          "emissive": "#b48cff",
+          "emissiveIntensity": 0.35,
+          "opacity": 0.85,
+          "map": null,
+          "normalMap": null,
+          "emissiveMap": null,
+          "textureRepeat": [
+            1,
+            1
+          ],
+          "textureOffset": [
+            0,
+            0
+          ],
+          "transparent": true,
+          "doubleSided": false,
+          "flatShading": true,
+          "visible": true
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "cloud-42",
+      "name": "Cloud Bank 42",
+      "parentId": null,
+      "order": 436,
+      "enabled": true,
+      "transform": {
+        "position": [
+          -109.026078033261,
+          -6.032993386499584,
+          -194.77688650600612
+        ],
+        "rotation": [
+          0,
+          0.8767017825766455,
+          0,
+          0.48103428612411003
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            93.52857507765293,
+            6.825252253562212,
+            46.784831867553294
+          ],
+          "castShadow": false,
+          "receiveShadow": false
+        },
+        {
+          "type": "material",
+          "color": "#e6c7ff",
+          "roughness": 0.9,
+          "metalness": 0,
+          "emissive": "#e6c7ff",
+          "emissiveIntensity": 0.35,
+          "opacity": 0.85,
+          "map": null,
+          "normalMap": null,
+          "emissiveMap": null,
+          "textureRepeat": [
+            1,
+            1
+          ],
+          "textureOffset": [
+            0,
+            0
+          ],
+          "transparent": true,
+          "doubleSided": false,
+          "flatShading": true,
+          "visible": true
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "cloud-43",
+      "name": "Cloud Bank 43",
+      "parentId": null,
+      "order": 437,
+      "enabled": true,
+      "transform": {
+        "position": [
+          10.114997187629342,
+          8.18456668406725,
+          -229.50732790399343
+        ],
+        "rotation": [
+          0,
+          0.9460754214596683,
+          0,
+          0.3239464414218978
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            91.0181476152502,
+            4.91292957495898,
+            67.27026126347482
+          ],
+          "castShadow": false,
+          "receiveShadow": false
+        },
+        {
+          "type": "material",
+          "color": "#b48cff",
+          "roughness": 0.9,
+          "metalness": 0,
+          "emissive": "#b48cff",
+          "emissiveIntensity": 0.35,
+          "opacity": 0.85,
+          "map": null,
+          "normalMap": null,
+          "emissiveMap": null,
+          "textureRepeat": [
+            1,
+            1
+          ],
+          "textureOffset": [
+            0,
+            0
+          ],
+          "transparent": true,
+          "doubleSided": false,
+          "flatShading": true,
+          "visible": true
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "cloud-44",
+      "name": "Cloud Bank 44",
+      "parentId": null,
+      "order": 438,
+      "enabled": true,
+      "transform": {
+        "position": [
+          72.42470908444375,
+          -7.4606247851625085,
+          120.82373775541782
+        ],
+        "rotation": [
+          0,
+          0.9261364233459112,
+          0,
+          0.37718871318219893
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            70.95190149266273,
+            5.405401458963752,
+            28.385461322031915
+          ],
+          "castShadow": false,
+          "receiveShadow": false
+        },
+        {
+          "type": "material",
+          "color": "#e6c7ff",
+          "roughness": 0.9,
+          "metalness": 0,
+          "emissive": "#e6c7ff",
+          "emissiveIntensity": 0.35,
+          "opacity": 0.85,
+          "map": null,
+          "normalMap": null,
+          "emissiveMap": null,
+          "textureRepeat": [
+            1,
+            1
+          ],
+          "textureOffset": [
+            0,
+            0
+          ],
+          "transparent": true,
+          "doubleSided": false,
+          "flatShading": true,
+          "visible": true
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "cloud-45",
+      "name": "Cloud Bank 45",
+      "parentId": null,
+      "order": 439,
+      "enabled": true,
+      "transform": {
+        "position": [
+          -42.72842463105917,
+          -42.65683557651937,
+          59.06131623778492
+        ],
+        "rotation": [
+          0,
+          0.8924102015635774,
+          0,
+          0.45122503492742405
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            93.22690570959821,
+            3.3920953618362546,
+            29.314924348145723
+          ],
+          "castShadow": false,
+          "receiveShadow": false
+        },
+        {
+          "type": "material",
+          "color": "#b48cff",
+          "roughness": 0.9,
+          "metalness": 0,
+          "emissive": "#b48cff",
+          "emissiveIntensity": 0.35,
+          "opacity": 0.85,
+          "map": null,
+          "normalMap": null,
+          "emissiveMap": null,
+          "textureRepeat": [
+            1,
+            1
+          ],
+          "textureOffset": [
+            0,
+            0
+          ],
+          "transparent": true,
+          "doubleSided": false,
+          "flatShading": true,
+          "visible": true
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "cloud-46",
+      "name": "Cloud Bank 46",
+      "parentId": null,
+      "order": 440,
+      "enabled": true,
+      "transform": {
+        "position": [
+          294.24022058490664,
+          -54.17720041330904,
+          -237.81209957785904
+        ],
+        "rotation": [
+          0,
+          0.1270089614847225,
+          0,
+          0.9919015695635188
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            45.64691607840359,
+            4.036317326128483,
+            47.821014863438904
+          ],
+          "castShadow": false,
+          "receiveShadow": false
+        },
+        {
+          "type": "material",
+          "color": "#e6c7ff",
+          "roughness": 0.9,
+          "metalness": 0,
+          "emissive": "#e6c7ff",
+          "emissiveIntensity": 0.35,
+          "opacity": 0.85,
+          "map": null,
+          "normalMap": null,
+          "emissiveMap": null,
+          "textureRepeat": [
+            1,
+            1
+          ],
+          "textureOffset": [
+            0,
+            0
+          ],
+          "transparent": true,
+          "doubleSided": false,
+          "flatShading": true,
+          "visible": true
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "cloud-47",
+      "name": "Cloud Bank 47",
+      "parentId": null,
+      "order": 441,
+      "enabled": true,
+      "transform": {
+        "position": [
+          -13.06161586381495,
+          14.481897797435522,
+          -145.12588935438544
+        ],
+        "rotation": [
+          0,
+          0.6040820193797817,
+          0,
+          0.7969221504400823
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            64.22387876315042,
+            3.6010181149467826,
+            33.69623367674649
+          ],
+          "castShadow": false,
+          "receiveShadow": false
+        },
+        {
+          "type": "material",
+          "color": "#e6c7ff",
+          "roughness": 0.9,
+          "metalness": 0,
+          "emissive": "#e6c7ff",
+          "emissiveIntensity": 0.35,
+          "opacity": 0.85,
+          "map": null,
+          "normalMap": null,
+          "emissiveMap": null,
+          "textureRepeat": [
+            1,
+            1
+          ],
+          "textureOffset": [
+            0,
+            0
+          ],
+          "transparent": true,
+          "doubleSided": false,
+          "flatShading": true,
+          "visible": true
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
+      "id": "cloud-48",
+      "name": "Cloud Bank 48",
+      "parentId": null,
+      "order": 442,
+      "enabled": true,
+      "transform": {
+        "position": [
+          279.16283124592155,
+          -46.51918074209243,
+          127.11310675367713
+        ],
+        "rotation": [
+          0,
+          0.8343616982236818,
+          0,
+          0.5512173405629524
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "type": "primitive",
+          "shape": "box",
+          "size": [
+            86.36968926992267,
+            4.1085439119488,
+            70.51875706296414
+          ],
+          "castShadow": false,
+          "receiveShadow": false
+        },
+        {
+          "type": "material",
+          "color": "#b48cff",
+          "roughness": 0.9,
+          "metalness": 0,
+          "emissive": "#b48cff",
+          "emissiveIntensity": 0.35,
+          "opacity": 0.85,
+          "map": null,
+          "normalMap": null,
+          "emissiveMap": null,
+          "textureRepeat": [
+            1,
+            1
+          ],
+          "textureOffset": [
+            0,
+            0
+          ],
+          "transparent": true,
+          "doubleSided": false,
+          "flatShading": true,
+          "visible": true
+        }
+      ],
+      "editor": {
+        "visible": true,
+        "locked": false,
+        "color": null,
+        "helper": false
+      }
+    },
+    {
       "id": "moon",
       "name": "Moon",
       "parentId": null,
-      "order": 395,
+      "order": 443,
       "enabled": true,
       "transform": {
         "position": [
@@ -35106,7 +38370,7 @@
       "id": "moon-ring",
       "name": "Moon Halo",
       "parentId": null,
-      "order": 396,
+      "order": 444,
       "enabled": true,
       "transform": {
         "position": [
@@ -35174,7 +38438,7 @@
       "id": "spire-001",
       "name": "Spire 001",
       "parentId": null,
-      "order": 397,
+      "order": 445,
       "enabled": true,
       "transform": {
         "position": [
@@ -35242,7 +38506,7 @@
       "id": "spire-001-crown",
       "name": "Spire 001 Crown",
       "parentId": null,
-      "order": 398,
+      "order": 446,
       "enabled": true,
       "transform": {
         "position": [
@@ -35310,7 +38574,7 @@
       "id": "spire-002",
       "name": "Spire 002",
       "parentId": null,
-      "order": 399,
+      "order": 447,
       "enabled": true,
       "transform": {
         "position": [
@@ -35378,7 +38642,7 @@
       "id": "spire-002-crown",
       "name": "Spire 002 Crown",
       "parentId": null,
-      "order": 400,
+      "order": 448,
       "enabled": true,
       "transform": {
         "position": [
@@ -35446,7 +38710,7 @@
       "id": "spire-003",
       "name": "Spire 003",
       "parentId": null,
-      "order": 401,
+      "order": 449,
       "enabled": true,
       "transform": {
         "position": [
@@ -35514,7 +38778,7 @@
       "id": "spire-003-crown",
       "name": "Spire 003 Crown",
       "parentId": null,
-      "order": 402,
+      "order": 450,
       "enabled": true,
       "transform": {
         "position": [
@@ -35582,7 +38846,7 @@
       "id": "spire-004",
       "name": "Spire 004",
       "parentId": null,
-      "order": 403,
+      "order": 451,
       "enabled": true,
       "transform": {
         "position": [
@@ -35650,7 +38914,7 @@
       "id": "spire-004-crown",
       "name": "Spire 004 Crown",
       "parentId": null,
-      "order": 404,
+      "order": 452,
       "enabled": true,
       "transform": {
         "position": [
@@ -35718,7 +38982,7 @@
       "id": "spire-004-sign",
       "name": "Spire 004 Sign",
       "parentId": null,
-      "order": 405,
+      "order": 453,
       "enabled": true,
       "transform": {
         "position": [
@@ -35786,7 +39050,7 @@
       "id": "spire-005",
       "name": "Spire 005",
       "parentId": null,
-      "order": 406,
+      "order": 454,
       "enabled": true,
       "transform": {
         "position": [
@@ -35854,7 +39118,7 @@
       "id": "spire-005-crown",
       "name": "Spire 005 Crown",
       "parentId": null,
-      "order": 407,
+      "order": 455,
       "enabled": true,
       "transform": {
         "position": [
@@ -35922,7 +39186,7 @@
       "id": "spire-006",
       "name": "Spire 006",
       "parentId": null,
-      "order": 408,
+      "order": 456,
       "enabled": true,
       "transform": {
         "position": [
@@ -35990,7 +39254,7 @@
       "id": "spire-006-crown",
       "name": "Spire 006 Crown",
       "parentId": null,
-      "order": 409,
+      "order": 457,
       "enabled": true,
       "transform": {
         "position": [
@@ -36058,7 +39322,7 @@
       "id": "spire-007",
       "name": "Spire 007",
       "parentId": null,
-      "order": 410,
+      "order": 458,
       "enabled": true,
       "transform": {
         "position": [
@@ -36126,7 +39390,7 @@
       "id": "spire-007-crown",
       "name": "Spire 007 Crown",
       "parentId": null,
-      "order": 411,
+      "order": 459,
       "enabled": true,
       "transform": {
         "position": [
@@ -36194,7 +39458,7 @@
       "id": "spire-007-sign",
       "name": "Spire 007 Sign",
       "parentId": null,
-      "order": 412,
+      "order": 460,
       "enabled": true,
       "transform": {
         "position": [
@@ -36262,7 +39526,7 @@
       "id": "spire-008",
       "name": "Spire 008",
       "parentId": null,
-      "order": 413,
+      "order": 461,
       "enabled": true,
       "transform": {
         "position": [
@@ -36330,7 +39594,7 @@
       "id": "spire-008-crown",
       "name": "Spire 008 Crown",
       "parentId": null,
-      "order": 414,
+      "order": 462,
       "enabled": true,
       "transform": {
         "position": [
@@ -36398,7 +39662,7 @@
       "id": "spire-009",
       "name": "Spire 009",
       "parentId": null,
-      "order": 415,
+      "order": 463,
       "enabled": true,
       "transform": {
         "position": [
@@ -36466,7 +39730,7 @@
       "id": "spire-009-crown",
       "name": "Spire 009 Crown",
       "parentId": null,
-      "order": 416,
+      "order": 464,
       "enabled": true,
       "transform": {
         "position": [
@@ -36534,7 +39798,7 @@
       "id": "spire-010",
       "name": "Spire 010",
       "parentId": null,
-      "order": 417,
+      "order": 465,
       "enabled": true,
       "transform": {
         "position": [
@@ -36602,7 +39866,7 @@
       "id": "spire-010-crown",
       "name": "Spire 010 Crown",
       "parentId": null,
-      "order": 418,
+      "order": 466,
       "enabled": true,
       "transform": {
         "position": [
@@ -36670,7 +39934,7 @@
       "id": "spire-011",
       "name": "Spire 011",
       "parentId": null,
-      "order": 419,
+      "order": 467,
       "enabled": true,
       "transform": {
         "position": [
@@ -36738,7 +40002,7 @@
       "id": "spire-011-crown",
       "name": "Spire 011 Crown",
       "parentId": null,
-      "order": 420,
+      "order": 468,
       "enabled": true,
       "transform": {
         "position": [
@@ -36806,7 +40070,7 @@
       "id": "spire-011-sign",
       "name": "Spire 011 Sign",
       "parentId": null,
-      "order": 421,
+      "order": 469,
       "enabled": true,
       "transform": {
         "position": [
@@ -36874,7 +40138,7 @@
       "id": "spire-012",
       "name": "Spire 012",
       "parentId": null,
-      "order": 422,
+      "order": 470,
       "enabled": true,
       "transform": {
         "position": [
@@ -36942,7 +40206,7 @@
       "id": "spire-012-crown",
       "name": "Spire 012 Crown",
       "parentId": null,
-      "order": 423,
+      "order": 471,
       "enabled": true,
       "transform": {
         "position": [
@@ -37010,7 +40274,7 @@
       "id": "spire-012-sign",
       "name": "Spire 012 Sign",
       "parentId": null,
-      "order": 424,
+      "order": 472,
       "enabled": true,
       "transform": {
         "position": [
@@ -37078,7 +40342,7 @@
       "id": "spire-013",
       "name": "Spire 013",
       "parentId": null,
-      "order": 425,
+      "order": 473,
       "enabled": true,
       "transform": {
         "position": [
@@ -37146,7 +40410,7 @@
       "id": "spire-013-crown",
       "name": "Spire 013 Crown",
       "parentId": null,
-      "order": 426,
+      "order": 474,
       "enabled": true,
       "transform": {
         "position": [
@@ -37214,7 +40478,7 @@
       "id": "spire-013-sign",
       "name": "Spire 013 Sign",
       "parentId": null,
-      "order": 427,
+      "order": 475,
       "enabled": true,
       "transform": {
         "position": [
@@ -37282,7 +40546,7 @@
       "id": "spire-014",
       "name": "Spire 014",
       "parentId": null,
-      "order": 428,
+      "order": 476,
       "enabled": true,
       "transform": {
         "position": [
@@ -37350,7 +40614,7 @@
       "id": "spire-014-crown",
       "name": "Spire 014 Crown",
       "parentId": null,
-      "order": 429,
+      "order": 477,
       "enabled": true,
       "transform": {
         "position": [
@@ -37418,7 +40682,7 @@
       "id": "spire-014-sign",
       "name": "Spire 014 Sign",
       "parentId": null,
-      "order": 430,
+      "order": 478,
       "enabled": true,
       "transform": {
         "position": [
@@ -37486,7 +40750,7 @@
       "id": "spire-015",
       "name": "Spire 015",
       "parentId": null,
-      "order": 431,
+      "order": 479,
       "enabled": true,
       "transform": {
         "position": [
@@ -37554,7 +40818,7 @@
       "id": "spire-015-crown",
       "name": "Spire 015 Crown",
       "parentId": null,
-      "order": 432,
+      "order": 480,
       "enabled": true,
       "transform": {
         "position": [
@@ -37622,7 +40886,7 @@
       "id": "spire-016",
       "name": "Spire 016",
       "parentId": null,
-      "order": 433,
+      "order": 481,
       "enabled": true,
       "transform": {
         "position": [
@@ -37690,7 +40954,7 @@
       "id": "spire-016-crown",
       "name": "Spire 016 Crown",
       "parentId": null,
-      "order": 434,
+      "order": 482,
       "enabled": true,
       "transform": {
         "position": [
@@ -37758,7 +41022,7 @@
       "id": "spire-016-sign",
       "name": "Spire 016 Sign",
       "parentId": null,
-      "order": 435,
+      "order": 483,
       "enabled": true,
       "transform": {
         "position": [
@@ -37826,7 +41090,7 @@
       "id": "spire-017",
       "name": "Spire 017",
       "parentId": null,
-      "order": 436,
+      "order": 484,
       "enabled": true,
       "transform": {
         "position": [
@@ -37894,7 +41158,7 @@
       "id": "spire-017-crown",
       "name": "Spire 017 Crown",
       "parentId": null,
-      "order": 437,
+      "order": 485,
       "enabled": true,
       "transform": {
         "position": [
@@ -37962,7 +41226,7 @@
       "id": "spire-018",
       "name": "Spire 018",
       "parentId": null,
-      "order": 438,
+      "order": 486,
       "enabled": true,
       "transform": {
         "position": [
@@ -38030,7 +41294,7 @@
       "id": "spire-018-crown",
       "name": "Spire 018 Crown",
       "parentId": null,
-      "order": 439,
+      "order": 487,
       "enabled": true,
       "transform": {
         "position": [
@@ -38098,7 +41362,7 @@
       "id": "spire-018-sign",
       "name": "Spire 018 Sign",
       "parentId": null,
-      "order": 440,
+      "order": 488,
       "enabled": true,
       "transform": {
         "position": [
@@ -38166,7 +41430,7 @@
       "id": "spire-019",
       "name": "Spire 019",
       "parentId": null,
-      "order": 441,
+      "order": 489,
       "enabled": true,
       "transform": {
         "position": [
@@ -38234,7 +41498,7 @@
       "id": "spire-019-crown",
       "name": "Spire 019 Crown",
       "parentId": null,
-      "order": 442,
+      "order": 490,
       "enabled": true,
       "transform": {
         "position": [
@@ -38302,7 +41566,7 @@
       "id": "spire-020",
       "name": "Spire 020",
       "parentId": null,
-      "order": 443,
+      "order": 491,
       "enabled": true,
       "transform": {
         "position": [
@@ -38370,7 +41634,7 @@
       "id": "spire-020-crown",
       "name": "Spire 020 Crown",
       "parentId": null,
-      "order": 444,
+      "order": 492,
       "enabled": true,
       "transform": {
         "position": [
@@ -38438,7 +41702,7 @@
       "id": "spire-020-sign",
       "name": "Spire 020 Sign",
       "parentId": null,
-      "order": 445,
+      "order": 493,
       "enabled": true,
       "transform": {
         "position": [
@@ -38506,7 +41770,7 @@
       "id": "spire-021",
       "name": "Spire 021",
       "parentId": null,
-      "order": 446,
+      "order": 494,
       "enabled": true,
       "transform": {
         "position": [
@@ -38574,7 +41838,7 @@
       "id": "spire-021-crown",
       "name": "Spire 021 Crown",
       "parentId": null,
-      "order": 447,
+      "order": 495,
       "enabled": true,
       "transform": {
         "position": [
@@ -38642,7 +41906,7 @@
       "id": "spire-021-sign",
       "name": "Spire 021 Sign",
       "parentId": null,
-      "order": 448,
+      "order": 496,
       "enabled": true,
       "transform": {
         "position": [
@@ -38710,7 +41974,7 @@
       "id": "spire-022",
       "name": "Spire 022",
       "parentId": null,
-      "order": 449,
+      "order": 497,
       "enabled": true,
       "transform": {
         "position": [
@@ -38778,7 +42042,7 @@
       "id": "spire-022-crown",
       "name": "Spire 022 Crown",
       "parentId": null,
-      "order": 450,
+      "order": 498,
       "enabled": true,
       "transform": {
         "position": [
@@ -38846,7 +42110,7 @@
       "id": "spire-022-sign",
       "name": "Spire 022 Sign",
       "parentId": null,
-      "order": 451,
+      "order": 499,
       "enabled": true,
       "transform": {
         "position": [
@@ -38914,7 +42178,7 @@
       "id": "spire-023",
       "name": "Spire 023",
       "parentId": null,
-      "order": 452,
+      "order": 500,
       "enabled": true,
       "transform": {
         "position": [
@@ -38982,7 +42246,7 @@
       "id": "spire-023-crown",
       "name": "Spire 023 Crown",
       "parentId": null,
-      "order": 453,
+      "order": 501,
       "enabled": true,
       "transform": {
         "position": [
@@ -39050,7 +42314,7 @@
       "id": "spire-024",
       "name": "Spire 024",
       "parentId": null,
-      "order": 454,
+      "order": 502,
       "enabled": true,
       "transform": {
         "position": [
@@ -39118,7 +42382,7 @@
       "id": "spire-024-crown",
       "name": "Spire 024 Crown",
       "parentId": null,
-      "order": 455,
+      "order": 503,
       "enabled": true,
       "transform": {
         "position": [
@@ -39186,7 +42450,7 @@
       "id": "spire-025",
       "name": "Spire 025",
       "parentId": null,
-      "order": 456,
+      "order": 504,
       "enabled": true,
       "transform": {
         "position": [
@@ -39254,7 +42518,7 @@
       "id": "spire-025-crown",
       "name": "Spire 025 Crown",
       "parentId": null,
-      "order": 457,
+      "order": 505,
       "enabled": true,
       "transform": {
         "position": [
@@ -39322,7 +42586,7 @@
       "id": "spire-026",
       "name": "Spire 026",
       "parentId": null,
-      "order": 458,
+      "order": 506,
       "enabled": true,
       "transform": {
         "position": [
@@ -39390,7 +42654,7 @@
       "id": "spire-026-crown",
       "name": "Spire 026 Crown",
       "parentId": null,
-      "order": 459,
+      "order": 507,
       "enabled": true,
       "transform": {
         "position": [
@@ -39458,7 +42722,7 @@
       "id": "spire-026-sign",
       "name": "Spire 026 Sign",
       "parentId": null,
-      "order": 460,
+      "order": 508,
       "enabled": true,
       "transform": {
         "position": [
@@ -39526,7 +42790,7 @@
       "id": "spire-027",
       "name": "Spire 027",
       "parentId": null,
-      "order": 461,
+      "order": 509,
       "enabled": true,
       "transform": {
         "position": [
@@ -39594,7 +42858,7 @@
       "id": "spire-027-crown",
       "name": "Spire 027 Crown",
       "parentId": null,
-      "order": 462,
+      "order": 510,
       "enabled": true,
       "transform": {
         "position": [
@@ -39662,7 +42926,7 @@
       "id": "spire-027-sign",
       "name": "Spire 027 Sign",
       "parentId": null,
-      "order": 463,
+      "order": 511,
       "enabled": true,
       "transform": {
         "position": [
@@ -39730,7 +42994,7 @@
       "id": "spire-028",
       "name": "Spire 028",
       "parentId": null,
-      "order": 464,
+      "order": 512,
       "enabled": true,
       "transform": {
         "position": [
@@ -39798,7 +43062,7 @@
       "id": "spire-028-crown",
       "name": "Spire 028 Crown",
       "parentId": null,
-      "order": 465,
+      "order": 513,
       "enabled": true,
       "transform": {
         "position": [
@@ -39866,7 +43130,7 @@
       "id": "spire-028-sign",
       "name": "Spire 028 Sign",
       "parentId": null,
-      "order": 466,
+      "order": 514,
       "enabled": true,
       "transform": {
         "position": [
@@ -39934,7 +43198,7 @@
       "id": "spire-029",
       "name": "Spire 029",
       "parentId": null,
-      "order": 467,
+      "order": 515,
       "enabled": true,
       "transform": {
         "position": [
@@ -40002,7 +43266,7 @@
       "id": "spire-029-crown",
       "name": "Spire 029 Crown",
       "parentId": null,
-      "order": 468,
+      "order": 516,
       "enabled": true,
       "transform": {
         "position": [
@@ -40070,7 +43334,7 @@
       "id": "spire-029-sign",
       "name": "Spire 029 Sign",
       "parentId": null,
-      "order": 469,
+      "order": 517,
       "enabled": true,
       "transform": {
         "position": [
@@ -40138,7 +43402,7 @@
       "id": "spire-030",
       "name": "Spire 030",
       "parentId": null,
-      "order": 470,
+      "order": 518,
       "enabled": true,
       "transform": {
         "position": [
@@ -40206,7 +43470,7 @@
       "id": "spire-030-crown",
       "name": "Spire 030 Crown",
       "parentId": null,
-      "order": 471,
+      "order": 519,
       "enabled": true,
       "transform": {
         "position": [
@@ -40274,7 +43538,7 @@
       "id": "spire-030-sign",
       "name": "Spire 030 Sign",
       "parentId": null,
-      "order": 472,
+      "order": 520,
       "enabled": true,
       "transform": {
         "position": [
@@ -40342,7 +43606,7 @@
       "id": "spire-031",
       "name": "Spire 031",
       "parentId": null,
-      "order": 473,
+      "order": 521,
       "enabled": true,
       "transform": {
         "position": [
@@ -40410,7 +43674,7 @@
       "id": "spire-031-crown",
       "name": "Spire 031 Crown",
       "parentId": null,
-      "order": 474,
+      "order": 522,
       "enabled": true,
       "transform": {
         "position": [
@@ -40478,7 +43742,7 @@
       "id": "spire-032",
       "name": "Spire 032",
       "parentId": null,
-      "order": 475,
+      "order": 523,
       "enabled": true,
       "transform": {
         "position": [
@@ -40546,7 +43810,7 @@
       "id": "spire-032-crown",
       "name": "Spire 032 Crown",
       "parentId": null,
-      "order": 476,
+      "order": 524,
       "enabled": true,
       "transform": {
         "position": [
@@ -40614,7 +43878,7 @@
       "id": "spire-032-sign",
       "name": "Spire 032 Sign",
       "parentId": null,
-      "order": 477,
+      "order": 525,
       "enabled": true,
       "transform": {
         "position": [
@@ -40682,7 +43946,7 @@
       "id": "spire-033",
       "name": "Spire 033",
       "parentId": null,
-      "order": 478,
+      "order": 526,
       "enabled": true,
       "transform": {
         "position": [
@@ -40750,7 +44014,7 @@
       "id": "spire-033-crown",
       "name": "Spire 033 Crown",
       "parentId": null,
-      "order": 479,
+      "order": 527,
       "enabled": true,
       "transform": {
         "position": [
@@ -40818,7 +44082,7 @@
       "id": "spire-034",
       "name": "Spire 034",
       "parentId": null,
-      "order": 480,
+      "order": 528,
       "enabled": true,
       "transform": {
         "position": [
@@ -40886,7 +44150,7 @@
       "id": "spire-034-crown",
       "name": "Spire 034 Crown",
       "parentId": null,
-      "order": 481,
+      "order": 529,
       "enabled": true,
       "transform": {
         "position": [
@@ -40954,7 +44218,7 @@
       "id": "spire-034-sign",
       "name": "Spire 034 Sign",
       "parentId": null,
-      "order": 482,
+      "order": 530,
       "enabled": true,
       "transform": {
         "position": [
@@ -41022,7 +44286,7 @@
       "id": "spire-035",
       "name": "Spire 035",
       "parentId": null,
-      "order": 483,
+      "order": 531,
       "enabled": true,
       "transform": {
         "position": [
@@ -41090,7 +44354,7 @@
       "id": "spire-035-crown",
       "name": "Spire 035 Crown",
       "parentId": null,
-      "order": 484,
+      "order": 532,
       "enabled": true,
       "transform": {
         "position": [
@@ -41158,7 +44422,7 @@
       "id": "spire-035-sign",
       "name": "Spire 035 Sign",
       "parentId": null,
-      "order": 485,
+      "order": 533,
       "enabled": true,
       "transform": {
         "position": [
@@ -41226,7 +44490,7 @@
       "id": "spire-036",
       "name": "Spire 036",
       "parentId": null,
-      "order": 486,
+      "order": 534,
       "enabled": true,
       "transform": {
         "position": [
@@ -41294,7 +44558,7 @@
       "id": "spire-036-crown",
       "name": "Spire 036 Crown",
       "parentId": null,
-      "order": 487,
+      "order": 535,
       "enabled": true,
       "transform": {
         "position": [
@@ -41362,7 +44626,7 @@
       "id": "spire-037",
       "name": "Spire 037",
       "parentId": null,
-      "order": 488,
+      "order": 536,
       "enabled": true,
       "transform": {
         "position": [
@@ -41430,7 +44694,7 @@
       "id": "spire-037-crown",
       "name": "Spire 037 Crown",
       "parentId": null,
-      "order": 489,
+      "order": 537,
       "enabled": true,
       "transform": {
         "position": [
@@ -41498,7 +44762,7 @@
       "id": "spire-038",
       "name": "Spire 038",
       "parentId": null,
-      "order": 490,
+      "order": 538,
       "enabled": true,
       "transform": {
         "position": [
@@ -41566,7 +44830,7 @@
       "id": "spire-038-crown",
       "name": "Spire 038 Crown",
       "parentId": null,
-      "order": 491,
+      "order": 539,
       "enabled": true,
       "transform": {
         "position": [
@@ -41634,7 +44898,7 @@
       "id": "spire-038-sign",
       "name": "Spire 038 Sign",
       "parentId": null,
-      "order": 492,
+      "order": 540,
       "enabled": true,
       "transform": {
         "position": [
@@ -41702,7 +44966,7 @@
       "id": "spire-039",
       "name": "Spire 039",
       "parentId": null,
-      "order": 493,
+      "order": 541,
       "enabled": true,
       "transform": {
         "position": [
@@ -41770,7 +45034,7 @@
       "id": "spire-039-crown",
       "name": "Spire 039 Crown",
       "parentId": null,
-      "order": 494,
+      "order": 542,
       "enabled": true,
       "transform": {
         "position": [
@@ -41838,7 +45102,7 @@
       "id": "spire-040",
       "name": "Spire 040",
       "parentId": null,
-      "order": 495,
+      "order": 543,
       "enabled": true,
       "transform": {
         "position": [
@@ -41906,7 +45170,7 @@
       "id": "spire-040-crown",
       "name": "Spire 040 Crown",
       "parentId": null,
-      "order": 496,
+      "order": 544,
       "enabled": true,
       "transform": {
         "position": [
@@ -41974,7 +45238,7 @@
       "id": "spire-041",
       "name": "Spire 041",
       "parentId": null,
-      "order": 497,
+      "order": 545,
       "enabled": true,
       "transform": {
         "position": [
@@ -42042,7 +45306,7 @@
       "id": "spire-041-crown",
       "name": "Spire 041 Crown",
       "parentId": null,
-      "order": 498,
+      "order": 546,
       "enabled": true,
       "transform": {
         "position": [
@@ -42110,7 +45374,7 @@
       "id": "spire-042",
       "name": "Spire 042",
       "parentId": null,
-      "order": 499,
+      "order": 547,
       "enabled": true,
       "transform": {
         "position": [
@@ -42178,7 +45442,7 @@
       "id": "spire-042-crown",
       "name": "Spire 042 Crown",
       "parentId": null,
-      "order": 500,
+      "order": 548,
       "enabled": true,
       "transform": {
         "position": [
@@ -42246,7 +45510,7 @@
       "id": "spire-042-sign",
       "name": "Spire 042 Sign",
       "parentId": null,
-      "order": 501,
+      "order": 549,
       "enabled": true,
       "transform": {
         "position": [
@@ -42314,7 +45578,7 @@
       "id": "spire-043",
       "name": "Spire 043",
       "parentId": null,
-      "order": 502,
+      "order": 550,
       "enabled": true,
       "transform": {
         "position": [
@@ -42382,7 +45646,7 @@
       "id": "spire-043-crown",
       "name": "Spire 043 Crown",
       "parentId": null,
-      "order": 503,
+      "order": 551,
       "enabled": true,
       "transform": {
         "position": [
@@ -42450,7 +45714,7 @@
       "id": "spire-044",
       "name": "Spire 044",
       "parentId": null,
-      "order": 504,
+      "order": 552,
       "enabled": true,
       "transform": {
         "position": [
@@ -42518,7 +45782,7 @@
       "id": "spire-044-crown",
       "name": "Spire 044 Crown",
       "parentId": null,
-      "order": 505,
+      "order": 553,
       "enabled": true,
       "transform": {
         "position": [
@@ -42586,7 +45850,7 @@
       "id": "spire-044-sign",
       "name": "Spire 044 Sign",
       "parentId": null,
-      "order": 506,
+      "order": 554,
       "enabled": true,
       "transform": {
         "position": [
@@ -42654,7 +45918,7 @@
       "id": "spire-045",
       "name": "Spire 045",
       "parentId": null,
-      "order": 507,
+      "order": 555,
       "enabled": true,
       "transform": {
         "position": [
@@ -42722,7 +45986,7 @@
       "id": "spire-045-crown",
       "name": "Spire 045 Crown",
       "parentId": null,
-      "order": 508,
+      "order": 556,
       "enabled": true,
       "transform": {
         "position": [
@@ -42790,7 +46054,7 @@
       "id": "spire-045-sign",
       "name": "Spire 045 Sign",
       "parentId": null,
-      "order": 509,
+      "order": 557,
       "enabled": true,
       "transform": {
         "position": [
@@ -42858,7 +46122,7 @@
       "id": "spire-046",
       "name": "Spire 046",
       "parentId": null,
-      "order": 510,
+      "order": 558,
       "enabled": true,
       "transform": {
         "position": [
@@ -42926,7 +46190,7 @@
       "id": "spire-046-crown",
       "name": "Spire 046 Crown",
       "parentId": null,
-      "order": 511,
+      "order": 559,
       "enabled": true,
       "transform": {
         "position": [
@@ -42994,7 +46258,7 @@
       "id": "spire-047",
       "name": "Spire 047",
       "parentId": null,
-      "order": 512,
+      "order": 560,
       "enabled": true,
       "transform": {
         "position": [
@@ -43062,7 +46326,7 @@
       "id": "spire-047-crown",
       "name": "Spire 047 Crown",
       "parentId": null,
-      "order": 513,
+      "order": 561,
       "enabled": true,
       "transform": {
         "position": [
@@ -43130,7 +46394,7 @@
       "id": "spire-047-sign",
       "name": "Spire 047 Sign",
       "parentId": null,
-      "order": 514,
+      "order": 562,
       "enabled": true,
       "transform": {
         "position": [
@@ -43198,7 +46462,7 @@
       "id": "spire-048",
       "name": "Spire 048",
       "parentId": null,
-      "order": 515,
+      "order": 563,
       "enabled": true,
       "transform": {
         "position": [
@@ -43266,7 +46530,7 @@
       "id": "spire-048-crown",
       "name": "Spire 048 Crown",
       "parentId": null,
-      "order": 516,
+      "order": 564,
       "enabled": true,
       "transform": {
         "position": [
@@ -43334,7 +46598,7 @@
       "id": "spire-048-sign",
       "name": "Spire 048 Sign",
       "parentId": null,
-      "order": 517,
+      "order": 565,
       "enabled": true,
       "transform": {
         "position": [
@@ -43402,7 +46666,7 @@
       "id": "spire-049",
       "name": "Spire 049",
       "parentId": null,
-      "order": 518,
+      "order": 566,
       "enabled": true,
       "transform": {
         "position": [
@@ -43470,7 +46734,7 @@
       "id": "spire-049-crown",
       "name": "Spire 049 Crown",
       "parentId": null,
-      "order": 519,
+      "order": 567,
       "enabled": true,
       "transform": {
         "position": [
@@ -43538,7 +46802,7 @@
       "id": "spire-049-sign",
       "name": "Spire 049 Sign",
       "parentId": null,
-      "order": 520,
+      "order": 568,
       "enabled": true,
       "transform": {
         "position": [
@@ -43606,7 +46870,7 @@
       "id": "spire-050",
       "name": "Spire 050",
       "parentId": null,
-      "order": 521,
+      "order": 569,
       "enabled": true,
       "transform": {
         "position": [
@@ -43674,7 +46938,7 @@
       "id": "spire-050-crown",
       "name": "Spire 050 Crown",
       "parentId": null,
-      "order": 522,
+      "order": 570,
       "enabled": true,
       "transform": {
         "position": [
@@ -43742,7 +47006,7 @@
       "id": "spire-050-sign",
       "name": "Spire 050 Sign",
       "parentId": null,
-      "order": 523,
+      "order": 571,
       "enabled": true,
       "transform": {
         "position": [
@@ -43810,7 +47074,7 @@
       "id": "spire-051",
       "name": "Spire 051",
       "parentId": null,
-      "order": 524,
+      "order": 572,
       "enabled": true,
       "transform": {
         "position": [
@@ -43878,7 +47142,7 @@
       "id": "spire-051-crown",
       "name": "Spire 051 Crown",
       "parentId": null,
-      "order": 525,
+      "order": 573,
       "enabled": true,
       "transform": {
         "position": [
@@ -43946,7 +47210,7 @@
       "id": "spire-051-sign",
       "name": "Spire 051 Sign",
       "parentId": null,
-      "order": 526,
+      "order": 574,
       "enabled": true,
       "transform": {
         "position": [
@@ -44014,7 +47278,7 @@
       "id": "spire-052",
       "name": "Spire 052",
       "parentId": null,
-      "order": 527,
+      "order": 575,
       "enabled": true,
       "transform": {
         "position": [
@@ -44082,7 +47346,7 @@
       "id": "spire-052-crown",
       "name": "Spire 052 Crown",
       "parentId": null,
-      "order": 528,
+      "order": 576,
       "enabled": true,
       "transform": {
         "position": [
@@ -44150,7 +47414,7 @@
       "id": "spire-053",
       "name": "Spire 053",
       "parentId": null,
-      "order": 529,
+      "order": 577,
       "enabled": true,
       "transform": {
         "position": [
@@ -44218,7 +47482,7 @@
       "id": "spire-053-crown",
       "name": "Spire 053 Crown",
       "parentId": null,
-      "order": 530,
+      "order": 578,
       "enabled": true,
       "transform": {
         "position": [
@@ -44286,7 +47550,7 @@
       "id": "spire-053-sign",
       "name": "Spire 053 Sign",
       "parentId": null,
-      "order": 531,
+      "order": 579,
       "enabled": true,
       "transform": {
         "position": [
@@ -44354,7 +47618,7 @@
       "id": "spire-054",
       "name": "Spire 054",
       "parentId": null,
-      "order": 532,
+      "order": 580,
       "enabled": true,
       "transform": {
         "position": [
@@ -44422,7 +47686,7 @@
       "id": "spire-054-crown",
       "name": "Spire 054 Crown",
       "parentId": null,
-      "order": 533,
+      "order": 581,
       "enabled": true,
       "transform": {
         "position": [
@@ -44490,7 +47754,7 @@
       "id": "spire-054-sign",
       "name": "Spire 054 Sign",
       "parentId": null,
-      "order": 534,
+      "order": 582,
       "enabled": true,
       "transform": {
         "position": [
@@ -44558,7 +47822,7 @@
       "id": "spire-055",
       "name": "Spire 055",
       "parentId": null,
-      "order": 535,
+      "order": 583,
       "enabled": true,
       "transform": {
         "position": [
@@ -44626,7 +47890,7 @@
       "id": "spire-055-crown",
       "name": "Spire 055 Crown",
       "parentId": null,
-      "order": 536,
+      "order": 584,
       "enabled": true,
       "transform": {
         "position": [
@@ -44694,7 +47958,7 @@
       "id": "spire-055-sign",
       "name": "Spire 055 Sign",
       "parentId": null,
-      "order": 537,
+      "order": 585,
       "enabled": true,
       "transform": {
         "position": [
@@ -44762,7 +48026,7 @@
       "id": "spire-056",
       "name": "Spire 056",
       "parentId": null,
-      "order": 538,
+      "order": 586,
       "enabled": true,
       "transform": {
         "position": [
@@ -44830,7 +48094,7 @@
       "id": "spire-056-crown",
       "name": "Spire 056 Crown",
       "parentId": null,
-      "order": 539,
+      "order": 587,
       "enabled": true,
       "transform": {
         "position": [
@@ -44898,7 +48162,7 @@
       "id": "spire-057",
       "name": "Spire 057",
       "parentId": null,
-      "order": 540,
+      "order": 588,
       "enabled": true,
       "transform": {
         "position": [
@@ -44966,7 +48230,7 @@
       "id": "spire-057-crown",
       "name": "Spire 057 Crown",
       "parentId": null,
-      "order": 541,
+      "order": 589,
       "enabled": true,
       "transform": {
         "position": [
@@ -45034,7 +48298,7 @@
       "id": "spire-057-sign",
       "name": "Spire 057 Sign",
       "parentId": null,
-      "order": 542,
+      "order": 590,
       "enabled": true,
       "transform": {
         "position": [
@@ -45102,7 +48366,7 @@
       "id": "spire-058",
       "name": "Spire 058",
       "parentId": null,
-      "order": 543,
+      "order": 591,
       "enabled": true,
       "transform": {
         "position": [
@@ -45170,7 +48434,7 @@
       "id": "spire-058-crown",
       "name": "Spire 058 Crown",
       "parentId": null,
-      "order": 544,
+      "order": 592,
       "enabled": true,
       "transform": {
         "position": [
@@ -45238,7 +48502,7 @@
       "id": "spire-059",
       "name": "Spire 059",
       "parentId": null,
-      "order": 545,
+      "order": 593,
       "enabled": true,
       "transform": {
         "position": [
@@ -45306,7 +48570,7 @@
       "id": "spire-059-crown",
       "name": "Spire 059 Crown",
       "parentId": null,
-      "order": 546,
+      "order": 594,
       "enabled": true,
       "transform": {
         "position": [
@@ -45374,7 +48638,7 @@
       "id": "spire-059-sign",
       "name": "Spire 059 Sign",
       "parentId": null,
-      "order": 547,
+      "order": 595,
       "enabled": true,
       "transform": {
         "position": [
@@ -45442,7 +48706,7 @@
       "id": "spire-060",
       "name": "Spire 060",
       "parentId": null,
-      "order": 548,
+      "order": 596,
       "enabled": true,
       "transform": {
         "position": [
@@ -45510,7 +48774,7 @@
       "id": "spire-060-crown",
       "name": "Spire 060 Crown",
       "parentId": null,
-      "order": 549,
+      "order": 597,
       "enabled": true,
       "transform": {
         "position": [
@@ -45578,7 +48842,7 @@
       "id": "spire-061",
       "name": "Spire 061",
       "parentId": null,
-      "order": 550,
+      "order": 598,
       "enabled": true,
       "transform": {
         "position": [
@@ -45646,7 +48910,7 @@
       "id": "spire-061-crown",
       "name": "Spire 061 Crown",
       "parentId": null,
-      "order": 551,
+      "order": 599,
       "enabled": true,
       "transform": {
         "position": [
@@ -45714,7 +48978,7 @@
       "id": "spire-062",
       "name": "Spire 062",
       "parentId": null,
-      "order": 552,
+      "order": 600,
       "enabled": true,
       "transform": {
         "position": [
@@ -45782,7 +49046,7 @@
       "id": "spire-062-crown",
       "name": "Spire 062 Crown",
       "parentId": null,
-      "order": 553,
+      "order": 601,
       "enabled": true,
       "transform": {
         "position": [
@@ -45850,7 +49114,7 @@
       "id": "spire-062-sign",
       "name": "Spire 062 Sign",
       "parentId": null,
-      "order": 554,
+      "order": 602,
       "enabled": true,
       "transform": {
         "position": [
@@ -45918,7 +49182,7 @@
       "id": "spire-063",
       "name": "Spire 063",
       "parentId": null,
-      "order": 555,
+      "order": 603,
       "enabled": true,
       "transform": {
         "position": [
@@ -45986,7 +49250,7 @@
       "id": "spire-063-crown",
       "name": "Spire 063 Crown",
       "parentId": null,
-      "order": 556,
+      "order": 604,
       "enabled": true,
       "transform": {
         "position": [
@@ -46054,7 +49318,7 @@
       "id": "spire-063-sign",
       "name": "Spire 063 Sign",
       "parentId": null,
-      "order": 557,
+      "order": 605,
       "enabled": true,
       "transform": {
         "position": [
@@ -46122,7 +49386,7 @@
       "id": "spire-064",
       "name": "Spire 064",
       "parentId": null,
-      "order": 558,
+      "order": 606,
       "enabled": true,
       "transform": {
         "position": [
@@ -46190,7 +49454,7 @@
       "id": "spire-064-crown",
       "name": "Spire 064 Crown",
       "parentId": null,
-      "order": 559,
+      "order": 607,
       "enabled": true,
       "transform": {
         "position": [
@@ -46258,7 +49522,7 @@
       "id": "spire-064-sign",
       "name": "Spire 064 Sign",
       "parentId": null,
-      "order": 560,
+      "order": 608,
       "enabled": true,
       "transform": {
         "position": [
@@ -46326,7 +49590,7 @@
       "id": "spire-065",
       "name": "Spire 065",
       "parentId": null,
-      "order": 561,
+      "order": 609,
       "enabled": true,
       "transform": {
         "position": [
@@ -46394,7 +49658,7 @@
       "id": "spire-065-crown",
       "name": "Spire 065 Crown",
       "parentId": null,
-      "order": 562,
+      "order": 610,
       "enabled": true,
       "transform": {
         "position": [
@@ -46462,7 +49726,7 @@
       "id": "spire-065-sign",
       "name": "Spire 065 Sign",
       "parentId": null,
-      "order": 563,
+      "order": 611,
       "enabled": true,
       "transform": {
         "position": [
@@ -46530,7 +49794,7 @@
       "id": "spire-066",
       "name": "Spire 066",
       "parentId": null,
-      "order": 564,
+      "order": 612,
       "enabled": true,
       "transform": {
         "position": [
@@ -46598,7 +49862,7 @@
       "id": "spire-066-crown",
       "name": "Spire 066 Crown",
       "parentId": null,
-      "order": 565,
+      "order": 613,
       "enabled": true,
       "transform": {
         "position": [
@@ -46666,7 +49930,7 @@
       "id": "spire-067",
       "name": "Spire 067",
       "parentId": null,
-      "order": 566,
+      "order": 614,
       "enabled": true,
       "transform": {
         "position": [
@@ -46734,7 +49998,7 @@
       "id": "spire-067-crown",
       "name": "Spire 067 Crown",
       "parentId": null,
-      "order": 567,
+      "order": 615,
       "enabled": true,
       "transform": {
         "position": [
@@ -46802,7 +50066,7 @@
       "id": "spire-068",
       "name": "Spire 068",
       "parentId": null,
-      "order": 568,
+      "order": 616,
       "enabled": true,
       "transform": {
         "position": [
@@ -46870,7 +50134,7 @@
       "id": "spire-068-crown",
       "name": "Spire 068 Crown",
       "parentId": null,
-      "order": 569,
+      "order": 617,
       "enabled": true,
       "transform": {
         "position": [
@@ -46938,7 +50202,7 @@
       "id": "spire-069",
       "name": "Spire 069",
       "parentId": null,
-      "order": 570,
+      "order": 618,
       "enabled": true,
       "transform": {
         "position": [
@@ -47006,7 +50270,7 @@
       "id": "spire-069-crown",
       "name": "Spire 069 Crown",
       "parentId": null,
-      "order": 571,
+      "order": 619,
       "enabled": true,
       "transform": {
         "position": [
@@ -47074,7 +50338,7 @@
       "id": "spire-069-sign",
       "name": "Spire 069 Sign",
       "parentId": null,
-      "order": 572,
+      "order": 620,
       "enabled": true,
       "transform": {
         "position": [
@@ -47142,7 +50406,7 @@
       "id": "spire-070",
       "name": "Spire 070",
       "parentId": null,
-      "order": 573,
+      "order": 621,
       "enabled": true,
       "transform": {
         "position": [
@@ -47210,7 +50474,7 @@
       "id": "spire-070-crown",
       "name": "Spire 070 Crown",
       "parentId": null,
-      "order": 574,
+      "order": 622,
       "enabled": true,
       "transform": {
         "position": [
@@ -47278,7 +50542,7 @@
       "id": "spire-071",
       "name": "Spire 071",
       "parentId": null,
-      "order": 575,
+      "order": 623,
       "enabled": true,
       "transform": {
         "position": [
@@ -47346,7 +50610,7 @@
       "id": "spire-071-crown",
       "name": "Spire 071 Crown",
       "parentId": null,
-      "order": 576,
+      "order": 624,
       "enabled": true,
       "transform": {
         "position": [
@@ -47414,7 +50678,7 @@
       "id": "spire-072",
       "name": "Spire 072",
       "parentId": null,
-      "order": 577,
+      "order": 625,
       "enabled": true,
       "transform": {
         "position": [
@@ -47482,7 +50746,7 @@
       "id": "spire-072-crown",
       "name": "Spire 072 Crown",
       "parentId": null,
-      "order": 578,
+      "order": 626,
       "enabled": true,
       "transform": {
         "position": [
@@ -47550,7 +50814,7 @@
       "id": "spire-072-sign",
       "name": "Spire 072 Sign",
       "parentId": null,
-      "order": 579,
+      "order": 627,
       "enabled": true,
       "transform": {
         "position": [
@@ -47618,7 +50882,7 @@
       "id": "spire-073",
       "name": "Spire 073",
       "parentId": null,
-      "order": 580,
+      "order": 628,
       "enabled": true,
       "transform": {
         "position": [
@@ -47686,7 +50950,7 @@
       "id": "spire-073-crown",
       "name": "Spire 073 Crown",
       "parentId": null,
-      "order": 581,
+      "order": 629,
       "enabled": true,
       "transform": {
         "position": [
@@ -47754,7 +51018,7 @@
       "id": "spire-074",
       "name": "Spire 074",
       "parentId": null,
-      "order": 582,
+      "order": 630,
       "enabled": true,
       "transform": {
         "position": [
@@ -47822,7 +51086,7 @@
       "id": "spire-074-crown",
       "name": "Spire 074 Crown",
       "parentId": null,
-      "order": 583,
+      "order": 631,
       "enabled": true,
       "transform": {
         "position": [
@@ -47890,7 +51154,7 @@
       "id": "spire-075",
       "name": "Spire 075",
       "parentId": null,
-      "order": 584,
+      "order": 632,
       "enabled": true,
       "transform": {
         "position": [
@@ -47958,7 +51222,7 @@
       "id": "spire-075-crown",
       "name": "Spire 075 Crown",
       "parentId": null,
-      "order": 585,
+      "order": 633,
       "enabled": true,
       "transform": {
         "position": [
@@ -48026,7 +51290,7 @@
       "id": "spire-075-sign",
       "name": "Spire 075 Sign",
       "parentId": null,
-      "order": 586,
+      "order": 634,
       "enabled": true,
       "transform": {
         "position": [
@@ -48094,7 +51358,7 @@
       "id": "spire-076",
       "name": "Spire 076",
       "parentId": null,
-      "order": 587,
+      "order": 635,
       "enabled": true,
       "transform": {
         "position": [
@@ -48162,7 +51426,7 @@
       "id": "spire-076-crown",
       "name": "Spire 076 Crown",
       "parentId": null,
-      "order": 588,
+      "order": 636,
       "enabled": true,
       "transform": {
         "position": [
@@ -48230,7 +51494,7 @@
       "id": "spire-077",
       "name": "Spire 077",
       "parentId": null,
-      "order": 589,
+      "order": 637,
       "enabled": true,
       "transform": {
         "position": [
@@ -48298,7 +51562,7 @@
       "id": "spire-077-crown",
       "name": "Spire 077 Crown",
       "parentId": null,
-      "order": 590,
+      "order": 638,
       "enabled": true,
       "transform": {
         "position": [
@@ -48366,7 +51630,7 @@
       "id": "spire-077-sign",
       "name": "Spire 077 Sign",
       "parentId": null,
-      "order": 591,
+      "order": 639,
       "enabled": true,
       "transform": {
         "position": [
@@ -48434,7 +51698,7 @@
       "id": "spire-078",
       "name": "Spire 078",
       "parentId": null,
-      "order": 592,
+      "order": 640,
       "enabled": true,
       "transform": {
         "position": [
@@ -48502,7 +51766,7 @@
       "id": "spire-078-crown",
       "name": "Spire 078 Crown",
       "parentId": null,
-      "order": 593,
+      "order": 641,
       "enabled": true,
       "transform": {
         "position": [
@@ -48570,7 +51834,7 @@
       "id": "spire-079",
       "name": "Spire 079",
       "parentId": null,
-      "order": 594,
+      "order": 642,
       "enabled": true,
       "transform": {
         "position": [
@@ -48638,7 +51902,7 @@
       "id": "spire-079-crown",
       "name": "Spire 079 Crown",
       "parentId": null,
-      "order": 595,
+      "order": 643,
       "enabled": true,
       "transform": {
         "position": [
@@ -48706,7 +51970,7 @@
       "id": "spire-079-sign",
       "name": "Spire 079 Sign",
       "parentId": null,
-      "order": 596,
+      "order": 644,
       "enabled": true,
       "transform": {
         "position": [
@@ -48774,7 +52038,7 @@
       "id": "spire-080",
       "name": "Spire 080",
       "parentId": null,
-      "order": 597,
+      "order": 645,
       "enabled": true,
       "transform": {
         "position": [
@@ -48842,7 +52106,7 @@
       "id": "spire-080-crown",
       "name": "Spire 080 Crown",
       "parentId": null,
-      "order": 598,
+      "order": 646,
       "enabled": true,
       "transform": {
         "position": [
@@ -48910,7 +52174,7 @@
       "id": "spire-081",
       "name": "Spire 081",
       "parentId": null,
-      "order": 599,
+      "order": 647,
       "enabled": true,
       "transform": {
         "position": [
@@ -48978,7 +52242,7 @@
       "id": "spire-081-crown",
       "name": "Spire 081 Crown",
       "parentId": null,
-      "order": 600,
+      "order": 648,
       "enabled": true,
       "transform": {
         "position": [
@@ -49046,7 +52310,7 @@
       "id": "spire-081-sign",
       "name": "Spire 081 Sign",
       "parentId": null,
-      "order": 601,
+      "order": 649,
       "enabled": true,
       "transform": {
         "position": [
@@ -49114,7 +52378,7 @@
       "id": "spire-082",
       "name": "Spire 082",
       "parentId": null,
-      "order": 602,
+      "order": 650,
       "enabled": true,
       "transform": {
         "position": [
@@ -49182,7 +52446,7 @@
       "id": "spire-082-crown",
       "name": "Spire 082 Crown",
       "parentId": null,
-      "order": 603,
+      "order": 651,
       "enabled": true,
       "transform": {
         "position": [
@@ -49250,7 +52514,7 @@
       "id": "spire-083",
       "name": "Spire 083",
       "parentId": null,
-      "order": 604,
+      "order": 652,
       "enabled": true,
       "transform": {
         "position": [
@@ -49318,7 +52582,7 @@
       "id": "spire-083-crown",
       "name": "Spire 083 Crown",
       "parentId": null,
-      "order": 605,
+      "order": 653,
       "enabled": true,
       "transform": {
         "position": [
@@ -49386,7 +52650,7 @@
       "id": "spire-084",
       "name": "Spire 084",
       "parentId": null,
-      "order": 606,
+      "order": 654,
       "enabled": true,
       "transform": {
         "position": [
@@ -49454,7 +52718,7 @@
       "id": "spire-084-crown",
       "name": "Spire 084 Crown",
       "parentId": null,
-      "order": 607,
+      "order": 655,
       "enabled": true,
       "transform": {
         "position": [
@@ -49522,7 +52786,7 @@
       "id": "spire-085",
       "name": "Spire 085",
       "parentId": null,
-      "order": 608,
+      "order": 656,
       "enabled": true,
       "transform": {
         "position": [
@@ -49590,7 +52854,7 @@
       "id": "spire-085-crown",
       "name": "Spire 085 Crown",
       "parentId": null,
-      "order": 609,
+      "order": 657,
       "enabled": true,
       "transform": {
         "position": [
@@ -49658,7 +52922,7 @@
       "id": "spire-086",
       "name": "Spire 086",
       "parentId": null,
-      "order": 610,
+      "order": 658,
       "enabled": true,
       "transform": {
         "position": [
@@ -49726,7 +52990,7 @@
       "id": "spire-086-crown",
       "name": "Spire 086 Crown",
       "parentId": null,
-      "order": 611,
+      "order": 659,
       "enabled": true,
       "transform": {
         "position": [
@@ -49794,7 +53058,7 @@
       "id": "spire-087",
       "name": "Spire 087",
       "parentId": null,
-      "order": 612,
+      "order": 660,
       "enabled": true,
       "transform": {
         "position": [
@@ -49862,7 +53126,7 @@
       "id": "spire-087-crown",
       "name": "Spire 087 Crown",
       "parentId": null,
-      "order": 613,
+      "order": 661,
       "enabled": true,
       "transform": {
         "position": [
@@ -49930,7 +53194,7 @@
       "id": "spire-087-sign",
       "name": "Spire 087 Sign",
       "parentId": null,
-      "order": 614,
+      "order": 662,
       "enabled": true,
       "transform": {
         "position": [
@@ -49998,7 +53262,7 @@
       "id": "spire-088",
       "name": "Spire 088",
       "parentId": null,
-      "order": 615,
+      "order": 663,
       "enabled": true,
       "transform": {
         "position": [
@@ -50066,7 +53330,7 @@
       "id": "spire-088-crown",
       "name": "Spire 088 Crown",
       "parentId": null,
-      "order": 616,
+      "order": 664,
       "enabled": true,
       "transform": {
         "position": [
@@ -50134,7 +53398,7 @@
       "id": "spire-088-sign",
       "name": "Spire 088 Sign",
       "parentId": null,
-      "order": 617,
+      "order": 665,
       "enabled": true,
       "transform": {
         "position": [
@@ -50202,7 +53466,7 @@
       "id": "spire-089",
       "name": "Spire 089",
       "parentId": null,
-      "order": 618,
+      "order": 666,
       "enabled": true,
       "transform": {
         "position": [
@@ -50270,7 +53534,7 @@
       "id": "spire-089-crown",
       "name": "Spire 089 Crown",
       "parentId": null,
-      "order": 619,
+      "order": 667,
       "enabled": true,
       "transform": {
         "position": [
@@ -50338,7 +53602,7 @@
       "id": "spire-090",
       "name": "Spire 090",
       "parentId": null,
-      "order": 620,
+      "order": 668,
       "enabled": true,
       "transform": {
         "position": [
@@ -50406,7 +53670,7 @@
       "id": "spire-090-crown",
       "name": "Spire 090 Crown",
       "parentId": null,
-      "order": 621,
+      "order": 669,
       "enabled": true,
       "transform": {
         "position": [
@@ -50474,7 +53738,7 @@
       "id": "spire-090-sign",
       "name": "Spire 090 Sign",
       "parentId": null,
-      "order": 622,
+      "order": 670,
       "enabled": true,
       "transform": {
         "position": [
@@ -50542,7 +53806,7 @@
       "id": "spire-091",
       "name": "Spire 091",
       "parentId": null,
-      "order": 623,
+      "order": 671,
       "enabled": true,
       "transform": {
         "position": [
@@ -50610,7 +53874,7 @@
       "id": "spire-091-crown",
       "name": "Spire 091 Crown",
       "parentId": null,
-      "order": 624,
+      "order": 672,
       "enabled": true,
       "transform": {
         "position": [
@@ -50678,7 +53942,7 @@
       "id": "spire-092",
       "name": "Spire 092",
       "parentId": null,
-      "order": 625,
+      "order": 673,
       "enabled": true,
       "transform": {
         "position": [
@@ -50746,7 +54010,7 @@
       "id": "spire-092-crown",
       "name": "Spire 092 Crown",
       "parentId": null,
-      "order": 626,
+      "order": 674,
       "enabled": true,
       "transform": {
         "position": [
@@ -50814,7 +54078,7 @@
       "id": "spire-093",
       "name": "Spire 093",
       "parentId": null,
-      "order": 627,
+      "order": 675,
       "enabled": true,
       "transform": {
         "position": [
@@ -50882,7 +54146,7 @@
       "id": "spire-093-crown",
       "name": "Spire 093 Crown",
       "parentId": null,
-      "order": 628,
+      "order": 676,
       "enabled": true,
       "transform": {
         "position": [
@@ -50950,7 +54214,7 @@
       "id": "spire-093-sign",
       "name": "Spire 093 Sign",
       "parentId": null,
-      "order": 629,
+      "order": 677,
       "enabled": true,
       "transform": {
         "position": [
@@ -51018,7 +54282,7 @@
       "id": "spire-094",
       "name": "Spire 094",
       "parentId": null,
-      "order": 630,
+      "order": 678,
       "enabled": true,
       "transform": {
         "position": [
@@ -51086,7 +54350,7 @@
       "id": "spire-094-crown",
       "name": "Spire 094 Crown",
       "parentId": null,
-      "order": 631,
+      "order": 679,
       "enabled": true,
       "transform": {
         "position": [
@@ -51154,7 +54418,7 @@
       "id": "spire-095",
       "name": "Spire 095",
       "parentId": null,
-      "order": 632,
+      "order": 680,
       "enabled": true,
       "transform": {
         "position": [
@@ -51222,7 +54486,7 @@
       "id": "spire-095-crown",
       "name": "Spire 095 Crown",
       "parentId": null,
-      "order": 633,
+      "order": 681,
       "enabled": true,
       "transform": {
         "position": [
@@ -51290,7 +54554,7 @@
       "id": "spire-096",
       "name": "Spire 096",
       "parentId": null,
-      "order": 634,
+      "order": 682,
       "enabled": true,
       "transform": {
         "position": [
@@ -51358,7 +54622,7 @@
       "id": "spire-096-crown",
       "name": "Spire 096 Crown",
       "parentId": null,
-      "order": 635,
+      "order": 683,
       "enabled": true,
       "transform": {
         "position": [
@@ -51426,7 +54690,7 @@
       "id": "spire-097",
       "name": "Spire 097",
       "parentId": null,
-      "order": 636,
+      "order": 684,
       "enabled": true,
       "transform": {
         "position": [
@@ -51494,7 +54758,7 @@
       "id": "spire-097-crown",
       "name": "Spire 097 Crown",
       "parentId": null,
-      "order": 637,
+      "order": 685,
       "enabled": true,
       "transform": {
         "position": [
@@ -51562,7 +54826,7 @@
       "id": "spire-097-sign",
       "name": "Spire 097 Sign",
       "parentId": null,
-      "order": 638,
+      "order": 686,
       "enabled": true,
       "transform": {
         "position": [
@@ -51630,7 +54894,7 @@
       "id": "spire-098",
       "name": "Spire 098",
       "parentId": null,
-      "order": 639,
+      "order": 687,
       "enabled": true,
       "transform": {
         "position": [
@@ -51698,7 +54962,7 @@
       "id": "spire-098-crown",
       "name": "Spire 098 Crown",
       "parentId": null,
-      "order": 640,
+      "order": 688,
       "enabled": true,
       "transform": {
         "position": [
@@ -51766,7 +55030,7 @@
       "id": "spire-098-sign",
       "name": "Spire 098 Sign",
       "parentId": null,
-      "order": 641,
+      "order": 689,
       "enabled": true,
       "transform": {
         "position": [
@@ -51834,7 +55098,7 @@
       "id": "spire-099",
       "name": "Spire 099",
       "parentId": null,
-      "order": 642,
+      "order": 690,
       "enabled": true,
       "transform": {
         "position": [
@@ -51902,7 +55166,7 @@
       "id": "spire-099-crown",
       "name": "Spire 099 Crown",
       "parentId": null,
-      "order": 643,
+      "order": 691,
       "enabled": true,
       "transform": {
         "position": [
@@ -51970,7 +55234,7 @@
       "id": "spire-100",
       "name": "Spire 100",
       "parentId": null,
-      "order": 644,
+      "order": 692,
       "enabled": true,
       "transform": {
         "position": [
@@ -52038,7 +55302,7 @@
       "id": "spire-100-crown",
       "name": "Spire 100 Crown",
       "parentId": null,
-      "order": 645,
+      "order": 693,
       "enabled": true,
       "transform": {
         "position": [
@@ -52106,7 +55370,7 @@
       "id": "spire-101",
       "name": "Spire 101",
       "parentId": null,
-      "order": 646,
+      "order": 694,
       "enabled": true,
       "transform": {
         "position": [
@@ -52174,7 +55438,7 @@
       "id": "spire-101-crown",
       "name": "Spire 101 Crown",
       "parentId": null,
-      "order": 647,
+      "order": 695,
       "enabled": true,
       "transform": {
         "position": [
@@ -52242,7 +55506,7 @@
       "id": "spire-101-sign",
       "name": "Spire 101 Sign",
       "parentId": null,
-      "order": 648,
+      "order": 696,
       "enabled": true,
       "transform": {
         "position": [
@@ -52310,7 +55574,7 @@
       "id": "spire-102",
       "name": "Spire 102",
       "parentId": null,
-      "order": 649,
+      "order": 697,
       "enabled": true,
       "transform": {
         "position": [
@@ -52378,7 +55642,7 @@
       "id": "spire-102-crown",
       "name": "Spire 102 Crown",
       "parentId": null,
-      "order": 650,
+      "order": 698,
       "enabled": true,
       "transform": {
         "position": [
@@ -52446,7 +55710,7 @@
       "id": "spire-102-sign",
       "name": "Spire 102 Sign",
       "parentId": null,
-      "order": 651,
+      "order": 699,
       "enabled": true,
       "transform": {
         "position": [
@@ -52514,7 +55778,7 @@
       "id": "spire-103",
       "name": "Spire 103",
       "parentId": null,
-      "order": 652,
+      "order": 700,
       "enabled": true,
       "transform": {
         "position": [
@@ -52582,7 +55846,7 @@
       "id": "spire-103-crown",
       "name": "Spire 103 Crown",
       "parentId": null,
-      "order": 653,
+      "order": 701,
       "enabled": true,
       "transform": {
         "position": [
@@ -52650,7 +55914,7 @@
       "id": "spire-104",
       "name": "Spire 104",
       "parentId": null,
-      "order": 654,
+      "order": 702,
       "enabled": true,
       "transform": {
         "position": [
@@ -52718,7 +55982,7 @@
       "id": "spire-104-crown",
       "name": "Spire 104 Crown",
       "parentId": null,
-      "order": 655,
+      "order": 703,
       "enabled": true,
       "transform": {
         "position": [
@@ -52786,7 +56050,7 @@
       "id": "spire-105",
       "name": "Spire 105",
       "parentId": null,
-      "order": 656,
+      "order": 704,
       "enabled": true,
       "transform": {
         "position": [
@@ -52854,7 +56118,7 @@
       "id": "spire-105-crown",
       "name": "Spire 105 Crown",
       "parentId": null,
-      "order": 657,
+      "order": 705,
       "enabled": true,
       "transform": {
         "position": [
@@ -52922,7 +56186,7 @@
       "id": "spire-106",
       "name": "Spire 106",
       "parentId": null,
-      "order": 658,
+      "order": 706,
       "enabled": true,
       "transform": {
         "position": [
@@ -52990,7 +56254,7 @@
       "id": "spire-106-crown",
       "name": "Spire 106 Crown",
       "parentId": null,
-      "order": 659,
+      "order": 707,
       "enabled": true,
       "transform": {
         "position": [
@@ -53058,7 +56322,7 @@
       "id": "spire-107",
       "name": "Spire 107",
       "parentId": null,
-      "order": 660,
+      "order": 708,
       "enabled": true,
       "transform": {
         "position": [
@@ -53126,7 +56390,7 @@
       "id": "spire-107-crown",
       "name": "Spire 107 Crown",
       "parentId": null,
-      "order": 661,
+      "order": 709,
       "enabled": true,
       "transform": {
         "position": [
@@ -53194,7 +56458,7 @@
       "id": "spire-108",
       "name": "Spire 108",
       "parentId": null,
-      "order": 662,
+      "order": 710,
       "enabled": true,
       "transform": {
         "position": [
@@ -53262,7 +56526,7 @@
       "id": "spire-108-crown",
       "name": "Spire 108 Crown",
       "parentId": null,
-      "order": 663,
+      "order": 711,
       "enabled": true,
       "transform": {
         "position": [
@@ -53330,7 +56594,7 @@
       "id": "spire-109",
       "name": "Spire 109",
       "parentId": null,
-      "order": 664,
+      "order": 712,
       "enabled": true,
       "transform": {
         "position": [
@@ -53398,7 +56662,7 @@
       "id": "spire-109-crown",
       "name": "Spire 109 Crown",
       "parentId": null,
-      "order": 665,
+      "order": 713,
       "enabled": true,
       "transform": {
         "position": [
@@ -53466,7 +56730,7 @@
       "id": "spire-109-sign",
       "name": "Spire 109 Sign",
       "parentId": null,
-      "order": 666,
+      "order": 714,
       "enabled": true,
       "transform": {
         "position": [
@@ -53534,7 +56798,7 @@
       "id": "spire-110",
       "name": "Spire 110",
       "parentId": null,
-      "order": 667,
+      "order": 715,
       "enabled": true,
       "transform": {
         "position": [
@@ -53602,7 +56866,7 @@
       "id": "spire-110-crown",
       "name": "Spire 110 Crown",
       "parentId": null,
-      "order": 668,
+      "order": 716,
       "enabled": true,
       "transform": {
         "position": [
@@ -53670,7 +56934,7 @@
       "id": "spire-110-sign",
       "name": "Spire 110 Sign",
       "parentId": null,
-      "order": 669,
+      "order": 717,
       "enabled": true,
       "transform": {
         "position": [
@@ -53738,7 +57002,7 @@
       "id": "island-01",
       "name": "Island 01",
       "parentId": null,
-      "order": 670,
+      "order": 718,
       "enabled": true,
       "transform": {
         "position": [
@@ -53806,7 +57070,7 @@
       "id": "island-01-shrine",
       "name": "Island 01 Shrine",
       "parentId": null,
-      "order": 671,
+      "order": 719,
       "enabled": true,
       "transform": {
         "position": [
@@ -53874,7 +57138,7 @@
       "id": "island-01-roof",
       "name": "Island 01 Roof",
       "parentId": null,
-      "order": 672,
+      "order": 720,
       "enabled": true,
       "transform": {
         "position": [
@@ -53942,7 +57206,7 @@
       "id": "island-01-lantern",
       "name": "Island 01 Lantern",
       "parentId": null,
-      "order": 673,
+      "order": 721,
       "enabled": true,
       "transform": {
         "position": [
@@ -54010,7 +57274,7 @@
       "id": "island-02",
       "name": "Island 02",
       "parentId": null,
-      "order": 674,
+      "order": 722,
       "enabled": true,
       "transform": {
         "position": [
@@ -54078,7 +57342,7 @@
       "id": "island-02-shrine",
       "name": "Island 02 Shrine",
       "parentId": null,
-      "order": 675,
+      "order": 723,
       "enabled": true,
       "transform": {
         "position": [
@@ -54146,7 +57410,7 @@
       "id": "island-02-roof",
       "name": "Island 02 Roof",
       "parentId": null,
-      "order": 676,
+      "order": 724,
       "enabled": true,
       "transform": {
         "position": [
@@ -54214,7 +57478,7 @@
       "id": "island-02-lantern",
       "name": "Island 02 Lantern",
       "parentId": null,
-      "order": 677,
+      "order": 725,
       "enabled": true,
       "transform": {
         "position": [
@@ -54282,7 +57546,7 @@
       "id": "island-03",
       "name": "Island 03",
       "parentId": null,
-      "order": 678,
+      "order": 726,
       "enabled": true,
       "transform": {
         "position": [
@@ -54350,7 +57614,7 @@
       "id": "island-03-shrine",
       "name": "Island 03 Shrine",
       "parentId": null,
-      "order": 679,
+      "order": 727,
       "enabled": true,
       "transform": {
         "position": [
@@ -54418,7 +57682,7 @@
       "id": "island-03-roof",
       "name": "Island 03 Roof",
       "parentId": null,
-      "order": 680,
+      "order": 728,
       "enabled": true,
       "transform": {
         "position": [
@@ -54486,7 +57750,7 @@
       "id": "island-03-lantern",
       "name": "Island 03 Lantern",
       "parentId": null,
-      "order": 681,
+      "order": 729,
       "enabled": true,
       "transform": {
         "position": [
@@ -54554,7 +57818,7 @@
       "id": "island-04",
       "name": "Island 04",
       "parentId": null,
-      "order": 682,
+      "order": 730,
       "enabled": true,
       "transform": {
         "position": [
@@ -54622,7 +57886,7 @@
       "id": "island-04-shrine",
       "name": "Island 04 Shrine",
       "parentId": null,
-      "order": 683,
+      "order": 731,
       "enabled": true,
       "transform": {
         "position": [
@@ -54690,7 +57954,7 @@
       "id": "island-04-roof",
       "name": "Island 04 Roof",
       "parentId": null,
-      "order": 684,
+      "order": 732,
       "enabled": true,
       "transform": {
         "position": [
@@ -54758,7 +58022,7 @@
       "id": "island-04-lantern",
       "name": "Island 04 Lantern",
       "parentId": null,
-      "order": 685,
+      "order": 733,
       "enabled": true,
       "transform": {
         "position": [
@@ -54826,7 +58090,7 @@
       "id": "island-05",
       "name": "Island 05",
       "parentId": null,
-      "order": 686,
+      "order": 734,
       "enabled": true,
       "transform": {
         "position": [
@@ -54894,7 +58158,7 @@
       "id": "island-05-shrine",
       "name": "Island 05 Shrine",
       "parentId": null,
-      "order": 687,
+      "order": 735,
       "enabled": true,
       "transform": {
         "position": [
@@ -54962,7 +58226,7 @@
       "id": "island-05-roof",
       "name": "Island 05 Roof",
       "parentId": null,
-      "order": 688,
+      "order": 736,
       "enabled": true,
       "transform": {
         "position": [
@@ -55030,7 +58294,7 @@
       "id": "island-05-lantern",
       "name": "Island 05 Lantern",
       "parentId": null,
-      "order": 689,
+      "order": 737,
       "enabled": true,
       "transform": {
         "position": [
@@ -55098,7 +58362,7 @@
       "id": "board-01",
       "name": "Billboard 01",
       "parentId": null,
-      "order": 690,
+      "order": 738,
       "enabled": true,
       "transform": {
         "position": [
@@ -55166,7 +58430,7 @@
       "id": "board-01-mast",
       "name": "Billboard 01 Mast",
       "parentId": null,
-      "order": 691,
+      "order": 739,
       "enabled": true,
       "transform": {
         "position": [
@@ -55234,7 +58498,7 @@
       "id": "board-02",
       "name": "Billboard 02",
       "parentId": null,
-      "order": 692,
+      "order": 740,
       "enabled": true,
       "transform": {
         "position": [
@@ -55302,7 +58566,7 @@
       "id": "board-02-mast",
       "name": "Billboard 02 Mast",
       "parentId": null,
-      "order": 693,
+      "order": 741,
       "enabled": true,
       "transform": {
         "position": [
@@ -55370,7 +58634,7 @@
       "id": "board-03",
       "name": "Billboard 03",
       "parentId": null,
-      "order": 694,
+      "order": 742,
       "enabled": true,
       "transform": {
         "position": [
@@ -55438,7 +58702,7 @@
       "id": "board-03-mast",
       "name": "Billboard 03 Mast",
       "parentId": null,
-      "order": 695,
+      "order": 743,
       "enabled": true,
       "transform": {
         "position": [
@@ -55506,7 +58770,7 @@
       "id": "board-04",
       "name": "Billboard 04",
       "parentId": null,
-      "order": 696,
+      "order": 744,
       "enabled": true,
       "transform": {
         "position": [
@@ -55574,7 +58838,7 @@
       "id": "board-04-mast",
       "name": "Billboard 04 Mast",
       "parentId": null,
-      "order": 697,
+      "order": 745,
       "enabled": true,
       "transform": {
         "position": [
@@ -55642,7 +58906,7 @@
       "id": "board-05",
       "name": "Billboard 05",
       "parentId": null,
-      "order": 698,
+      "order": 746,
       "enabled": true,
       "transform": {
         "position": [
@@ -55710,7 +58974,7 @@
       "id": "board-05-mast",
       "name": "Billboard 05 Mast",
       "parentId": null,
-      "order": 699,
+      "order": 747,
       "enabled": true,
       "transform": {
         "position": [
@@ -55778,7 +59042,7 @@
       "id": "board-06",
       "name": "Billboard 06",
       "parentId": null,
-      "order": 700,
+      "order": 748,
       "enabled": true,
       "transform": {
         "position": [
@@ -55846,7 +59110,7 @@
       "id": "board-06-mast",
       "name": "Billboard 06 Mast",
       "parentId": null,
-      "order": 701,
+      "order": 749,
       "enabled": true,
       "transform": {
         "position": [
@@ -55914,7 +59178,7 @@
       "id": "dusk-sun",
       "name": "Dusk Sun",
       "parentId": null,
-      "order": 702,
+      "order": 750,
       "enabled": true,
       "transform": {
         "position": [
@@ -55961,7 +59225,7 @@
       "id": "sky-fill",
       "name": "Sky Fill",
       "parentId": null,
-      "order": 703,
+      "order": 751,
       "enabled": true,
       "transform": {
         "position": [
@@ -56008,7 +59272,7 @@
       "id": "game-camera",
       "name": "Chase Camera",
       "parentId": null,
-      "order": 704,
+      "order": 752,
       "enabled": true,
       "transform": {
         "position": [
@@ -56070,7 +59334,7 @@
       "id": "race-director",
       "name": "Race Director",
       "parentId": null,
-      "order": 705,
+      "order": 753,
       "enabled": true,
       "transform": {
         "position": [

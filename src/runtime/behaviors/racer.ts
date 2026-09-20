@@ -1083,6 +1083,20 @@ export const racerDirector: BehaviorDefinition = {
     const ranked: Array<{ id: string; progress: number }> = [];
 
     const setObjective = (value: string) => context.setState('objective', value);
+    const text = (key: string, fallback: string): string => `${context.getState<string | number>(key) ?? fallback}`;
+    /** The HUD can show one label per corner, so the readouts sharing a corner are joined here. */
+    const writeHudLines = () => {
+      context.setState('hudRace', `${text('place', '-')}   ·   LAP ${text('lap', '1')}`);
+      context.setState('hudPilot', `${text('craft', '')}   ·   ${text('raceTime', '0:00.00')}`);
+      const shield = context.getState('shield') === true;
+      context.setState(
+        'hudSystems',
+        `ENERGY ${text('energy', '100')}%   ·   ${shield ? 'SHIELD UP' : `WEAPON ${text('weapon', '—')}`}`,
+      );
+      context.setState('hudBoost', `BOOST ${text('boost', '100')}%   ·   hold SHIFT`);
+      const objective = text('objective', '');
+      context.setState('hudCenter', objective.length > 0 ? objective : text('announce', ''));
+    };
 
     return {
       start() {
@@ -1110,11 +1124,14 @@ export const racerDirector: BehaviorDefinition = {
         raceTime = 0;
         decided = false;
         setObjective('PRESS 1 · 2 · 3 TO CHOOSE A CRAFT');
+        writeHudLines();
         context.showOverlay('start');
       },
       fixedUpdate(delta) {
         if (context.getState('started') !== true) return;
+        writeHudLines();
         const state = context.getState('raceState');
+        if (state === 'finished') return;
         if (state === 'countdown') {
           countdown -= delta;
           const tick = Math.ceil(countdown);

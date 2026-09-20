@@ -663,8 +663,26 @@ function buildWorld(): void {
     id: 'cloud-sea',
     name: 'Cloud Sea',
     position: [80, -110, 0],
-    components: [primitive('box', [3000, 4, 3000]), material('#241238', { emissive: '#3a1650', emissiveIntensity: 0.25 })],
+    components: [primitive('box', [3000, 4, 3000]), material('#7a4aa8', { emissive: '#9a6ad0', emissiveIntensity: 0.45 })],
   });
+  // Cloud banks drifting under the raceway: flat pale slabs at staggered depths read as altitude.
+  const cloudRandom = rng(19092026);
+  for (let index = 0; index < 48; index += 1) {
+    const sample = samples[Math.floor(cloudRandom() * samples.length)];
+    const x = sample.point[0] + (cloudRandom() - 0.5) * 220;
+    const z = sample.point[2] + (cloudRandom() - 0.5) * 220;
+    const y = sample.point[1] - 30 - cloudRandom() * 60;
+    const width = 40 + cloudRandom() * 90;
+    const depth = 25 + cloudRandom() * 60;
+    const tone = cloudRandom() < 0.5 ? '#b48cff' : '#e6c7ff';
+    add({
+      id: `cloud-${String(index + 1).padStart(2, '0')}`,
+      name: `Cloud Bank ${String(index + 1).padStart(2, '0')}`,
+      position: [x, y, z],
+      rotation: quatFromEuler(cloudRandom() * Math.PI, 0, 0),
+      components: [primitive('box', [width, 3 + cloudRandom() * 4, depth]), material(tone, { emissive: tone, emissiveIntensity: 0.35, opacity: 0.85 })],
+    });
+  }
   add({
     id: 'moon',
     name: 'Moon',
@@ -908,23 +926,24 @@ const game: GameDocumentInput = {
       weapon: '—',
       craft: 'TENGU  ·  interceptor',
       raceTime: '0:00.00',
+      hudRace: '- / 4   ·   LAP 1 / 3',
+      hudPilot: 'TENGU  ·  interceptor   ·   0:00.00',
+      hudSystems: 'ENERGY 100%   ·   WEAPON —',
+      hudBoost: 'BOOST 100%   ·   hold SHIFT',
+      hudCenter: 'PRESS 1 · 2 · 3 TO CHOOSE A CRAFT',
       objective: 'PRESS 1 · 2 · 3 TO CHOOSE A CRAFT',
       announce: '',
       won: false,
       lost: false,
     },
     hud: [
-      hudLabel('place-label', '{value}', 'place', 'top-left', '#f6e7c8', 34),
-      hudLabel('lap-label', 'LAP {value}', 'lap', 'top-left', '#c99bff', 18),
-      hudLabel('objective-label', '{value}', 'objective', 'top-center', '#ffb070', 30),
-      hudLabel('announce-label', '{value}', 'announce', 'top-center', '#4ff0e6', 18),
-      hudLabel('time-label', '{value}', 'raceTime', 'top-right', '#f6e7c8', 22),
-      hudLabel('craft-label', '{value}', 'craft', 'top-right', '#c99bff', 13),
-      hudLabel('energy-label', 'ENERGY {value}%', 'energy', 'bottom-left', '#ff5a2f', 20),
-      hudLabel('weapon-label', 'WEAPON  {value}   ·   SPACE to fire', 'weapon', 'bottom-left', '#ffb070', 14),
+      // One label per HUD corner: the director joins the readouts that share a corner.
+      hudLabel('race-label', '{value}', 'hudRace', 'top-left', '#f6e7c8', 26),
+      hudLabel('center-label', '{value}', 'hudCenter', 'top-center', '#ffb070', 30),
+      hudLabel('pilot-label', '{value}', 'hudPilot', 'top-right', '#c99bff', 18),
+      hudLabel('systems-label', '{value}', 'hudSystems', 'bottom-left', '#ffb070', 18),
       hudLabel('speed-label', '{value} km/h', 'speed', 'bottom-center', '#f6e7c8', 42),
-      hudLabel('boost-label', 'BOOST {value}%   ·   hold SHIFT', 'boost', 'bottom-right', '#4ff0e6', 20),
-      hudLabel('controls-label', 'W thrust · A/D steer · Q/E air brakes · R restart', '', 'bottom-right', '#8f7fb0', 12),
+      hudLabel('boost-label', '{value}', 'hudBoost', 'bottom-right', '#4ff0e6', 18),
       {
         type: 'overlay',
         id: 'start-overlay',
