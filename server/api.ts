@@ -328,6 +328,12 @@ export async function startApiServer(options: ApiServerOptions): Promise<ApiServ
             sendJson(response, 200, await assets.remove(projectId, assetId));
             return;
           }
+          // PATCH /api/projects/:id/assets/:assetId - a new id, with every scene reference moved
+          if (route.length === 4 && request.method === 'PATCH') {
+            const input = parseRenameAssetRequest(await readJsonBody(request, maxBodyBytes));
+            sendJson(response, 200, await assets.rename(projectId, assetId, input.newId));
+            return;
+          }
           if (route.length === 5 && route[4] === 'content' && request.method === 'GET') {
             const { path, entry } = await assets.assetFilePath(projectId, assetId);
             const bytes = await readFile(path);
@@ -566,6 +572,15 @@ interface RenameRequest {
 
 function parseRenameRequest(body: JsonObject): RenameRequest {
   return { name: textField(body, 'name', '') };
+}
+
+/** `PATCH /api/projects/:id/assets/:assetId`: the asset's new id. */
+interface RenameAssetRequest {
+  newId: string;
+}
+
+function parseRenameAssetRequest(body: JsonObject): RenameAssetRequest {
+  return { newId: textField(body, 'newId', '') };
 }
 
 /** `PUT /api/projects/:id/scenes/:sceneId`: the document, and the revision it was edited from. */

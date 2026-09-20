@@ -210,7 +210,10 @@ Rules the runtime enforces:
 ```
 
 - Scenes and behaviors reference `assetId`. Stored file names carry a content hash, so replacing an
-  asset never changes the reference and moving a file never breaks a scene.
+  asset never changes the reference and moving a file never breaks a scene. Renaming an asset
+  (`PATCH /api/projects/:id/assets/:assetId` with `{ "newId" }`) is the one operation that changes
+  an id: the service rewrites every referencing scene, writing a behavior property explicitly when it
+  had relied on a registry default naming the old id.
 - `requires` lists glTF extensions the file declares. Draco, meshopt, and KTX2/Basis Universal
   compressed models decode in the editor, the player, and exports; the asset list labels them with
   their codec. A model that needs a codec the running host did not configure is refused at load with

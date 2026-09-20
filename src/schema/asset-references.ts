@@ -56,5 +56,45 @@ export function referencedAssetIdsOf(
   return [...assetReferencesOf(component).map((reference) => reference.assetId), ...behaviorAssetIdsOf(component, assetProperties)];
 }
 
+/**
+ * The component with every reference to `from` pointing at `to`, or `null` when it holds none.
+ *
+ * A behavior property that falls back to a registry default naming `from` is written out
+ * explicitly as `to`: the default belongs to the registry, and the rename must not depend on it
+ * being rewritten too.
+ */
+export function renameAssetReferences(
+  component: Component,
+  from: AssetId,
+  to: AssetId,
+  assetProperties: ReadonlyMap<string, ReadonlyMap<string, AssetId | null>>,
+): Component | null {
+  switch (component.type) {
+    case 'model':
+    case 'audio':
+      return component.assetId === from ? { ...component, assetId: to } : null;
+    case 'material': {
+      const slots = (['map', 'normalMap', 'emissiveMap'] as const).filter((property) => component[property] === from);
+      if (slots.length === 0) return null;
+      const next = { ...component };
+      for (const property of slots) next[property] = to;
+      return next;
+    }
+    case 'behavior': {
+      const properties = assetProperties.get(component.behaviorId);
+      if (!properties) return null;
+      const rewritten: Record<string, JsonValue> = {};
+      for (const [key, fallback] of properties) {
+        const stored = component.properties[key];
+        if ((stored === undefined ? fallback : stored) === from) rewritten[key] = to;
+      }
+      if (Object.keys(rewritten).length === 0) return null;
+      return { ...component, properties: { ...component.properties, ...rewritten } };
+    }
+    default:
+      return null;
+  }
+}
+
 /** An `asset` property holds an id or `null` for none; the validator checks the type, this reads it. */
 const isAssetId = (value: JsonValue): value is AssetId => typeof value === 'string' && value.length > 0;

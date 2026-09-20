@@ -194,6 +194,103 @@ describe('asset import', () => {
     await expect(assets.assetFilePath('g', imported.entry.id)).rejects.toThrow(/listed in the manifest but/);
   });
 
+  it('renames an asset and moves the fixed, material, and behavior references with it', async () => {
+    const model = await importFixture('models/spinning-crate.glb');
+    const image = await importFixture('images/swatch.png');
+    const projectRoot = join(workspaceRoot, 'g');
+    await writeFile(
+      join(projectRoot, 'scripts', 'registry.json'),
+      JSON.stringify({
+        schemaVersion: 1,
+        behaviors: [{ id: 'badge', name: 'Badge', properties: [{ key: 'icon', type: 'asset', default: image.entry.id }] }],
+      }),
+    );
+    const scene = await workspace.readScene('g', 'main');
+    const editor = { visible: true, locked: false, color: null, helper: false };
+    const transform = { position: [0, 0, 0] as [number, number, number], rotation: [0, 0, 0, 1] as [number, number, number, number], scale: [1, 1, 1] as [number, number, number] };
+    scene.entities.push(
+      {
+        id: 'crate',
+        name: 'Crate',
+        parentId: null,
+        order: 1,
+        enabled: true,
+        transform,
+        components: [
+          { type: 'model', assetId: model.entry.id, castShadow: true, receiveShadow: true },
+          {
+            type: 'material',
+            color: '#cccccc',
+            roughness: 0.8,
+            metalness: 0,
+            emissive: '#000000',
+            emissiveIntensity: 1,
+            opacity: 1,
+            map: image.entry.id,
+            normalMap: null,
+            emissiveMap: image.entry.id,
+            textureRepeat: [1, 1],
+            textureOffset: [0, 0],
+            transparent: false,
+            doubleSided: false,
+            flatShading: false,
+            visible: true,
+          },
+        ],
+        editor,
+      },
+      {
+        id: 'goal',
+        name: 'Goal',
+        parentId: null,
+        order: 2,
+        enabled: true,
+        transform,
+        components: [{ type: 'behavior', behaviorId: 'badge', properties: {} }],
+        editor,
+      },
+    );
+    const written = await workspace.writeScene('g', 'main', scene, { expectedRevision: scene.revision });
+
+    const renamed = await assets.rename('g', image.entry.id, 'wood-swatch');
+    expect(renamed.scenes).toEqual(['main']);
+    expect(renamed.entry).toMatchObject({ id: 'wood-swatch', kind: 'image', hash: image.entry.hash, bytes: image.entry.bytes });
+    expect(renamed.entry.path).toBe(image.entry.path.replace(image.entry.id, 'wood-swatch'));
+    expect(existsSync(join(projectRoot, renamed.entry.path))).toBe(true);
+    expect(existsSync(join(projectRoot, image.entry.path))).toBe(false);
+    expect(renamed.manifest.assets.map((asset) => asset.id).sort()).toEqual([model.entry.id, 'wood-swatch'].sort());
+
+    const after = await workspace.readScene('g', 'main');
+    expect(after.revision).toBe(written.scene.revision + 1);
+    const crate = after.entities.find((entity) => entity.id === 'crate');
+    const goal = after.entities.find((entity) => entity.id === 'goal');
+    expect(crate?.components[1]).toMatchObject({ map: 'wood-swatch', normalMap: null, emissiveMap: 'wood-swatch' });
+    expect(crate?.components[0]).toMatchObject({ assetId: model.entry.id });
+    // The registry default still names the old id, so the behavior now says the new id explicitly.
+    expect(goal?.components[0]).toMatchObject({ properties: { icon: 'wood-swatch' } });
+
+    const usage = await assets.usageIndex('g');
+    expect(usage[image.entry.id]).toBeUndefined();
+    expect(usage['wood-swatch']?.map((entry) => entry.entityId).sort()).toEqual(['crate', 'goal']);
+
+    // Untouched scenes are not rewritten and a rename to the same id is a no-op.
+    const modelRename = await assets.rename('g', model.entry.id, model.entry.id);
+    expect(modelRename.scenes).toEqual([]);
+    expect((await workspace.readScene('g', 'main')).revision).toBe(after.revision);
+  });
+
+  it('refuses a rename that would collide, leave the folder, or target a missing asset', async () => {
+    const image = await importFixture('images/swatch.png');
+    const model = await importFixture('models/spinning-crate.glb');
+    await expect(assets.rename('g', image.entry.id, model.entry.id)).rejects.toThrow(/already used/);
+    await expect(assets.rename('g', image.entry.id, '../escape')).rejects.toThrow(/not a valid asset id/);
+    await expect(assets.rename('g', image.entry.id, 'Has Spaces')).rejects.toThrow(/not a valid asset id/);
+    await expect(assets.rename('g', image.entry.id, '')).rejects.toThrow(/not a valid asset id/);
+    await expect(assets.rename('g', 'nope', 'fine')).rejects.toThrow(/no asset "nope"/);
+    const manifest = await assets.readManifest(join(workspaceRoot, 'g'));
+    expect(manifest.assets.map((asset) => asset.id).sort()).toEqual([image.entry.id, model.entry.id].sort());
+  });
+
   it('warns when a model file is not a GLB at all', async () => {
     const result = await importFixture('models/not-a-model.glb');
     expect(result.warnings.join(' ')).toMatch(/too short to be a GLB|does not start with a GLB header/);
