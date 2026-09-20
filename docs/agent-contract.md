@@ -61,8 +61,10 @@ it automatically.
 3. **Stable entity ids.** Ids are referenced by behaviors (`target`, `playerName`), by the active
    camera, and by other entities' parents. Renaming an id breaks references; renaming the display
    name does not.
-4. **Physics bodies are scene roots.** An entity with a `rigidBody` component must have
-   `"parentId": null`. Visual offsets live on the collider, not in a nested transform.
+4. **Moving physics bodies are scene roots.** An entity with a `dynamic` or `kinematic`
+   `rigidBody` must have `"parentId": null`. Visual offsets live on the collider, not in a nested
+   transform. `static` bodies may sit under a grouping parent (a track section, say) and are
+   placed at their world transform.
 5. **Expose tuning as behavior properties.** Anything the human should be able to adjust — speed,
    score target, distances, time limits — belongs in a behavior's `properties`, with a descriptor
    in `scripts/registry.json`. Never ask for source edits to tune a value.

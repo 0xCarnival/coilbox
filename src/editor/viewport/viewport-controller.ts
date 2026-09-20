@@ -1217,14 +1217,19 @@ export class EditorViewport {
   }
 
   focusSelection(): void {
-    if (this.selection.length === 1) {
-      const object = this.projections.get(this.selection[0]!)?.object;
+    this.focusEntities(this.selection);
+  }
+
+  /** Frame a set of entities by id; an empty list frames the whole scene. */
+  focusEntities(entityIds: readonly string[]): void {
+    if (entityIds.length === 1) {
+      const object = this.projections.get(entityIds[0]!)?.object;
       if (object) this.frame(object);
       return;
     }
-    if (this.selection.length > 1) {
+    if (entityIds.length > 1) {
       const box = new THREE.Box3();
-      for (const id of this.selection) {
+      for (const id of entityIds) {
         const object = this.projections.get(id)?.object;
         if (object) box.union(this.entityBounds(object));
       }

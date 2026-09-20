@@ -180,8 +180,9 @@ catches a behavior that is registered but cannot run. Both commands exit non-zer
 
 Rules the runtime enforces:
 
-- **Physics bodies must be scene roots** (`parentId: null`). Give the visual mesh its offset through
-  the collider instead of nesting the entity.
+- **Dynamic and kinematic bodies must be scene roots** (`parentId: null`). Give the visual mesh its
+  offset through the collider instead of nesting the entity. Static bodies may be nested under a
+  grouping parent; the collider is placed at the entity's world transform.
 - A `collider` needs a `rigidBody`; without one the scene is rejected with that message.
 - Non-uniform or negative scale on a physics body is refused rather than silently producing wrong
   collisions.

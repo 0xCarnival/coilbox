@@ -203,6 +203,8 @@ export interface CommandPaletteProps {
     toggleProjection(): void;
     cameraView(): void;
     frameAll(): void;
+    /** Select a root group and frame it: the palette lists every root group with children as a section. */
+    goToSection(entityId: string): void;
     toggleFly(): void;
     flying: boolean;
     toggleIsolation(): void;
@@ -318,6 +320,15 @@ export function CommandPalette({
         group: 'View',
         run: () => view.setShading(mode),
       })),
+      ...(scene?.entities ?? [])
+        .filter((candidate) => candidate.parentId === null && candidate.components.length === 0 && scene?.entities.some((child) => child.parentId === candidate.id))
+        .sort((a, b) => a.order - b.order || a.id.localeCompare(b.id))
+        .map((section) => ({
+          id: `section:${section.id}`,
+          label: `Go to: ${section.name}`,
+          group: 'Sections',
+          run: () => view.goToSection(section.id),
+        })),
       ...BOOKMARK_SLOTS.filter((slot) => view.bookmarks[slot] !== undefined).map((slot) => ({
         id: `view:bookmark:${slot}`,
         label: `View: bookmark ${slot}`,

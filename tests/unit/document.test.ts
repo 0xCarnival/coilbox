@@ -161,6 +161,18 @@ describe('commands', () => {
     expect(nested.issues.some((issue) => issue.code === 'physics-body-root' || issue.code === 'physics-body-not-root')).toBe(true);
   });
 
+  it('accepts static physics bodies under a grouping parent', () => {
+    const scene = freshScene();
+    const nested = planCommand(scene, {
+      kind: 'insertEntities',
+      entities: [
+        createEntity('group', { id: 'section', name: 'Section' }),
+        { ...createEntity('box', { id: 'deck', name: 'Deck', parentId: 'section' }), components: [...createEntity('box', { id: 'x' }).components, { type: 'rigidBody', bodyType: 'static', mass: null, gravityScale: 1, linearDamping: 0, angularDamping: 0.05, lockRotation: false, continuous: false, moveWithPhysics: false } as const] },
+      ],
+    });
+    expect(nested.ok).toBe(true);
+  });
+
   it('generates unique, readable entity ids', () => {
     const used = new Set(['box', 'box-2']);
     expect(createEntityId('box', used)).toBe('box-3');

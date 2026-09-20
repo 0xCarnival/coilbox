@@ -826,14 +826,17 @@ export class RuntimeWorld {
         }
         continue;
       }
-      if (entity.parentId !== null) {
+      if (entity.parentId !== null && rigidBody.bodyType !== 'static') {
         throw new RuntimeWorldError(
           'physics-body-not-root',
-          `entity "${entity.name}" has a rigid body but is not a scene root; physics bodies must be roots in this version`,
+          `entity "${entity.name}" has a ${rigidBody.bodyType} rigid body but is not a scene root; only static bodies may be nested`,
           entity.id,
         );
       }
-      const scale = entity.transform.scale;
+      // A nested static body sits at its world transform: the parent is only a grouping.
+      built.object.updateWorldMatrix(true, false);
+      built.object.matrixWorld.decompose(matrixPosition, matrixQuaternion, matrixScale);
+      const scale: [number, number, number] = [matrixScale.x, matrixScale.y, matrixScale.z];
       if (scale[0] <= 0 || scale[1] <= 0 || scale[2] <= 0) {
         throw new RuntimeWorldError(
           'unsupported-physics-scale',
@@ -852,8 +855,8 @@ export class RuntimeWorld {
       this.physics.createBody({
         key: entity.id,
         bodyType: rigidBody.bodyType,
-        position: copyVec3(entity.transform.position),
-        rotation: copyQuat(entity.transform.rotation),
+        position: [matrixPosition.x, matrixPosition.y, matrixPosition.z],
+        rotation: [matrixQuaternion.x, matrixQuaternion.y, matrixQuaternion.z, matrixQuaternion.w],
         gravityScale: rigidBody.gravityScale,
         linearDamping: rigidBody.linearDamping,
         angularDamping: rigidBody.angularDamping,
@@ -1050,6 +1053,7 @@ export class RuntimeWorld {
 
 const matrixPosition = new THREE.Vector3();
 const matrixQuaternion = new THREE.Quaternion();
+const matrixScale = new THREE.Vector3();
 
 function baseCollider(
   shape: ColliderSpec['shape'],

@@ -173,6 +173,7 @@ export interface ViewportHandle {
   step(): void;
   stop(): void;
   focusSelection(): void;
+  focusEntities(entityIds: readonly string[]): void;
   setTool(tool: TransformTool): void;
   setSpace(space: TransformSpace): void;
   /** The editor camera's framing, and restoring one — the camera bookmarks. */
@@ -518,6 +519,7 @@ export function Viewport({ handleRef, tool, space, snap, onPlayStateChange, onSt
       step,
       stop: stopPlay,
       focusSelection: () => viewportRef.current?.focusSelection(),
+      focusEntities: (ids: readonly string[]) => viewportRef.current?.focusEntities(ids),
       setTool: (next: TransformTool) => viewportRef.current?.setTool(next),
       setSnap: (next: SnapSettings) => viewportRef.current?.setSnap(next),
       setColliderOutlines: (visible: boolean) => viewportRef.current?.setColliderOutlinesVisible(visible),

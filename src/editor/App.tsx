@@ -982,6 +982,10 @@ function StudioShell(): JSX.Element {
                 /** The same callback numpad 0 uses, so the two cannot come to mean different things. */
                 cameraView: toggleCameraView,
                 frameAll: () => viewportRef.current?.frameAll(),
+                goToSection: (entityId: string) => {
+                  session.select(entityId);
+                  viewportRef.current?.focusEntities([entityId]);
+                },
                 toggleFly,
                 flying,
                 toggleIsolation,

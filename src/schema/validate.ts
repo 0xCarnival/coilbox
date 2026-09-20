@@ -132,11 +132,12 @@ export function validateSceneRelationships(scene: SceneDocument, context: SceneV
     });
   });
 
-  // Physics bodies must be scene roots in v1 (plan §9): their visual children carry
-  // local offsets, but a body nested under another entity would make the transform
-  // ownership rules ambiguous.
+  // Moving physics bodies must be scene roots (plan §9): their visual children carry local
+  // offsets, but a simulated body nested under another entity would make the transform
+  // ownership rules ambiguous. Static bodies never move, so they may sit under a grouping
+  // parent and are placed at their world transform.
   for (const [index, entity] of scene.entities.entries()) {
-    if (entity.parentId !== null && entity.components.some((component) => component.type === 'rigidBody')) {
+    if (entity.parentId !== null && entity.components.some((component) => component.type === 'rigidBody' && component.bodyType !== 'static')) {
       issues.push(
         error(
           'physics-body-not-root',
