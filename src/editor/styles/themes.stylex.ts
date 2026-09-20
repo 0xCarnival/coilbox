@@ -40,8 +40,8 @@ export const lightTheme = stylex.createTheme(color, {
   text: '#0a0a0a',
   /** `oklch(0.556 0 0)` — 5.9:1 on white. */
   muted: '#737373',
-  /** `oklch(0.708 0 0)` — 3.3:1, hints and placeholders only. */
-  dim: '#a3a3a3',
+  /** 4.5:1 on white, matching the dark `dim`'s ratio: field labels and hints must stay legible. */
+  dim: '#767676',
 
   /** Their light `primary`: near-black fill with white text. `oklch(0.205 0 0)`. */
   primary: '#171717',

@@ -102,8 +102,13 @@ const menuStyles = stylex.create({
     alignItems: 'center',
     justifyContent: 'center',
     width: control.iconSm,
+    height: control.iconSm,
     flexShrink: 0,
     color: color.text,
+  },
+  /** Radix renders the indicator as an inline span; a block dot needs a block box to size in. */
+  indicatorBox: {
+    display: 'flex',
   },
 });
 
@@ -200,7 +205,7 @@ export const DropdownMenuRadioItem = React.forwardRef<
       {...rest}
     >
       <span {...stylex.props(menuStyles.indicator)}>
-        <DropdownMenuPrimitive.ItemIndicator>
+        <DropdownMenuPrimitive.ItemIndicator {...stylex.props(menuStyles.indicatorBox)}>
           <span {...stylex.props(menuStyles.radioDot)} />
         </DropdownMenuPrimitive.ItemIndicator>
       </span>

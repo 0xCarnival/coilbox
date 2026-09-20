@@ -152,6 +152,13 @@ const styles = stylex.create({
     insetInlineStart: 0,
     display: 'flex',
   },
+  resizeTrailing: {
+    position: 'absolute',
+    insetBlockStart: 0,
+    insetBlockEnd: 0,
+    insetInlineEnd: 0,
+    display: 'flex',
+  },
   resizeTop: {
     position: 'absolute',
     insetBlockStart: 0,
@@ -644,15 +651,17 @@ function StudioShell(): JSX.Element {
                    * layout; this overlays the seam that is already there, so the handle is draggable
                    * without the workspace gaining a permanent 7px of nothing.
                    */}
-                  <ResizeHandle
-                    label="Resize the scene panel"
-                    size={layout.left}
-                    min={220}
-                    max={520}
-                    collapseBelow={200}
-                    onCollapse={() => setLeftCollapsed(true)}
-                    onResize={(next) => setLayout((current) => ({ ...current, left: next }))}
-                  />
+                  <div {...stylex.props(styles.resizeTrailing)}>
+                    <ResizeHandle
+                      label="Resize the scene panel"
+                      size={layout.left}
+                      min={220}
+                      max={520}
+                      collapseBelow={200}
+                      onCollapse={() => setLeftCollapsed(true)}
+                      onResize={(next) => setLayout((current) => ({ ...current, left: next }))}
+                    />
+                  </div>
                 </div>
               )}
               <div {...stylex.props(styles.centerPanel)}>
