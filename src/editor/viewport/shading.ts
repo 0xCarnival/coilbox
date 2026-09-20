@@ -58,6 +58,8 @@ export class ShadingPass {
   /** Everything swapped this frame, so `restore` puts back exactly what `apply` took. */
   private readonly swappedMaterials: Array<{ mesh: THREE.Mesh; material: Swappable }> = [];
   private readonly hiddenLights: THREE.Light[] = [];
+  /** The scene's authored fog, lifted for the working views and put back with the materials. */
+  private liftedFog: { scene: THREE.Scene; fog: THREE.Fog | THREE.FogExp2 } | null = null;
   /** Derived materials ever created, so `dispose` can release their programs. */
   private readonly created = new Set<THREE.Material>();
 
@@ -83,9 +85,18 @@ export class ShadingPass {
    * Swap in the derived materials for one render. A no-op in the lit view, so the fast path costs a
    * single comparison.
    */
-  apply(root: THREE.Object3D): void {
+  apply(root: THREE.Object3D, scene?: THREE.Scene): void {
     if (this.mode === 'lit') return;
     const mode = this.mode;
+    /**
+     * Fog belongs to the lit view. In the working views it hides exactly the thing they exist to
+     * show — a kilometre-scale level framed from far enough away to see all of it is fogged into
+     * its own background colour.
+     */
+    if (scene?.fog) {
+      this.liftedFog = { scene, fog: scene.fog };
+      scene.fog = null;
+    }
     root.traverse((object) => {
       if (object instanceof THREE.Light) {
         if (object.visible) {
@@ -109,6 +120,10 @@ export class ShadingPass {
     this.swappedMaterials.length = 0;
     for (const light of this.hiddenLights) light.visible = true;
     this.hiddenLights.length = 0;
+    if (this.liftedFog) {
+      this.liftedFog.scene.fog = this.liftedFog.fog;
+      this.liftedFog = null;
+    }
   }
 
   dispose(): void {

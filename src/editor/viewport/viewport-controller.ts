@@ -2130,7 +2130,7 @@ export class EditorViewport {
   private draw(): void {
     this.needsRender = false;
     if (this.selection.length > 0) this.updateSelectionHelper();
-    this.shading.apply(this.root);
+    this.shading.apply(this.root, this.scene);
     try {
       this.renderer.setViewport(0, 0, this.width, this.height);
       this.renderer.render(this.scene, this.camera);
