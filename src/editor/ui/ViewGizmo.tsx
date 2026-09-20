@@ -6,11 +6,13 @@ import { GIZMO_SIZE, color, fontSize, overlay, space } from '../styles/tokens.st
 import { DOM, withDomClass } from '../dom-contract.js';
 import type { ViewFace } from '../viewport/viewport-controller.js';
 import type { ViewportHandle } from '../panels/Viewport.js';
+import { BOOKMARK_SLOTS, type BookmarkSlot, type CameraBookmarks } from '../state/camera-bookmarks.js';
 import { IconButton } from './Button.js';
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -164,6 +166,14 @@ export interface ViewGizmoProps {
   onShadowsChange(visible: boolean): void;
   measurements: boolean;
   onMeasurementsChange(visible: boolean): void;
+  /**
+   * The scene's saved framings. Listed in the overlays menu so the shortcut is discoverable and the
+   * slots that hold something can be seen without pressing each one.
+   */
+  bookmarks: CameraBookmarks;
+  onSaveBookmark(slot: BookmarkSlot): void;
+  onRecallBookmark(slot: BookmarkSlot): void;
+  onClearBookmarks(): void;
 }
 
 export function ViewGizmo({
@@ -175,7 +185,13 @@ export function ViewGizmo({
   onShadowsChange,
   measurements,
   onMeasurementsChange,
+  bookmarks,
+  onSaveBookmark,
+  onRecallBookmark,
+  onClearBookmarks,
 }: ViewGizmoProps): JSX.Element | null {
+  const savedSlots = BOOKMARK_SLOTS.filter((slot) => bookmarks[slot] !== undefined);
+  const freeSlot = BOOKMARK_SLOTS.find((slot) => bookmarks[slot] === undefined) ?? null;
   const handleRefs = useRef<Array<HTMLButtonElement | null>>([]);
   /**
    * The live gesture, so a release can be told from a click.
@@ -361,6 +377,21 @@ export function ViewGizmo({
           >
             Measurements
           </DropdownMenuCheckboxItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuLabel>View bookmarks</DropdownMenuLabel>
+          {savedSlots.map((slot) => (
+            <DropdownMenuItem key={slot} shortcut={`Shift+${slot}`} onSelect={() => onRecallBookmark(slot)}>
+              Bookmark {slot} · {bookmarks[slot]?.projection === 'orthographic' ? 'orthographic' : 'perspective'}
+            </DropdownMenuItem>
+          ))}
+          {freeSlot ? (
+            <DropdownMenuItem shortcut={`Ctrl+Shift+${freeSlot}`} onSelect={() => onSaveBookmark(freeSlot)}>
+              Save this view as bookmark {freeSlot}
+            </DropdownMenuItem>
+          ) : null}
+          {savedSlots.length > 0 ? (
+            <DropdownMenuItem onSelect={onClearBookmarks}>Forget the bookmarks for this scene</DropdownMenuItem>
+          ) : null}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>

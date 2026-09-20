@@ -12,10 +12,12 @@ import { DOM, DOM_ID, withDomClass } from '../dom-contract.js';
 import {
   EditorViewport,
   type CameraBasis,
+  type CameraBookmark,
   type CameraPlanes,
   type CanvasSize,
   type ScreenPoint,
   type SnapSettings,
+  type TransformSpace,
   type TransformTool,
   type ViewFace,
 } from '../viewport/viewport-controller.js';
@@ -166,6 +168,10 @@ export interface ViewportHandle {
   stop(): void;
   focusSelection(): void;
   setTool(tool: TransformTool): void;
+  setSpace(space: TransformSpace): void;
+  /** The editor camera's framing, and restoring one — the camera bookmarks. */
+  cameraBookmark(): CameraBookmark | null;
+  applyCameraBookmark(bookmark: CameraBookmark): void;
   setSnap(snap: SnapSettings): void;
   setColliderOutlines(visible: boolean): void;
   /**
@@ -247,12 +253,13 @@ export interface ViewportHandle {
 export interface ViewportProps {
   handleRef?: Ref<ViewportHandle>;
   tool: TransformTool;
+  space: TransformSpace;
   snap: SnapSettings;
   onPlayStateChange(state: PlayState): void;
   onStatus(message: string): void;
 }
 
-export function Viewport({ handleRef, tool, snap, onPlayStateChange, onStatus }: ViewportProps): JSX.Element {
+export function Viewport({ handleRef, tool, space, snap, onPlayStateChange, onStatus }: ViewportProps): JSX.Element {
   const session = useSession();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const editorCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -338,6 +345,7 @@ export function Viewport({ handleRef, tool, snap, onPlayStateChange, onStatus }:
     assetCache.bindRenderer(viewport.renderer);
     viewport.start();
     viewport.setTool(tool);
+    viewport.setSpace(space);
     viewport.setSnap(snap);
 
     const scene = sessionRef.current.scene;
@@ -373,6 +381,10 @@ export function Viewport({ handleRef, tool, snap, onPlayStateChange, onStatus }:
   useEffect(() => {
     viewportRef.current?.setTool(tool);
   }, [tool]);
+
+  useEffect(() => {
+    viewportRef.current?.setSpace(space);
+  }, [space]);
 
   useEffect(() => {
     viewportRef.current?.setSnap(snap);
@@ -525,6 +537,9 @@ export function Viewport({ handleRef, tool, snap, onPlayStateChange, onStatus }:
       orbitAround: (azimuth: number, polar: number) => viewportRef.current?.orbitAround(azimuth, polar),
       toggleProjection: () => viewportRef.current?.toggleProjection() ?? 'perspective',
       oppositeView: () => viewportRef.current?.oppositeView(),
+      setSpace: (next: TransformSpace) => viewportRef.current?.setSpace(next),
+      cameraBookmark: () => viewportRef.current?.cameraBookmark() ?? null,
+      applyCameraBookmark: (bookmark: CameraBookmark) => viewportRef.current?.applyCameraBookmark(bookmark),
       enterCameraView: (entityId: string, planes: CameraPlanes) =>
         viewportRef.current?.enterCameraView(entityId, planes) ?? false,
       exitCameraView: () => viewportRef.current?.exitCameraView(),
