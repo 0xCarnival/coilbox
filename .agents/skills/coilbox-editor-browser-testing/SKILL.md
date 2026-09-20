@@ -44,6 +44,13 @@ description: Run isolated Coilbox editor browser tests with asset and environmen
 - Capture timer mutations with a passive DOM observer. Repeat near the end of the original lifetime, verify the toast survives its original deadline, then measure expiry from the repeat.
 - Measure toasts against the canvas, inspector, footer, and bottom Tools toolbar at representative desktop/laptop widths. Being inside the stage does not by itself ensure authoring tools remain unobstructed.
 
+## Packaged downloads
+
+- CDP-connected Playwright may redirect downloads into temporary GUID-named storage on each connection. For browser-directory evidence, set `Page.setDownloadBehavior` on a page-scoped CDP session to `{behavior: 'allow', downloadPath: '<absolute directory>'}` after connecting. Check the actual file and archive contents; a download event alone does not prove completion.
+- Do not mix a custom Chrome download destination with Playwright's GUID-based `download.path()`/completion lookup. Alternatively keep Playwright's default behavior and use `download.saveAs()` while the connection remains open.
+- Radix menus hide background controls from accessibility role queries. While a menu is open, inspect toolbar disabled properties with their `[aria-label]` locator, or close the menu before clicking toolbar controls.
+- Prove portability by extracting the downloaded ZIP outside the workspace, stopping the disposable workspace service, and serving the extracted project folder with Python's static server. Require visible rendering and real keyboard movement, as well as a clean player state and requests confined to the static origin.
+
 ## Devin Secrets Needed
 
 None for the local editor and disposable workspace.
