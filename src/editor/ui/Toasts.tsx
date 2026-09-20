@@ -8,6 +8,12 @@ import { DOM, withDomClass } from '../dom-contract.js';
 import { IconButton } from './Button.js';
 import { expireToasts, nextExpiry, pushToast, type Toast } from './toast-queue.js';
 
+/** Rises and fades in from where it sits: the eye is told something arrived without a sound. */
+const rise = stylex.keyframes({
+  from: { opacity: 0, transform: 'translateY(8px) scale(0.98)' },
+  to: { opacity: 1, transform: 'translateY(0) scale(1)' },
+});
+
 /**
  * Transient notifications for things that happened *to* the user.
  *
@@ -70,7 +76,7 @@ const styles = stylex.create({
     backdropFilter: 'blur(8px)',
     boxShadow: `0 16px 40px ${color.shadow}`,
     pointerEvents: 'auto',
-    animationName: 'coilbox-toast-in',
+    animationName: rise,
     animationDuration: '140ms',
     animationTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
     animationFillMode: 'both',

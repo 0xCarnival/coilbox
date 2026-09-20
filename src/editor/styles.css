@@ -120,37 +120,6 @@ body {
   color: var(--primary-ink);
 }
 
-/**
- * The menu entrance, keyed off the transform origin Radix publishes for the open content. Scaling
- * from that corner is what makes a dropdown read as growing out of its trigger rather than fading
- * in above it.
- */
-/**
- * A toast rises and fades in. It comes from the bottom edge because that is where it sits, and the
- * motion is what tells the eye something arrived without a sound.
- */
-@keyframes coilbox-toast-in {
-  from {
-    opacity: 0;
-    transform: translateY(8px) scale(0.98);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-@keyframes coilbox-menu-in {
-  from {
-    opacity: 0;
-    transform: scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
 /* ------------------------------------------------------------------ element defaults */
 
 /**
@@ -309,28 +278,6 @@ code {
   border-radius: 4px;
   font-size: 12px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-}
-
-/* ------------------------------------------------------------------ utilities */
-
-/**
- * The standard visually-hidden treatment.
- *
- * This is in the stylesheet rather than a `stylex.create` style because it is a behaviour, not a
- * design decision: the transport buttons are icon-only, and the accessible name for each one has to
- * keep existing as real text. It also keeps "Step" and "Stop" present as text for a test selector,
- * which is what lets an icon replace the word without the control losing its name.
- */
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-  border: 0;
 }
 
 /* ------------------------------------------------------------------ motion */

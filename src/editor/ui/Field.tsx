@@ -8,6 +8,12 @@ import { useScrub, type ScrubOptions } from './useScrub.js';
 import type { DomClassProps } from '../dom-contract.js';
 import { mergedClass } from './merged-class.js';
 
+/** Grows out of the transform origin Radix publishes for the open content, i.e. out of its trigger. */
+const grow = stylex.keyframes({
+  from: { opacity: 0, transform: 'scale(0.96)' },
+  to: { opacity: 1, transform: 'scale(1)' },
+});
+
 /**
  * Switch, select, and the field wrappers the Inspector is built from.
  *
@@ -135,7 +141,7 @@ const selectStyles = stylex.create({
   },
   content: {
     transformOrigin: 'var(--radix-select-content-transform-origin)',
-    animationName: 'coilbox-menu-in',
+    animationName: grow,
     animationDuration: '100ms',
     animationTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
     animationFillMode: 'both',
