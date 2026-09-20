@@ -789,6 +789,7 @@ export class EditorSession {
       this.conflict = null;
       this.lastSavedAt = new Date().toISOString();
       this.log('info', `Saved ${this.sceneId} (revision ${written.scene.revision})`);
+      void this.refreshAssets();
       return true;
     } catch (error) {
       this.store.markSaveFailed();
@@ -820,6 +821,7 @@ export class EditorSession {
       this.store.markSaved(written.scene.revision);
       this.conflict = null;
       this.log('info', `Overwrote ${this.sceneId} at revision ${written.scene.revision}`);
+      void this.refreshAssets();
       return true;
     } catch (error) {
       this.store.markSaveFailed();
