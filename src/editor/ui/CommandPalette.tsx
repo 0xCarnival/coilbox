@@ -9,9 +9,10 @@ import { useSession, useSessionSnapshot } from '../hooks.js';
 import { useAppearance } from '../state/appearance.js';
 import { THEME_LABELS, THEME_PREFERENCES } from '../state/theme.js';
 import { DENSITY_LABELS, DENSITY_PREFERENCES } from '../state/density.js';
-import type { TransformTool, ViewFace } from '../viewport/viewport-controller.js';
+import type { TransformSpace, TransformTool, ViewFace } from '../viewport/viewport-controller.js';
 import type { PlayState } from '../panels/Viewport.js';
 import type { ExportTarget } from '../panels/Toolbar.js';
+import { BOOKMARK_SLOTS, type BookmarkSlot, type CameraBookmarks } from '../state/camera-bookmarks.js';
 
 /** Grows out of the transform origin Radix publishes for the open content, i.e. out of its trigger. */
 const grow = stylex.keyframes({
@@ -202,7 +203,12 @@ export interface CommandPaletteProps {
     cameraView(): void;
     frameAll(): void;
     inCameraView: boolean;
+    bookmarks: CameraBookmarks;
+    saveBookmark(slot: BookmarkSlot): void;
+    recallBookmark(slot: BookmarkSlot): void;
   };
+  space: TransformSpace;
+  onSpaceChange(space: TransformSpace): void;
 }
 
 export function CommandPalette({
@@ -214,6 +220,8 @@ export function CommandPalette({
   onExport,
   exporting,
   view,
+  space,
+  onSpaceChange,
 }: CommandPaletteProps): JSX.Element {
   const session = useSession();
   const snapshot = useSessionSnapshot();
@@ -257,6 +265,13 @@ export function CommandPalette({
       { id: 'tool:rotate', label: 'Tool: Rotate', group: 'Tools', shortcut: 'R', run: () => onToolChange('rotate') },
       { id: 'tool:scale', label: 'Tool: Scale', group: 'Tools', shortcut: 'S', run: () => onToolChange('scale') },
       { id: 'tool:focus', label: 'Focus the selection', group: 'Tools', shortcut: 'F', run: onFocusSelection },
+      {
+        id: 'tool:space',
+        label: space === 'world' ? 'Transform space: Local (object axes)' : 'Transform space: World',
+        group: 'Tools',
+        shortcut: 'L',
+        run: () => onSpaceChange(space === 'world' ? 'local' : 'world'),
+      },
       { id: 'view:front', label: 'View: front', group: 'View', shortcut: '1', run: () => view.face({ axis: 'z', sign: 1 }) },
       { id: 'view:right', label: 'View: right', group: 'View', shortcut: '3', run: () => view.face({ axis: 'x', sign: 1 }) },
       { id: 'view:top', label: 'View: top', group: 'View', shortcut: '7', run: () => view.face({ axis: 'y', sign: 1 }) },
@@ -276,6 +291,20 @@ export function CommandPalette({
         run: view.cameraView,
       },
       { id: 'view:frame-all', label: 'Frame everything', group: 'View', shortcut: 'Home', run: view.frameAll },
+      ...BOOKMARK_SLOTS.filter((slot) => view.bookmarks[slot] !== undefined).map((slot) => ({
+        id: `view:bookmark:${slot}`,
+        label: `View: bookmark ${slot}`,
+        group: 'View',
+        shortcut: `Shift+${slot}`,
+        run: () => view.recallBookmark(slot),
+      })),
+      ...BOOKMARK_SLOTS.map((slot) => ({
+        id: `view:save-bookmark:${slot}`,
+        label: `Save this view as bookmark ${slot}${view.bookmarks[slot] ? ' (replace)' : ''}`,
+        group: 'View',
+        shortcut: `Ctrl+Shift+${slot}`,
+        run: () => view.saveBookmark(slot),
+      })),
       {
         id: 'edit:undo',
         label: 'Undo',
@@ -370,12 +399,15 @@ export function CommandPalette({
     exporting,
     onExport,
     onFocusSelection,
+    onSpaceChange,
     onToolChange,
     playback,
     session,
     snapshot.primarySelection,
     snapshot.selectedIds,
+    space,
     theme,
+    view,
   ]);
 
   const filtered = useMemo(() => {
