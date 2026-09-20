@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import type { JSX } from 'react';
 import * as stylex from '@stylexjs/stylex';
 import { Layers } from 'lucide-react';
-import { GIZMO_SIZE, fontSize, overlay, space } from '../styles/tokens.stylex.js';
+import { GIZMO_SIZE, color, fontSize, overlay, space } from '../styles/tokens.stylex.js';
 import { DOM, withDomClass } from '../dom-contract.js';
 import type { ViewFace } from '../viewport/viewport-controller.js';
 import type { ViewportHandle } from '../panels/Viewport.js';
@@ -143,7 +143,7 @@ const styles = stylex.create({
     borderRadius: '50%',
     borderWidth: '1px',
     borderStyle: 'solid',
-    borderColor: 'rgba(255, 255, 255, 0.14)',
+    borderColor: color['border-input'],
     pointerEvents: 'none',
   },
   /** The positive end of an axis: a filled disc. Its fill is inline, since the axis colour is data. */
@@ -152,7 +152,7 @@ const styles = stylex.create({
   },
   /** The negative end: a ring, so it reads as "behind" even where it overlaps its positive twin. */
   handleNegative: {
-    backgroundColor: 'rgba(23, 23, 23, 0.72)',
+    backgroundColor: color['overlay-soft'],
   },
 });
 

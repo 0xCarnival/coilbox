@@ -96,7 +96,8 @@ it automatically.
 - `pnpm studio validate <game>` prints `valid`.
 - `pnpm studio test <game>` passes every check.
 - `pnpm studio build <game>` produces an export that runs with the editor and the workspace service
-  switched off.
+  switched off. It ships only the assets a scene references and prints each asset's size with whether
+  it was bundled or skipped, so check that list if the export is heavier than expected.
 - The scene opens in the studio with named, selectable objects, and the tuning values you exposed
   appear in the inspector.
 - Your report lists the files changed, the exposed settings, and anything you could not resolve.

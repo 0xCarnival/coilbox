@@ -338,6 +338,8 @@ export async function startApiServer(options: ApiServerOptions): Promise<ApiServ
             relativeOutDir: result.relativeOutDir,
             files: result.files.length,
             totalBytes: result.totalBytes,
+            assets: result.assets,
+            prunedBytes: result.prunedBytes,
           });
           return;
         }

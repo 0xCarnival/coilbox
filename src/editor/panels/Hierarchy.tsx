@@ -20,7 +20,7 @@ import {
   Video,
   Workflow,
 } from 'lucide-react';
-import { color, control, fontSize, radius, space } from '../styles/tokens.stylex.js';
+import { color, control, controlSize, fontSize, radius, space } from '../styles/tokens.stylex.js';
 import { IconButton } from '../ui/Button.js';
 import { DOM, DOM_STATE, withDomClass } from '../dom-contract.js';
 import { useSession, useSessionSnapshot } from '../hooks.js';
@@ -80,7 +80,7 @@ const treeRow = {
   display: 'flex',
   alignItems: 'center',
   gap: space.xxs,
-  height: '24px',
+  height: controlSize.row,
   borderRadius: radius.sm,
   cursor: 'default',
 } as const;

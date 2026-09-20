@@ -8,6 +8,12 @@ import { DOM, withDomClass } from '../dom-contract.js';
 import { Button } from './Button.js';
 import { createEntity, createStarterEntities, type CreatableKind } from '../document/factory.js';
 
+/** Rises and fades in from where it sits: the eye is told something arrived without a sound. */
+const rise = stylex.keyframes({
+  from: { opacity: 0, transform: 'translateY(8px) scale(0.98)' },
+  to: { opacity: 1, transform: 'translateY(0) scale(1)' },
+});
+
 /**
  * What an empty scene shows instead of an empty viewport.
  *
@@ -40,11 +46,11 @@ const styles = stylex.create({
     borderWidth: '1px',
     borderStyle: 'solid',
     borderColor: color.border,
-    backgroundColor: 'rgba(23, 23, 23, 0.92)',
+    backgroundColor: color.overlay,
     backdropFilter: 'blur(10px)',
-    boxShadow: '0 16px 40px rgba(0, 0, 0, 0.5)',
+    boxShadow: `0 16px 40px ${color.shadow}`,
     pointerEvents: 'auto',
-    animationName: 'coilbox-toast-in',
+    animationName: rise,
     animationDuration: '140ms',
     animationTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
     animationFillMode: 'both',

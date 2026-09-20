@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { JSX } from 'react';
 import * as stylex from '@stylexjs/stylex';
-import { color, fontSize, radius, space } from '../styles/tokens.stylex.js';
+import { color, controlSize, fontSize, radius, space } from '../styles/tokens.stylex.js';
 import { DOM, DOM_STATE, withDomClass } from '../dom-contract.js';import { useSession, useSessionSnapshot } from '../hooks.js';
 import { AssetBrowser } from './AssetBrowser.js';
 import { HistoryPanel } from './HistoryPanel.js';
@@ -56,12 +56,12 @@ const styles = stylex.create({
   tabTrack: {
     display: 'flex',
     alignItems: 'center',
-    height: '28px',
+    height: controlSize.xs,
     padding: '3px',
     borderRadius: radius.lg,
     borderWidth: '1px',
     borderStyle: 'solid',
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: color['border-faint'],
     backgroundColor: color['panel-2'],
     flexShrink: 0,
   },
@@ -78,7 +78,7 @@ const styles = stylex.create({
   },
   /** A quiet command in the panel header: Reload, Clear log. */
   headerAction: {
-    height: '24px',
+    height: controlSize.row,
     paddingInline: space.md,
     borderRadius: radius.md,
     fontSize: fontSize.sm,

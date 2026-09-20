@@ -33,6 +33,12 @@ export const DropdownMenuPortal = DropdownMenuPrimitive.Portal;
 export const DropdownMenuSub = DropdownMenuPrimitive.Sub;
 export const DropdownMenuRadioGroup = DropdownMenuPrimitive.RadioGroup;
 
+/** Grows out of the transform origin Radix publishes for the open content, i.e. out of its trigger. */
+const grow = stylex.keyframes({
+  from: { opacity: 0, transform: 'scale(0.96)' },
+  to: { opacity: 1, transform: 'scale(1)' },
+});
+
 const menuStyles = stylex.create({
   /**
    * The origin-aware entrance their `DropdownMenuContent` uses: the menu scales in from the corner
@@ -42,7 +48,7 @@ const menuStyles = stylex.create({
    */
   content: {
     transformOrigin: 'var(--radix-dropdown-menu-content-transform-origin)',
-    animationName: 'coilbox-menu-in',
+    animationName: grow,
     animationDuration: '100ms',
     animationTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
     animationFillMode: 'both',
@@ -62,7 +68,7 @@ const menuStyles = stylex.create({
   itemDanger: {
     color: color.danger,
     ':hover': {
-      backgroundColor: 'rgba(255, 100, 103, 0.1)',
+      backgroundColor: color['danger-wash-soft'],
     },
   },
   /** The leading slot for an item's icon, so labels line up whether or not a row has one. */
@@ -102,8 +108,13 @@ const menuStyles = stylex.create({
     alignItems: 'center',
     justifyContent: 'center',
     width: control.iconSm,
+    height: control.iconSm,
     flexShrink: 0,
     color: color.text,
+  },
+  /** Radix renders the indicator as an inline span; a block dot needs a block box to size in. */
+  indicatorBox: {
+    display: 'flex',
   },
 });
 
@@ -200,7 +211,7 @@ export const DropdownMenuRadioItem = React.forwardRef<
       {...rest}
     >
       <span {...stylex.props(menuStyles.indicator)}>
-        <DropdownMenuPrimitive.ItemIndicator>
+        <DropdownMenuPrimitive.ItemIndicator {...stylex.props(menuStyles.indicatorBox)}>
           <span {...stylex.props(menuStyles.radioDot)} />
         </DropdownMenuPrimitive.ItemIndicator>
       </span>

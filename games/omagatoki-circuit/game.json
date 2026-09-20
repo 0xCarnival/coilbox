@@ -1,0 +1,189 @@
+{
+  "schemaVersion": 1,
+  "engineVersion": "0.1.0",
+  "engineCompat": "0.1.0",
+  "id": "omagatoki-circuit",
+  "name": "Ōmagatoki Circuit",
+  "description": "Anti-gravity combat racing over a cloud sea at the twilight hour. Three laps, three rivals, three hulls: drift the air brakes, ride the boost pads, survive the Cliff Drop.",
+  "scenes": [
+    {
+      "id": "main",
+      "name": "Ōmagatoki Circuit",
+      "path": "scenes/main.scene.json"
+    }
+  ],
+  "startScene": "main",
+  "assetManifest": "assets/manifest.json",
+  "behaviorRegistry": "scripts/registry.json",
+  "settings": {
+    "physics": {
+      "fixedTimeStep": 0.016666666666666666,
+      "subStepCount": 2,
+      "maxSubSteps": 4,
+      "enableSleep": true,
+      "hitEventThreshold": 1
+    },
+    "render": {
+      "antialias": false,
+      "shadows": false,
+      "pixelRatioCap": 1,
+      "toneMapping": "neutral",
+      "exposure": 1.05
+    },
+    "initialGameState": {
+      "raceState": "countdown",
+      "laps": 3,
+      "lap": "1 / 3",
+      "place": "- / 4",
+      "speed": 0,
+      "boost": 100,
+      "energy": 100,
+      "shield": false,
+      "weapon": "—",
+      "craft": "TENGU  ·  interceptor",
+      "raceTime": "0:00.00",
+      "hudRace": "- / 4   ·   LAP 1 / 3",
+      "hudPilot": "TENGU  ·  interceptor   ·   0:00.00",
+      "hudSystems": "ENERGY 100%   ·   WEAPON —",
+      "hudBoost": "BOOST 100%   ·   hold SHIFT",
+      "hudCenter": "HULL: 1 · 2 · 3",
+      "objective": "HULL: 1 · 2 · 3",
+      "announce": "",
+      "won": false,
+      "lost": false
+    },
+    "hud": [
+      {
+        "type": "label",
+        "id": "race-label",
+        "text": "{value}",
+        "bind": "hudRace",
+        "position": "top-left",
+        "color": "#f6e7c8",
+        "size": 22
+      },
+      {
+        "type": "label",
+        "id": "center-label",
+        "text": "{value}",
+        "bind": "hudCenter",
+        "position": "top-center",
+        "color": "#ffb070",
+        "size": 24
+      },
+      {
+        "type": "label",
+        "id": "pilot-label",
+        "text": "{value}",
+        "bind": "hudPilot",
+        "position": "top-right",
+        "color": "#c99bff",
+        "size": 18
+      },
+      {
+        "type": "label",
+        "id": "systems-label",
+        "text": "{value}",
+        "bind": "hudSystems",
+        "position": "bottom-left",
+        "color": "#ffb070",
+        "size": 18
+      },
+      {
+        "type": "label",
+        "id": "speed-label",
+        "text": "{value} km/h",
+        "bind": "speed",
+        "position": "bottom-center",
+        "color": "#f6e7c8",
+        "size": 42
+      },
+      {
+        "type": "label",
+        "id": "boost-label",
+        "text": "{value}",
+        "bind": "hudBoost",
+        "position": "bottom-right",
+        "color": "#4ff0e6",
+        "size": 18
+      },
+      {
+        "type": "overlay",
+        "id": "start-overlay",
+        "kind": "start",
+        "title": "ŌMAGATOKI CIRCUIT",
+        "message": "Anti-gravity league, twilight session. Three laps above the cloud sea against Kaminari, Yurei and Daruma.\n\nW / ↑ thrust · S brake · A / D steer · Q / E air brakes (hold both to slam the brakes, one to drift) · SHIFT boost · SPACE fire · 1 / 2 / 3 choose your hull before the lights go out.",
+        "actionLabel": "Launch",
+        "action": "resume",
+        "background": "#1a0b2e",
+        "color": "#f6e7c8"
+      },
+      {
+        "type": "overlay",
+        "id": "win-overlay",
+        "kind": "win",
+        "title": "CHAMPION",
+        "message": "First across the line. The Ōmagatoki Circuit is yours.",
+        "actionLabel": "Race again",
+        "action": "restart",
+        "background": "#1a0b2e",
+        "color": "#ffb070"
+      },
+      {
+        "type": "overlay",
+        "id": "lose-overlay",
+        "kind": "lose",
+        "title": "RACE OVER",
+        "message": "Off the podium. Grab a shield pickup, drift the hairpins, and try again.",
+        "actionLabel": "Restart",
+        "action": "restart",
+        "background": "#1a0b2e",
+        "color": "#c99bff"
+      }
+    ],
+    "inputBindings": {
+      "moveForward": [
+        "KeyW",
+        "ArrowUp"
+      ],
+      "moveBackward": [
+        "KeyS",
+        "ArrowDown"
+      ],
+      "moveLeft": [
+        "KeyA",
+        "ArrowLeft"
+      ],
+      "moveRight": [
+        "KeyD",
+        "ArrowRight"
+      ],
+      "airbrakeLeft": [
+        "KeyQ"
+      ],
+      "airbrakeRight": [
+        "KeyE"
+      ],
+      "boost": [
+        "ShiftLeft",
+        "ShiftRight"
+      ],
+      "fire": [
+        "Space",
+        "KeyF"
+      ],
+      "craft1": [
+        "Digit1"
+      ],
+      "craft2": [
+        "Digit2"
+      ],
+      "craft3": [
+        "Digit3"
+      ],
+      "restart": [
+        "KeyR"
+      ]
+    }
+  }
+}

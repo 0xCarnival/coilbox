@@ -15,7 +15,7 @@ import {
   StepForward,
   Undo2,
 } from 'lucide-react';
-import { color, control, fontSize, radius, space } from '../styles/tokens.stylex.js';
+import { color, control, controlSize, fontSize, radius, space } from '../styles/tokens.stylex.js';
 import { DOM, DOM_STATE, withDomClass } from '../dom-contract.js';
 import { useSession, useSessionSnapshot } from '../hooks.js';
 import type { TransformSpace, TransformTool } from '../viewport/viewport-controller.js';
@@ -23,6 +23,7 @@ import type { PlayState, ViewportHandle } from './Viewport.js';
 import type { SnapSettings } from '../viewport/viewport-controller.js';
 import { createEntity, CREATABLE_KINDS, CREATABLE_LABELS, type CreatableKind } from '../document/factory.js';
 import { Button, IconButton } from '../ui/Button.js';
+import { AppearanceMenu } from '../ui/AppearanceMenu.js';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -106,7 +107,7 @@ const styles = stylex.create({
     display: 'flex',
     alignItems: 'center',
     gap: space.xs,
-    height: control.xs,
+    height: controlSize.xs,
     paddingInline: space.md,
     borderRadius: radius.md,
     color: color.text,
@@ -127,7 +128,7 @@ const styles = stylex.create({
   /** The scene name is a quieter, secondary identity beside the project. */
   sceneName: {
     width: '150px',
-    height: control.xs,
+    height: controlSize.xs,
     fontSize: fontSize.xs,
     color: color.muted,
     backgroundColor: 'transparent',
@@ -146,7 +147,7 @@ const styles = stylex.create({
     display: 'flex',
     alignItems: 'center',
     gap: space.xs,
-    height: control.xs,
+    height: controlSize.xs,
     paddingInline: space.md,
     borderRadius: radius.md,
     color: color.muted,
@@ -165,7 +166,7 @@ const styles = stylex.create({
     display: 'flex',
     alignItems: 'center',
     gap: space.sm,
-    height: control.xs,
+    height: controlSize.xs,
     paddingInline: space.md,
     borderRadius: radius.md,
     color: color.muted,
@@ -380,6 +381,7 @@ export function Toolbar({
       <span {...stylex.props(styles.divider)} />
 
       <div {...withDomClass(styles.group, DOM.toolbarGroup)}>
+        <AppearanceMenu />
         <IconButton label="Export Game" disabled={editorLocked || exporting} onClick={onExport}>
           <Download size={control.icon} />
         </IconButton>

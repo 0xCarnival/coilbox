@@ -7,6 +7,7 @@ import { useSession, useSessionSnapshot } from '../hooks.js';
 import type { ProjectSummary } from '../state/editor-session.js';
 import { Archive, Copy, Download, Play, Plus, Search } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { AppearanceMenu } from '../ui/AppearanceMenu.js';
 
 /**
  * Project home (plan §3): game cards with create, open, and — in later stages — duplicate,
@@ -116,11 +117,11 @@ const styles = stylex.create({
     fontSize: fontSize.sm,
   },
   bannerError: {
-    backgroundColor: 'rgba(46, 20, 18, 0.8)',
+    backgroundColor: color['danger-surface'],
     borderWidth: '1px',
     borderStyle: 'solid',
     borderColor: color.danger,
-    color: '#f6ddd9',
+    color: color['danger-text'],
   },
   /**
    * The create form is a panel, not a bordered strip inside the page: while it is open it is the
@@ -444,6 +445,7 @@ export function ProjectHome(): JSX.Element {
               />
             </span>
           )}
+          <AppearanceMenu />
           <button type="button" onClick={() => importRef.current?.click()} disabled={busy !== null}>
             Import source…
           </button>

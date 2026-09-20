@@ -1,0 +1,837 @@
+{
+  "schemaVersion": 1,
+  "behaviors": [
+    {
+      "id": "animation.play",
+      "name": "Animation Playback",
+      "description": "Plays a clip on this entity, optionally switching when a game-state key changes.",
+      "properties": [
+        {
+          "key": "clip",
+          "label": "Clip",
+          "type": "text",
+          "default": "",
+          "description": "Empty plays the first clip."
+        },
+        {
+          "key": "loop",
+          "label": "Loop",
+          "type": "boolean",
+          "default": true
+        },
+        {
+          "key": "speed",
+          "label": "Speed",
+          "type": "number",
+          "default": 1,
+          "min": 0,
+          "max": 5,
+          "step": 0.1
+        },
+        {
+          "key": "switchStateKey",
+          "label": "Switch on state key",
+          "type": "text",
+          "default": "",
+          "description": "When this game-state key becomes true, play the alternative clip."
+        },
+        {
+          "key": "alternateClip",
+          "label": "Alternative clip",
+          "type": "text",
+          "default": ""
+        }
+      ]
+    },
+    {
+      "id": "audio.cue",
+      "name": "Audio Cue",
+      "description": "Plays a sound when a game-state key changes.",
+      "properties": [
+        {
+          "key": "stateKey",
+          "label": "State key",
+          "type": "text",
+          "default": "score",
+          "description": "The sound plays whenever this key changes."
+        },
+        {
+          "key": "volume",
+          "label": "Volume",
+          "type": "number",
+          "default": 0.8,
+          "min": 0,
+          "max": 1,
+          "step": 0.05
+        },
+        {
+          "key": "spatial",
+          "label": "3D sound",
+          "type": "boolean",
+          "default": false
+        }
+      ]
+    },
+    {
+      "id": "camera.follow",
+      "name": "Camera Follow",
+      "description": "Keeps a camera behind and above a target, or at a fixed offset from it.",
+      "properties": [
+        {
+          "key": "target",
+          "label": "Target",
+          "type": "entity",
+          "default": null,
+          "description": "The entity to follow. Defaults to the entity named \"Player\"."
+        },
+        {
+          "key": "distance",
+          "label": "Distance",
+          "type": "number",
+          "default": 8,
+          "min": 0,
+          "max": 40,
+          "step": 0.5,
+          "description": "Used when following behind the target."
+        },
+        {
+          "key": "height",
+          "label": "Height",
+          "type": "number",
+          "default": 5,
+          "min": 0,
+          "max": 30,
+          "step": 0.5
+        },
+        {
+          "key": "offsetX",
+          "label": "Fixed offset X",
+          "type": "number",
+          "default": 6,
+          "min": -60,
+          "max": 60,
+          "step": 0.5,
+          "description": "Used when \"Fixed world offset\" is on, in metres."
+        },
+        {
+          "key": "offsetZ",
+          "label": "Fixed offset Z",
+          "type": "number",
+          "default": 6,
+          "min": -60,
+          "max": 60,
+          "step": 0.5,
+          "description": "Used when \"Fixed world offset\" is on, in metres."
+        },
+        {
+          "key": "damping",
+          "label": "Smoothing",
+          "type": "number",
+          "default": 0.12,
+          "min": 0,
+          "max": 2,
+          "step": 0.02
+        },
+        {
+          "key": "lookHeight",
+          "label": "Look at height",
+          "type": "number",
+          "default": 1,
+          "min": 0,
+          "max": 5,
+          "step": 0.1,
+          "description": "Height above the target the camera aims at."
+        },
+        {
+          "key": "fixed",
+          "label": "Fixed world offset",
+          "type": "boolean",
+          "default": false,
+          "description": "Keep a world-space offset instead of following behind the target."
+        }
+      ]
+    },
+    {
+      "id": "game.collectible",
+      "name": "Collectible",
+      "description": "Adds to the score when the player touches it, then disappears. Needs a sensor collider.",
+      "properties": [
+        {
+          "key": "value",
+          "label": "Score value",
+          "type": "number",
+          "default": 1,
+          "min": 0,
+          "max": 100,
+          "step": 1
+        },
+        {
+          "key": "playerName",
+          "label": "Player entity name",
+          "type": "text",
+          "default": "Player"
+        },
+        {
+          "key": "hideOnCollect",
+          "label": "Hide when collected",
+          "type": "boolean",
+          "default": true
+        },
+        {
+          "key": "pickupRadius",
+          "label": "Pickup radius",
+          "type": "number",
+          "default": 1.2,
+          "min": 0.1,
+          "max": 10,
+          "step": 0.1,
+          "advanced": true,
+          "description": "Distance at which the pickup is collected even if no sensor event arrives."
+        }
+      ]
+    },
+    {
+      "id": "game.exit-zone",
+      "name": "Exit Zone",
+      "description": "Wins the level when the player enters it with enough collectibles gathered.",
+      "properties": [
+        {
+          "key": "playerName",
+          "label": "Player entity name",
+          "type": "text",
+          "default": "Player"
+        },
+        {
+          "key": "requiredScore",
+          "label": "Required score",
+          "type": "number",
+          "default": 3,
+          "min": 0,
+          "max": 100,
+          "step": 1,
+          "description": "0 means the exit is always open."
+        },
+        {
+          "key": "winMessage",
+          "label": "Win message",
+          "type": "text",
+          "default": "You escaped!"
+        },
+        {
+          "key": "triggerRadius",
+          "label": "Trigger radius",
+          "type": "number",
+          "default": 1.8,
+          "min": 0.2,
+          "max": 20,
+          "step": 0.1,
+          "advanced": true,
+          "description": "Distance at which the exit counts as reached without a sensor event."
+        },
+        {
+          "key": "repeatable",
+          "label": "Can trigger again",
+          "type": "boolean",
+          "default": false
+        }
+      ]
+    },
+    {
+      "id": "game.launcher",
+      "name": "Projectile Launcher",
+      "description": "Applies an impulse to a body when the player clicks, aiming from the camera.",
+      "properties": [
+        {
+          "key": "impulse",
+          "label": "Impulse",
+          "type": "number",
+          "default": 9,
+          "min": 0,
+          "max": 100,
+          "step": 0.5
+        },
+        {
+          "key": "upward",
+          "label": "Upward bias",
+          "type": "number",
+          "default": 0.25,
+          "min": 0,
+          "max": 2,
+          "step": 0.05
+        },
+        {
+          "key": "projectileName",
+          "label": "Projectile entity name",
+          "type": "text",
+          "default": "Ball"
+        },
+        {
+          "key": "resetAfterLaunch",
+          "label": "Reset if it falls",
+          "type": "boolean",
+          "default": true
+        },
+        {
+          "key": "resetBelowY",
+          "label": "Reset below Y",
+          "type": "number",
+          "default": -5,
+          "min": -50,
+          "max": 0,
+          "step": 0.5
+        }
+      ]
+    },
+    {
+      "id": "game.rules",
+      "name": "Game Rules",
+      "description": "Watches score and time, shows the win or lose overlay, and handles restart.",
+      "properties": [
+        {
+          "key": "scoreTarget",
+          "label": "Score target",
+          "type": "number",
+          "default": 3,
+          "min": 0,
+          "max": 100,
+          "step": 1,
+          "description": "Wins the level as soon as the score reaches this value. 0 disables the score-only win and leaves the exit to decide."
+        },
+        {
+          "key": "timeLimit",
+          "label": "Time limit (s)",
+          "type": "number",
+          "default": 0,
+          "min": 0,
+          "max": 3600,
+          "step": 5,
+          "description": "0 disables the time limit."
+        },
+        {
+          "key": "initialObjective",
+          "label": "Initial objective",
+          "type": "text",
+          "default": "",
+          "description": "Shown in the HUD label bound to \"objective\" until something replaces it."
+        },
+        {
+          "key": "nextScene",
+          "label": "Next scene",
+          "type": "text",
+          "default": "",
+          "description": "Scene to load after winning. Empty restarts the current scene."
+        },
+        {
+          "key": "showStartOverlay",
+          "label": "Show start overlay",
+          "type": "boolean",
+          "default": true
+        },
+        {
+          "key": "waitForStart",
+          "label": "Clock waits for start",
+          "type": "boolean",
+          "default": true,
+          "description": "Only count the time limit after the start overlay is dismissed."
+        },
+        {
+          "key": "allowRestartKey",
+          "label": "Restart with R",
+          "type": "boolean",
+          "default": true
+        }
+      ]
+    },
+    {
+      "id": "game.target",
+      "name": "Knock-down Target",
+      "description": "Counts a hit when this body tips past an angle or takes a hard impact.",
+      "properties": [
+        {
+          "key": "tipAngle",
+          "label": "Tip angle",
+          "type": "number",
+          "default": 45,
+          "min": 5,
+          "max": 90,
+          "step": 1
+        },
+        {
+          "key": "minImpactSpeed",
+          "label": "Minimum impact speed",
+          "type": "number",
+          "default": 1.5,
+          "min": 0,
+          "max": 40,
+          "step": 0.1
+        },
+        {
+          "key": "value",
+          "label": "Score value",
+          "type": "number",
+          "default": 1,
+          "min": 0,
+          "max": 10,
+          "step": 1
+        }
+      ]
+    },
+    {
+      "id": "player.mover",
+      "name": "Character Mover",
+      "description": "Moves a kinematic body with WASD/arrow input, gravity, and optional jumping.",
+      "properties": [
+        {
+          "key": "moveSpeed",
+          "label": "Move speed",
+          "type": "number",
+          "default": 5,
+          "min": 0,
+          "max": 40,
+          "step": 0.5,
+          "group": "Movement"
+        },
+        {
+          "key": "jumpStrength",
+          "label": "Jump strength",
+          "type": "number",
+          "default": 7,
+          "min": 0,
+          "max": 30,
+          "step": 0.5,
+          "group": "Movement",
+          "description": "Set to 0 to disable jumping."
+        },
+        {
+          "key": "gravity",
+          "label": "Gravity",
+          "type": "number",
+          "default": 20,
+          "min": 0,
+          "max": 80,
+          "step": 1,
+          "group": "Movement"
+        },
+        {
+          "key": "turnSpeed",
+          "label": "Turn speed",
+          "type": "number",
+          "default": 12,
+          "min": 0,
+          "max": 60,
+          "step": 1,
+          "group": "Movement",
+          "description": "How quickly the character faces its movement direction, in radians per second."
+        },
+        {
+          "key": "acceleration",
+          "label": "Acceleration",
+          "type": "number",
+          "default": 40,
+          "min": 1,
+          "max": 200,
+          "step": 1,
+          "group": "Movement",
+          "advanced": true
+        },
+        {
+          "key": "groundCheckDistance",
+          "label": "Ground check",
+          "type": "number",
+          "default": 0.35,
+          "min": 0.05,
+          "max": 2,
+          "step": 0.05,
+          "group": "Movement",
+          "advanced": true
+        },
+        {
+          "key": "spawnHeight",
+          "label": "Spawn height",
+          "type": "number",
+          "default": 1,
+          "min": 0,
+          "max": 10,
+          "step": 0.1,
+          "group": "Movement",
+          "advanced": true,
+          "description": "Height above the authored position where the character starts."
+        }
+      ]
+    },
+    {
+      "id": "racer.chase-camera",
+      "name": "Racer Chase Camera",
+      "description": "Low chase camera that banks into turns and pulls back with speed. Reads the player craft written by Racer Craft.",
+      "properties": [
+        {
+          "key": "target",
+          "label": "Target",
+          "type": "entity",
+          "default": null,
+          "description": "Craft to follow. Defaults to the entity named \"Player\"."
+        },
+        {
+          "key": "distance",
+          "label": "Distance",
+          "type": "number",
+          "default": 7.5,
+          "min": 1,
+          "max": 40,
+          "step": 0.5
+        },
+        {
+          "key": "height",
+          "label": "Height",
+          "type": "number",
+          "default": 2.4,
+          "min": 0,
+          "max": 20,
+          "step": 0.1
+        },
+        {
+          "key": "lookAhead",
+          "label": "Look ahead",
+          "type": "number",
+          "default": 14,
+          "min": 0,
+          "max": 60,
+          "step": 1,
+          "description": "Metres in front of the craft the camera aims at."
+        },
+        {
+          "key": "bank",
+          "label": "Bank amount",
+          "type": "number",
+          "default": 0.7,
+          "min": 0,
+          "max": 1.5,
+          "step": 0.05,
+          "description": "How much of the craft's roll the camera copies."
+        },
+        {
+          "key": "speedPullback",
+          "label": "Speed pull-back",
+          "type": "number",
+          "default": 0.045,
+          "min": 0,
+          "max": 0.2,
+          "step": 0.005,
+          "description": "Extra distance per m/s of craft speed."
+        },
+        {
+          "key": "damping",
+          "label": "Position smoothing",
+          "type": "number",
+          "default": 0.07,
+          "min": 0,
+          "max": 1,
+          "step": 0.01
+        },
+        {
+          "key": "rollDamping",
+          "label": "Bank smoothing",
+          "type": "number",
+          "default": 0.16,
+          "min": 0,
+          "max": 1,
+          "step": 0.01,
+          "advanced": true
+        }
+      ]
+    },
+    {
+      "id": "racer.craft",
+      "name": "Racer Craft",
+      "description": "Anti-gravity hover craft with drift, air brakes, boost, weapons and shields. Pilot it or hand it to an AI rival.",
+      "properties": [
+        {
+          "key": "pilot",
+          "label": "Pilot",
+          "type": "enum",
+          "default": "player",
+          "options": [
+            "player",
+            "rival"
+          ],
+          "description": "Who flies this craft."
+        },
+        {
+          "key": "craftClass",
+          "label": "Craft class",
+          "type": "enum",
+          "default": "interceptor",
+          "options": [
+            "speeder",
+            "interceptor",
+            "bulwark"
+          ],
+          "description": "speeder: fragile and fast. interceptor: balanced. bulwark: heavy and armoured."
+        },
+        {
+          "key": "waypointPrefix",
+          "label": "Waypoint prefix",
+          "type": "text",
+          "default": "Waypoint",
+          "description": "Waypoints are entities named \"<prefix> 01\", \"<prefix> 02\", … in lap order. Number 01 is the start line."
+        },
+        {
+          "key": "speederVisual",
+          "label": "Speeder visual",
+          "type": "entity",
+          "default": null,
+          "description": "Child entity shown when the speeder class is selected."
+        },
+        {
+          "key": "interceptorVisual",
+          "label": "Interceptor visual",
+          "type": "entity",
+          "default": null,
+          "description": "Child entity shown when the interceptor class is selected."
+        },
+        {
+          "key": "bulwarkVisual",
+          "label": "Bulwark visual",
+          "type": "entity",
+          "default": null,
+          "description": "Child entity shown when the bulwark class is selected."
+        },
+        {
+          "key": "bolt",
+          "label": "Pulse bolt entity",
+          "type": "entity",
+          "default": null,
+          "description": "Scene entity animated as this craft's pulse cannon shot."
+        },
+        {
+          "key": "hoverHeight",
+          "label": "Hover height",
+          "type": "number",
+          "default": 1.25,
+          "min": 0.5,
+          "max": 4,
+          "step": 0.05,
+          "group": "Hover",
+          "description": "Distance the collider centre rides above the track surface."
+        },
+        {
+          "key": "hoverStiffness",
+          "label": "Hover stiffness",
+          "type": "number",
+          "default": 60,
+          "min": 5,
+          "max": 200,
+          "step": 5,
+          "group": "Hover",
+          "advanced": true
+        },
+        {
+          "key": "hoverDamping",
+          "label": "Hover damping",
+          "type": "number",
+          "default": 10,
+          "min": 1,
+          "max": 40,
+          "step": 1,
+          "group": "Hover",
+          "advanced": true
+        },
+        {
+          "key": "gravity",
+          "label": "Gravity",
+          "type": "number",
+          "default": 28,
+          "min": 0,
+          "max": 80,
+          "step": 1,
+          "group": "Hover"
+        },
+        {
+          "key": "killY",
+          "label": "Respawn below Y",
+          "type": "number",
+          "default": -40,
+          "min": -500,
+          "max": 100,
+          "step": 5,
+          "group": "Hover",
+          "description": "A craft that falls below this height is put back on the track."
+        },
+        {
+          "key": "speedScale",
+          "label": "Speed scale",
+          "type": "number",
+          "default": 1,
+          "min": 0.3,
+          "max": 2,
+          "step": 0.05,
+          "group": "Tuning",
+          "description": "Multiplies the class top speed and acceleration."
+        },
+        {
+          "key": "boostCharge",
+          "label": "Boost charge",
+          "type": "number",
+          "default": 100,
+          "min": 0,
+          "max": 100,
+          "step": 5,
+          "group": "Tuning",
+          "description": "Boost meter at the start of the race."
+        },
+        {
+          "key": "difficulty",
+          "label": "AI skill",
+          "type": "number",
+          "default": 0.7,
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "group": "AI",
+          "description": "Rival only: pace and precision."
+        },
+        {
+          "key": "aggression",
+          "label": "AI aggression",
+          "type": "number",
+          "default": 0.6,
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "group": "AI",
+          "description": "Rival only: how eagerly it rams and fires at the player."
+        },
+        {
+          "key": "laneOffset",
+          "label": "Lane offset",
+          "type": "number",
+          "default": 0,
+          "min": -6,
+          "max": 6,
+          "step": 0.5,
+          "group": "AI",
+          "description": "Rival only: metres right of the waypoint line it prefers."
+        },
+        {
+          "key": "rubberBand",
+          "label": "Rubber banding",
+          "type": "number",
+          "default": 0.05,
+          "min": 0,
+          "max": 0.2,
+          "step": 0.01,
+          "group": "AI",
+          "advanced": true,
+          "description": "Rival only: speed bonus per waypoint it trails the player by."
+        }
+      ]
+    },
+    {
+      "id": "racer.director",
+      "name": "Race Director",
+      "description": "Runs the countdown, ranks every craft by lap progress, and shows the win or lose overlay when the player finishes.",
+      "properties": [
+        {
+          "key": "crafts",
+          "label": "Craft entity names",
+          "type": "text",
+          "default": "Player",
+          "description": "Comma-separated names of every racing craft, player included."
+        },
+        {
+          "key": "laps",
+          "label": "Laps",
+          "type": "number",
+          "default": 3,
+          "min": 1,
+          "max": 20,
+          "step": 1
+        },
+        {
+          "key": "countdownSeconds",
+          "label": "Countdown (s)",
+          "type": "number",
+          "default": 3,
+          "min": 0,
+          "max": 10,
+          "step": 0.5
+        },
+        {
+          "key": "podiumPlaces",
+          "label": "Podium places",
+          "type": "number",
+          "default": 1,
+          "min": 1,
+          "max": 8,
+          "step": 1,
+          "description": "Finishing at or above this place counts as a win."
+        },
+        {
+          "key": "winMessage",
+          "label": "Win message",
+          "type": "text",
+          "default": "CHAMPION OF THE ŌMAGATOKI CIRCUIT"
+        }
+      ]
+    },
+    {
+      "id": "racer.pickup",
+      "name": "Racer Pickup",
+      "description": "Grants a weapon, shield, energy or boost to any craft that flies through it, then respawns.",
+      "properties": [
+        {
+          "key": "kind",
+          "label": "Kind",
+          "type": "enum",
+          "default": "pulse",
+          "options": [
+            "pulse",
+            "shock",
+            "shield",
+            "energy",
+            "boost"
+          ]
+        },
+        {
+          "key": "radius",
+          "label": "Pickup radius",
+          "type": "number",
+          "default": 2.6,
+          "min": 0.5,
+          "max": 12,
+          "step": 0.1
+        },
+        {
+          "key": "respawnSeconds",
+          "label": "Respawn after (s)",
+          "type": "number",
+          "default": 7,
+          "min": 0,
+          "max": 120,
+          "step": 0.5,
+          "description": "0 keeps the pickup active for everyone, with a short per-craft cooldown (boost pads)."
+        },
+        {
+          "key": "spinSpeed",
+          "label": "Spin speed",
+          "type": "number",
+          "default": 2.2,
+          "min": 0,
+          "max": 20,
+          "step": 0.1,
+          "group": "Motion"
+        },
+        {
+          "key": "bobHeight",
+          "label": "Bob height",
+          "type": "number",
+          "default": 0.25,
+          "min": 0,
+          "max": 3,
+          "step": 0.05,
+          "group": "Motion"
+        }
+      ]
+    }
+  ]
+}

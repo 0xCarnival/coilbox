@@ -6,9 +6,18 @@ import { Search } from 'lucide-react';
 import { createEntity, CREATABLE_KINDS, CREATABLE_LABELS, type CreatableKind } from '../document/factory.js';
 import { color, control, fontSize, radius, space } from '../styles/tokens.stylex.js';
 import { useSession, useSessionSnapshot } from '../hooks.js';
+import { useAppearance } from '../state/appearance.js';
+import { THEME_LABELS, THEME_PREFERENCES } from '../state/theme.js';
+import { DENSITY_LABELS, DENSITY_PREFERENCES } from '../state/density.js';
 import type { TransformSpace, TransformTool, ViewFace } from '../viewport/viewport-controller.js';
 import type { PlayState } from '../panels/Viewport.js';
 import { BOOKMARK_SLOTS, type BookmarkSlot, type CameraBookmarks } from '../state/camera-bookmarks.js';
+
+/** Grows out of the transform origin Radix publishes for the open content, i.e. out of its trigger. */
+const grow = stylex.keyframes({
+  from: { opacity: 0, transform: 'scale(0.96)' },
+  to: { opacity: 1, transform: 'scale(1)' },
+});
 
 /**
  * The command palette.
@@ -37,10 +46,10 @@ const styles = stylex.create({
   overlay: {
     position: 'fixed',
     inset: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    backgroundColor: color.scrim,
     backdropFilter: 'blur(2px)',
     zIndex: 100,
-    animationName: 'coilbox-menu-in',
+    animationName: grow,
     animationDuration: '120ms',
     animationTimingFunction: 'ease-out',
     animationFillMode: 'both',
@@ -60,7 +69,7 @@ const styles = stylex.create({
     borderStyle: 'solid',
     borderColor: color.border,
     backgroundColor: color.elevated,
-    boxShadow: '0 24px 60px rgba(0, 0, 0, 0.6)',
+    boxShadow: `0 24px 60px ${color.shadow}`,
     zIndex: 101,
     overflow: 'hidden',
   },
@@ -212,6 +221,7 @@ export function CommandPalette({
 }: CommandPaletteProps): JSX.Element {
   const session = useSession();
   const snapshot = useSessionSnapshot();
+  const { theme, density } = useAppearance();
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
   const listRef = useRef<HTMLDivElement | null>(null);
@@ -356,8 +366,33 @@ export function CommandPalette({
       { id: 'play:step', label: 'Step one frame', group: 'Play', run: playback.step },
       { id: 'play:stop', label: 'Stop and discard the simulation', group: 'Play', run: playback.stop },
       { id: 'file:export', label: 'Export the game', group: 'File', run: onExport },
+      ...THEME_PREFERENCES.map((preference) => ({
+        id: `theme:${preference}`,
+        label: `Theme: ${THEME_LABELS[preference]}`,
+        group: 'Appearance',
+        run: () => theme.setPreference(preference),
+      })),
+      ...DENSITY_PREFERENCES.map((preference) => ({
+        id: `density:${preference}`,
+        label: `Density: ${DENSITY_LABELS[preference]}`,
+        group: 'Appearance',
+        run: () => density.setPreference(preference),
+      })),
     ];
-  }, [onExport, onFocusSelection, onSpaceChange, onToolChange, playback, session, snapshot.primarySelection, snapshot.selectedIds, space, view]);
+  }, [
+    density,
+    onExport,
+    onFocusSelection,
+    onSpaceChange,
+    onToolChange,
+    playback,
+    session,
+    snapshot.primarySelection,
+    snapshot.selectedIds,
+    space,
+    theme,
+    view,
+  ]);
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();

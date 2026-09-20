@@ -59,7 +59,7 @@ const styles = stylex.create({
     ':focus-visible': {
       outlineWidth: '3px',
       outlineStyle: 'solid',
-      outlineColor: 'rgba(138, 138, 138, 0.5)',
+      outlineColor: color['ring-soft'],
       outlineOffset: '0px',
     },
   },
@@ -87,7 +87,7 @@ const styles = stylex.create({
     color: color.bg,
     fontSize: '12px',
     fontWeight: 500,
-    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.4)',
+    boxShadow: `0 4px 6px -1px ${color['shadow-soft']}`,
   },
 });
 

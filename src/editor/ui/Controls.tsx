@@ -41,7 +41,7 @@ export const segmentedStyles = stylex.create({
     borderRadius: radius.lg,
     borderWidth: '1px',
     borderStyle: 'solid',
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: color['border-faint'],
     backgroundColor: color['panel-2'],
   },
   rootDisabled: {
@@ -177,7 +177,7 @@ const action = stylex.create({
     borderRadius: radius.lg,
     borderWidth: '1px',
     borderStyle: 'solid',
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: color['border-faint'],
     backgroundColor: color['panel-2'],
     color: color.text,
     fontSize: fontSize.xs,
@@ -199,10 +199,10 @@ const action = stylex.create({
   },
   /** The destructive variant: their red-tinted border and label. */
   danger: {
-    borderColor: 'rgba(255, 100, 103, 0.4)',
-    color: '#ffc9c9',
+    borderColor: color['danger-border'],
+    color: color['danger-ink'],
     ':hover': {
-      backgroundColor: 'rgba(255, 100, 103, 0.15)',
+      backgroundColor: color['danger-wash'],
     },
   },
   group: {

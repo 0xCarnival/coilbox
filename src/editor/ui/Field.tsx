@@ -8,6 +8,12 @@ import { useScrub, type ScrubOptions } from './useScrub.js';
 import type { DomClassProps } from '../dom-contract.js';
 import { mergedClass } from './merged-class.js';
 
+/** Grows out of the transform origin Radix publishes for the open content, i.e. out of its trigger. */
+const grow = stylex.keyframes({
+  from: { opacity: 0, transform: 'scale(0.96)' },
+  to: { opacity: 1, transform: 'scale(1)' },
+});
+
 /**
  * Switch, select, and the field wrappers the Inspector is built from.
  *
@@ -35,7 +41,7 @@ const switchStyles = stylex.create({
     ':focus-visible': {
       outlineWidth: '3px',
       outlineStyle: 'solid',
-      outlineColor: 'rgba(138, 138, 138, 0.5)',
+      outlineColor: color['ring-soft'],
       outlineOffset: '0px',
     },
     ':disabled': {
@@ -95,14 +101,14 @@ const selectStyles = stylex.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: space.md,
-    height: control.sm,
+    height: controlSize.sm,
     width: '100%',
     paddingInline: space.lg,
     borderRadius: radius.lg,
     borderWidth: '1px',
     borderStyle: 'solid',
-    borderColor: 'rgba(255, 255, 255, 0.075)',
-    backgroundColor: 'rgba(51, 51, 51, 0.3)',
+    borderColor: color['field-border'],
+    backgroundColor: color.field,
     color: color.text,
     fontSize: fontSize.md,
     cursor: 'pointer',
@@ -135,7 +141,7 @@ const selectStyles = stylex.create({
   },
   content: {
     transformOrigin: 'var(--radix-select-content-transform-origin)',
-    animationName: 'coilbox-menu-in',
+    animationName: grow,
     animationDuration: '100ms',
     animationTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
     animationFillMode: 'both',
@@ -364,8 +370,8 @@ const shellStyles = stylex.create({
     borderRadius: radius.lg,
     borderWidth: '1px',
     borderStyle: 'solid',
-    borderColor: 'rgba(255, 255, 255, 0.075)',
-    backgroundColor: 'rgba(51, 51, 51, 0.3)',
+    borderColor: color['field-border'],
+    backgroundColor: color.field,
     transitionProperty: 'border-color, box-shadow',
     transitionDuration: '100ms',
     ':hover': {
