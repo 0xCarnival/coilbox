@@ -774,7 +774,16 @@ export class EditorViewport {
   private updateFillLights(): void {
     const lighting = this.lastSyncedScene?.environment.lighting.type ?? 'none';
     const visible = lighting === 'none' || !this.shading.usesSceneLights();
-    for (const light of this.fillLights) light.visible = visible;
+    /**
+     * The fill is a gentle assist under a document's own lights, and the whole studio when the
+     * working views hide them: a night-time level's authored colours are dark on purpose, and at
+     * the assist level the solid view shows them as silhouettes.
+     */
+    const studio = !this.shading.usesSceneLights();
+    for (const light of this.fillLights) {
+      light.visible = visible;
+      light.intensity = (light instanceof THREE.HemisphereLight ? 0.55 : 0.85) * (studio ? 2.6 : 1);
+    }
   }
 
   // ------------------------------------------------------------------ isolation
