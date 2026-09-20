@@ -410,6 +410,8 @@ export class EditorSession {
     if (payload.revision === currentRevision) return;
 
     if (!this.store.isDirty) {
+      // A scene rewritten on disk may name assets the manifest gained in the same operation.
+      await this.refreshAssets();
       await this.openScene(this.sceneId);
       this.log('info', `${this.sceneId} changed on disk and was reloaded (revision ${payload.revision})`);
       return;
@@ -649,8 +651,9 @@ export class EditorSession {
       for (const key of Object.keys(this.thumbnails)) {
         if (key.startsWith(`${assetId}@`)) delete this.thumbnails[key];
       }
-      if (this.sceneId && result.scenes.includes(this.sceneId)) await this.openScene(this.sceneId);
+      // The manifest must name the new id before the rewritten scene resolves its assets.
       await this.refreshAssets();
+      if (this.sceneId && result.scenes.includes(this.sceneId)) await this.openScene(this.sceneId);
       const where = result.scenes.length === 0 ? 'not referenced by any scene' : `updated ${result.scenes.join(', ')}`;
       this.log('info', `Renamed "${assetId}" to "${newId}"`, where);
       return true;
