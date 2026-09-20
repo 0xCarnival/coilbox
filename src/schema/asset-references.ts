@@ -28,19 +28,32 @@ export function assetReferencesOf(component: Component): AssetReference[] {
 
 /**
  * The assets a behavior points at through properties its registry entry declares as `asset`.
- * The registry decides which keys hold assets, so the caller passes those keys per behavior id;
- * a behavior with no entry has no asset properties.
+ * The registry decides which keys hold assets and what each defaults to, so the caller passes
+ * `behaviorId -> (key -> default asset id or null)`; a stored value wins over the default, the way
+ * the runtime merges them. A behavior with no entry has no asset properties.
  */
-export function behaviorAssetIdsOf(component: Component, assetProperties: ReadonlyMap<string, ReadonlySet<string>>): AssetId[] {
+export function behaviorAssetIdsOf(
+  component: Component,
+  assetProperties: ReadonlyMap<string, ReadonlyMap<string, AssetId | null>>,
+): AssetId[] {
   if (component.type !== 'behavior') return [];
-  const keys = assetProperties.get(component.behaviorId);
-  if (!keys) return [];
+  const properties = assetProperties.get(component.behaviorId);
+  if (!properties) return [];
   const ids: AssetId[] = [];
-  for (const key of keys) {
-    const value = component.properties[key];
-    if (value !== undefined && isAssetId(value)) ids.push(value);
+  for (const [key, fallback] of properties) {
+    const stored = component.properties[key];
+    const value = stored === undefined ? fallback : stored;
+    if (value !== null && isAssetId(value)) ids.push(value);
   }
   return ids;
+}
+
+/** Every asset id a component uses: its fixed slots plus its behavior's `asset` properties. */
+export function referencedAssetIdsOf(
+  component: Component,
+  assetProperties: ReadonlyMap<string, ReadonlyMap<string, AssetId | null>>,
+): AssetId[] {
+  return [...assetReferencesOf(component).map((reference) => reference.assetId), ...behaviorAssetIdsOf(component, assetProperties)];
 }
 
 /** An `asset` property holds an id or `null` for none; the validator checks the type, this reads it. */

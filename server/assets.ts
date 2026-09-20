@@ -3,16 +3,14 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { extname, join } from 'node:path';
 import {
-  assetReferencesOf,
-  behaviorAssetIdsOf,
   parseAssetManifest,
+  referencedAssetIdsOf,
   type AssetEntry,
   type AssetKind,
   type AssetManifest,
 } from '@schema/index.js';
 import {
   behaviorAssetProperties,
-  behaviorValidationContext,
   PROJECT_FILES,
   Workspace,
   WorkspaceError,
@@ -273,12 +271,13 @@ export class AssetService {
   /** Scene ids that reference an asset, used before deleting or replacing it. */
   async findReferences(projectId: string, assetId: string): Promise<string[]> {
     const project = await this.workspace.readProject(projectId);
+    const assetProperties = behaviorAssetProperties(await this.workspace.readBehaviorRegistry(projectId));
     const referencing: string[] = [];
     for (const sceneEntry of project.scenes) {
       const scene = await this.workspace.readScene(projectId, sceneEntry.id).catch(() => null);
       if (!scene) continue;
       const used = scene.entities.some((entity) =>
-        entity.components.some((component) => assetReferencesOf(component).some((reference) => reference.assetId === assetId)),
+        entity.components.some((component) => referencedAssetIdsOf(component, assetProperties).includes(assetId)),
       );
       if (used) referencing.push(sceneEntry.id);
     }
@@ -289,17 +288,13 @@ export class AssetService {
   async usageIndex(projectId: string): Promise<Record<string, Array<{ sceneId: string; entityId: string; entityName: string }>>> {
     const project = await this.workspace.readProject(projectId);
     const index: Record<string, Array<{ sceneId: string; entityId: string; entityName: string }>> = {};
-    const assetProperties = behaviorAssetProperties(behaviorValidationContext(await this.workspace.readBehaviorRegistry(projectId)));
+    const assetProperties = behaviorAssetProperties(await this.workspace.readBehaviorRegistry(projectId));
     for (const sceneEntry of project.scenes) {
       const scene = await this.workspace.readScene(projectId, sceneEntry.id).catch(() => null);
       if (!scene) continue;
       for (const entity of scene.entities) {
         for (const component of entity.components) {
-          const ids = [
-            ...assetReferencesOf(component).map((reference) => reference.assetId),
-            ...behaviorAssetIdsOf(component, assetProperties),
-          ];
-          for (const assetId of ids) {
+          for (const assetId of referencedAssetIdsOf(component, assetProperties)) {
             (index[assetId] ??= []).push({ sceneId: sceneEntry.id, entityId: entity.id, entityName: entity.name });
           }
         }

@@ -312,6 +312,43 @@ describe('export asset plan', () => {
     expect(snapshot.referencedAssets).toEqual(new Set([imported.entry.id]));
     const usage = await assets.usageIndex('g');
     expect(usage[imported.entry.id]).toEqual([{ sceneId: 'main', entityId: 'goal', entityName: 'Goal' }]);
+    await expect(assets.remove('g', imported.entry.id)).rejects.toThrow(/used by main/);
+  });
+
+  it('keeps the asset a behavior property defaults to when the entity omits the property', async () => {
+    const fallback = await importFixture('images/swatch.png');
+    const projectRoot = join(workspaceRoot, 'g');
+    await writeFile(
+      join(projectRoot, 'scripts', 'registry.json'),
+      JSON.stringify({
+        schemaVersion: 1,
+        behaviors: [{ id: 'badge', name: 'Badge', properties: [{ key: 'icon', type: 'asset', default: fallback.entry.id }] }],
+      }),
+    );
+    const scene = await workspace.readScene('g', 'main');
+    scene.entities.push({
+      id: 'goal',
+      name: 'Goal',
+      parentId: null,
+      order: 9,
+      enabled: true,
+      transform: { position: [0, 1, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] },
+      components: [{ type: 'behavior', behaviorId: 'badge', properties: {} }],
+      editor: { visible: true, locked: false, color: null, helper: false },
+    });
+    await workspace.writeScene('g', 'main', scene, { expectedRevision: scene.revision });
+
+    const snapshot = await captureProject(workspace, 'g', projectRoot);
+    expect(snapshot.referencedAssets).toEqual(new Set([fallback.entry.id]));
+    await expect(assets.remove('g', fallback.entry.id)).rejects.toThrow(/used by main/);
+
+    const explicit = await workspace.readScene('g', 'main');
+    const goal = explicit.entities.find((entity) => entity.id === 'goal');
+    const badge = goal?.components[0];
+    if (!goal || badge?.type !== 'behavior') throw new Error('goal badge missing');
+    badge.properties = { icon: null };
+    await workspace.writeScene('g', 'main', explicit, { expectedRevision: explicit.revision });
+    expect((await captureProject(workspace, 'g', projectRoot)).referencedAssets).toEqual(new Set());
   });
 
   it('refuses a manifest path that leaves the project or the export', async () => {

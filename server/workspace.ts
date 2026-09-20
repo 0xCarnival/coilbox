@@ -470,6 +470,8 @@ export class Workspace {
   }
 }
 
+export type BehaviorAssetProperties = ReadonlyMap<string, ReadonlyMap<string, string | null>>;
+
 /** What the scene validator needs to know about a project's declared behaviors. */
 export interface BehaviorValidationContext {
   behaviorIds: Set<string>;
@@ -501,13 +503,23 @@ export function behaviorValidationContext(registry: BehaviorRegistryDocument): B
   return { behaviorIds, behaviorProperties };
 }
 
-/** Per behavior id, the property keys the registry declares as `asset`. */
-export function behaviorAssetProperties(context: BehaviorValidationContext): Map<string, Set<string>> {
-  const result = new Map<string, Set<string>>();
-  for (const [behaviorId, descriptors] of context.behaviorProperties) {
-    const keys = new Set<string>();
-    for (const [key, type] of descriptors) if (type === 'asset') keys.add(key);
-    if (keys.size > 0) result.set(behaviorId, keys);
+/**
+ * Per behavior id, the properties the registry declares as `asset`, each with the asset id its
+ * default names (or `null` for none). The runtime merges those defaults under the stored values,
+ * so an entity that omits the property still uses the default asset.
+ */
+export function behaviorAssetProperties(registry: BehaviorRegistryDocument): BehaviorAssetProperties {
+  const result = new Map<string, Map<string, string | null>>();
+  for (const entry of registry.behaviors) {
+    const id = jsonString(entry, 'id');
+    if (id === undefined) continue;
+    const properties = new Map<string, string | null>();
+    for (const property of jsonArray(entry, 'properties') ?? []) {
+      const key = jsonString(property, 'key');
+      if (key === undefined || jsonString(property, 'type') !== 'asset') continue;
+      properties.set(key, jsonString(property, 'default') ?? null);
+    }
+    if (properties.size > 0) result.set(id, properties);
   }
   return result;
 }

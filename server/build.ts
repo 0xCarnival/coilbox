@@ -251,8 +251,9 @@ export async function captureProject(workspace: Workspace, projectId: string, pr
   }
   const game = parsedGame.value;
   const manifest = await workspace.readAssetManifest(projectRoot, game);
-  const behaviors = behaviorValidationContext(await workspace.readBehaviorRegistry(projectId));
-  const assetProperties = behaviorAssetProperties(behaviors);
+  const registry = await workspace.readBehaviorRegistry(projectId);
+  const behaviors = behaviorValidationContext(registry);
+  const assetProperties = behaviorAssetProperties(registry);
   const context = {
     assetIds: new Set(manifest.assets.map((asset) => asset.id)),
     assetKinds: new Map(manifest.assets.map((asset) => [asset.id, asset.kind])),
@@ -279,7 +280,7 @@ export async function captureProject(workspace: Workspace, projectId: string, pr
           if (!context.assetIds.has(assetId)) {
             throw new WorkspaceError(
               'invalid-scene',
-              `scene "${entry.id}" gives behavior "${component.behaviorId}" the asset "${assetId}", which is not in the manifest`,
+              `scene "${entry.id}" gives behavior "${component.behaviorId}" the asset "${assetId}" (stored or its registry default), which is not in the manifest`,
               422,
             );
           }
