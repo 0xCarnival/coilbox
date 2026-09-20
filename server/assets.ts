@@ -1,16 +1,20 @@
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import { extname, join } from 'node:path';
+import { basename, extname, join } from 'node:path';
 import {
   parseAssetManifest,
+  parseScene,
   referencedAssetIdsOf,
+  renameAssetReferences,
   type AssetEntry,
   type AssetKind,
   type AssetManifest,
+  type SceneDocument,
 } from '@schema/index.js';
 import {
   behaviorAssetProperties,
+  behaviorValidationContext,
   PROJECT_FILES,
   Workspace,
   WorkspaceError,
@@ -97,7 +101,16 @@ export interface ImportAssetResult {
   warnings: string[];
 }
 
+export interface RenameAssetResult {
+  entry: AssetEntry;
+  manifest: AssetManifest;
+  /** Scenes whose documents were rewritten to point at the new id. */
+  scenes: string[];
+}
+
 const MAX_ASSET_BYTES = 64 * 1024 * 1024;
+/** Ids are path-safe, lowercase, and start with a letter or digit — what `import` generates. */
+const ASSET_ID_PATTERN = /^[a-z0-9][a-z0-9._-]{0,127}$/;
 
 export class AssetService {
   constructor(private readonly workspace: Workspace) {}
@@ -236,6 +249,83 @@ export class AssetService {
     return { manifest: nextManifest, removed: entry };
   }
 
+  /**
+   * Give an asset a new id, moving every scene reference with it.
+   *
+   * Every rewritten scene is validated against the new manifest before anything is written, so a
+   * document the rename would break refuses the whole operation rather than half of it. The stored
+   * file is renamed too, so the folder keeps reading like the manifest.
+   */
+  async rename(projectId: string, assetId: string, newId: string): Promise<RenameAssetResult> {
+    if (!ASSET_ID_PATTERN.test(newId)) {
+      throw new WorkspaceError(
+        'invalid-asset-id',
+        `"${newId}" is not a valid asset id: use lowercase letters, digits, ".", "_" or "-", starting with a letter or digit`,
+        422,
+      );
+    }
+    const projectRoot = await this.workspace.projectRoot(projectId);
+    const manifest = await this.readManifest(projectRoot);
+    const entry = manifest.assets.find((asset) => asset.id === assetId);
+    if (!entry) throw new WorkspaceError('asset-not-found', `no asset "${assetId}" in this project`, 404);
+    if (newId === assetId) return { entry, manifest, scenes: [] };
+    if (manifest.assets.some((asset) => asset.id === newId)) {
+      throw new WorkspaceError('asset-exists', `asset id "${newId}" is already used`, 409);
+    }
+
+    const storedName = basename(entry.path);
+    const nextStoredName = storedName.startsWith(`${assetId}-`) ? `${newId}${storedName.slice(assetId.length)}` : storedName;
+    const nextEntry: AssetEntry = { ...entry, id: newId, path: relativeAssetPath(entry.kind, nextStoredName) };
+    const nextManifest: AssetManifest = {
+      schemaVersion: manifest.schemaVersion,
+      assets: manifest.assets.map((asset) => (asset.id === assetId ? nextEntry : asset)),
+    };
+
+    const project = await this.workspace.readProject(projectId);
+    const registry = await this.workspace.readBehaviorRegistry(projectId);
+    const assetProperties = behaviorAssetProperties(registry);
+    const validation = {
+      assetIds: new Set(nextManifest.assets.map((asset) => asset.id)),
+      assetKinds: new Map(nextManifest.assets.map((asset) => [asset.id, asset.kind])),
+      ...behaviorValidationContext(registry),
+    };
+    const rewritten: Array<{ sceneId: string; scene: SceneDocument }> = [];
+    for (const sceneEntry of project.scenes) {
+      const scene = await this.workspace.readScene(projectId, sceneEntry.id);
+      let touched = false;
+      const entities = scene.entities.map((entity) => {
+        const components = entity.components.map((component) => {
+          const next = renameAssetReferences(component, assetId, newId, assetProperties);
+          if (next) touched = true;
+          return next ?? component;
+        });
+        return { ...entity, components };
+      });
+      if (!touched) continue;
+      const next: SceneDocument = { ...scene, entities };
+      const parsed = parseScene(next, validation);
+      if (!parsed.value || !parsed.ok) {
+        throw new WorkspaceError(
+          'invalid-scene',
+          `renaming "${assetId}" would leave scene "${sceneEntry.id}" invalid; nothing was changed`,
+          422,
+          parsed.issues,
+        );
+      }
+      rewritten.push({ sceneId: sceneEntry.id, scene: next });
+    }
+
+    await this.writeManifest(projectRoot, nextManifest);
+    if (nextEntry.path !== entry.path) {
+      const source = join(projectRoot, entry.path);
+      if (existsSync(source)) await rename(source, join(projectRoot, nextEntry.path));
+    }
+    for (const { sceneId, scene } of rewritten) {
+      await this.workspace.writeScene(projectId, sceneId, scene, { expectedRevision: scene.revision });
+    }
+    return { entry: nextEntry, manifest: nextManifest, scenes: rewritten.map((item) => item.sceneId) };
+  }
+
   async readManifest(projectRoot: string): Promise<AssetManifest> {
     const path = join(projectRoot, PROJECT_FILES.assetManifest);
     if (!existsSync(path)) return { schemaVersion: 1, assets: [] };
@@ -293,10 +383,10 @@ export class AssetService {
       const scene = await this.workspace.readScene(projectId, sceneEntry.id).catch(() => null);
       if (!scene) continue;
       for (const entity of scene.entities) {
-        for (const component of entity.components) {
-          for (const assetId of referencedAssetIdsOf(component, assetProperties)) {
-            (index[assetId] ??= []).push({ sceneId: sceneEntry.id, entityId: entity.id, entityName: entity.name });
-          }
+        // An entity that references the same asset from several slots is one user, listed once.
+        const referenced = new Set(entity.components.flatMap((component) => referencedAssetIdsOf(component, assetProperties)));
+        for (const assetId of referenced) {
+          (index[assetId] ??= []).push({ sceneId: sceneEntry.id, entityId: entity.id, entityName: entity.name });
         }
       }
     }

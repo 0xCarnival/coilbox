@@ -633,6 +633,33 @@ export class EditorSession {
     }
   }
 
+  /**
+   * Give an asset a new id. Unsaved edits are saved first so the service rewrites every
+   * reference, and the open scene is reloaded when it was one of the rewritten documents.
+   */
+  async renameAsset(assetId: string, newId: string): Promise<boolean> {
+    if (!this.project) return false;
+    if (newId === assetId) return true;
+    if (this.store?.isDirty && !(await this.save())) {
+      this.log('warning', `Cannot rename "${assetId}"`, 'save the scene first');
+      return false;
+    }
+    try {
+      const result = await this.client.renameAsset(this.project.id, assetId, newId);
+      for (const key of Object.keys(this.thumbnails)) {
+        if (key.startsWith(`${assetId}@`)) delete this.thumbnails[key];
+      }
+      if (this.sceneId && result.scenes.includes(this.sceneId)) await this.openScene(this.sceneId);
+      await this.refreshAssets();
+      const where = result.scenes.length === 0 ? 'not referenced by any scene' : `updated ${result.scenes.join(', ')}`;
+      this.log('info', `Renamed "${assetId}" to "${newId}"`, where);
+      return true;
+    } catch (error) {
+      this.log('error', `Could not rename "${assetId}"`, describeError(error));
+      return false;
+    }
+  }
+
   async deleteAsset(assetId: string): Promise<boolean> {
     if (!this.project) return false;
     try {

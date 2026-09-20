@@ -104,6 +104,13 @@ const styles = stylex.create({
     fontFamily: fontFamily.mono,
     fontSize: fontSize.xs,
   },
+  /** Replaces the id text while it is being edited. */
+  idInput: {
+    fontFamily: fontFamily.mono,
+    fontSize: fontSize.xs,
+    width: '14em',
+    marginInlineStart: space.xs,
+  },
   empty: {
     color: color.dim,
     padding: space.lg,
@@ -397,6 +404,7 @@ export function AssetBrowser(): JSX.Element {
                 usage={snapshot.assetUsage[asset.id] ?? []}
                 onDelete={() => void session.deleteAsset(asset.id)}
                 onReplace={(file) => void session.replaceAsset(asset.id, file)}
+                onRename={(newId) => session.renameAsset(asset.id, newId)}
               />
             ))}
           </tbody>
@@ -436,6 +444,7 @@ export function AssetBrowser(): JSX.Element {
                         usage={snapshot.assetUsage[asset.id] ?? []}
                         onDelete={() => void session.deleteAsset(asset.id)}
                         onReplace={(file) => void session.replaceAsset(asset.id, file)}
+                        onRename={(newId) => session.renameAsset(asset.id, newId)}
                       />
                     ))}
                   </tbody>
@@ -454,15 +463,20 @@ function AssetRow({
   usage,
   onDelete,
   onReplace,
+  onRename,
 }: {
   asset: AssetEntry;
   usage: AssetUsage;
   onDelete(): void;
   onReplace(file: File): void;
+  onRename(newId: string): Promise<boolean>;
 }): JSX.Element {
   const session = useSession();
   const snapshot = useSessionSnapshot();
   const replaceRef = useRef<HTMLInputElement | null>(null);
+  const [draft, setDraft] = useState<string | null>(null);
+  const [renaming, setRenaming] = useState(false);
+  const cancelledRef = useRef(false);
   const [hovered, setHovered] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [duration, setDuration] = useState<number | null>(null);
@@ -510,6 +524,22 @@ function AssetRow({
     session.selectMany(entries.filter((entry) => entry.sceneId === first.sceneId).map((entry) => entry.entityId));
   };
   const currentSceneUsers = usage.filter((entry) => entry.sceneId === snapshot.sceneId);
+  /**
+   * Commit the draft id. The row keeps showing the draft until the service answers, so a slow
+   * rename does not flash the old id back; a refused rename keeps the draft open for correction.
+   */
+  const commitRename = async () => {
+    if (draft === null || renaming || cancelledRef.current) return;
+    const newId = draft.trim();
+    if (newId === '' || newId === asset.id) {
+      setDraft(null);
+      return;
+    }
+    setRenaming(true);
+    const renamed = await onRename(newId);
+    setRenaming(false);
+    if (renamed) setDraft(null);
+  };
   const toggleAudio = () => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -525,7 +555,7 @@ function AssetRow({
 
   return (
     <tr
-      draggable
+      draggable={draft === null}
       onDragStart={(event) => {
         event.dataTransfer.setData(ASSET_DRAG_MIME, JSON.stringify({ assetId: asset.id, kind: asset.kind }));
         event.dataTransfer.effectAllowed = 'copy';
@@ -554,7 +584,33 @@ function AssetRow({
         ) : (
           <Music2 size={18} />
         )}
-        {asset.id}
+        {draft === null ? (
+          <span title="Double-click to rename" onDoubleClick={() => setDraft(asset.id)}>
+            {asset.id}
+          </span>
+        ) : (
+          <input
+            {...stylex.props(styles.idInput)}
+            autoFocus
+            aria-label={`New id for ${asset.id}`}
+            value={draft}
+            disabled={renaming}
+            spellCheck={false}
+            onChange={(event) => setDraft(event.target.value)}
+            onFocus={() => {
+              cancelledRef.current = false;
+            }}
+            onBlur={() => void commitRename()}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') void commitRename();
+              if (event.key === 'Escape') {
+                cancelledRef.current = true;
+                setDraft(null);
+              }
+              event.stopPropagation();
+            }}
+          />
+        )}
       </td>
       <td {...stylex.props(...cell)}>{asset.kind}</td>
       <td {...stylex.props(...cell)}>{formatBytes(asset.bytes)}{duration !== null ? ` · ${formatDuration(duration)}` : ''}</td>
@@ -595,6 +651,9 @@ function AssetRow({
         )}
       </td>
       <td {...stylex.props(...cell, styles.actions)}>
+        <button type="button" title="Give this asset a new id; every object using it follows" onClick={() => setDraft(asset.id)}>
+          Rename
+        </button>
         <button type="button" title="Replace the file behind this asset id" onClick={() => replaceRef.current?.click()}>
           Replace
         </button>

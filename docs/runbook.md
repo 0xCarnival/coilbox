@@ -150,7 +150,9 @@ everywhere the runtime runs; the asset list labels it with its codec.
 
 Import through the editor's **Assets** tab (drag files in, or use *Import files*). Replacing an
 asset keeps its id, so scenes that reference it are untouched; the previous file moves to
-`.coilbox/assets/`.
+`.coilbox/assets/`. Renaming an asset (double-click its id, or *Rename*) gives it a new id and
+rewrites every scene that references it — model, audio, material texture slots, and behavior asset
+properties alike — after saving your open scene; the stored file is renamed to match.
 
 ## Portability
 

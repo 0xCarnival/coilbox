@@ -193,6 +193,14 @@ export class WorkspaceClient {
     );
   }
 
+  /** Give an asset a new id; the service moves every scene reference and reports which scenes changed. */
+  renameAsset(projectId: string, assetId: string, newId: string): Promise<{ entry: AssetEntry; manifest: AssetManifest; scenes: string[] }> {
+    return this.request(
+      `/projects/${encodeURIComponent(projectId)}/assets/${encodeURIComponent(assetId)}`,
+      { method: 'PATCH', body: { newId } },
+    );
+  }
+
   renameProject(projectId: string, name: string): Promise<{ project: ProjectDetail }> {
     return this.request(`/projects/${encodeURIComponent(projectId)}`, { method: 'PATCH', body: { name } });
   }

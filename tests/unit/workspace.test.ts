@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { request as httpRequest } from 'node:http';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { startApiServer, type ApiServerHandle } from '../../server/api.js';
+import { AssetService } from '../../server/assets.js';
 import { Workspace } from '../../server/workspace.js';
 import { UnsafePathError } from '../../server/paths.js';
 import { parseScene } from '@schema/index.js';
@@ -242,6 +243,30 @@ describe('security', () => {
     const response = await request('/api/session', { headers: { origin: `http://127.0.0.1:${api.port}` } });
     expect(response.status).toBe(200);
     expect(response.body.token).toBe(api.token);
+  });
+
+  it('renames an asset over PATCH and reports the scenes it rewrote, refusing bad ids', async () => {
+    await request('/api/projects', { method: 'POST', body: { id: 'g', name: 'G' } });
+    const bytes = new Uint8Array(await readFile(join(repositoryRoot, 'tests', 'fixtures', 'images', 'swatch.png')));
+    const imported = await new AssetService(workspace).import({ projectId: 'g', filename: 'swatch.png', bytes });
+
+    const invalid = await request(`/api/projects/g/assets/${imported.entry.id}`, { method: 'PATCH', body: { newId: 'Bad Id' } });
+    expect(invalid.status).toBe(422);
+    expect(invalid.body.error).toBe('invalid-asset-id');
+
+    const missing = await request('/api/projects/g/assets/nope', { method: 'PATCH', body: { newId: 'fine' } });
+    expect(missing.status).toBe(404);
+    expect(missing.body.error).toBe('asset-not-found');
+
+    const renamed = await request(`/api/projects/g/assets/${imported.entry.id}`, { method: 'PATCH', body: { newId: 'paint' } });
+    expect(renamed.status).toBe(200);
+    expect(renamed.body.entry.id).toBe('paint');
+    expect(renamed.body.scenes).toEqual([]);
+    const listed = await request('/api/projects/g/assets');
+    expect(listed.body.manifest.assets.map((asset: { id: string }) => asset.id)).toEqual(['paint']);
+
+    const collision = await request('/api/projects/g/assets/paint', { method: 'PATCH', body: { newId: 'paint' } });
+    expect(collision.status).toBe(200);
   });
 
   it('rejects requests with a foreign Host header (DNS rebinding)', async () => {
