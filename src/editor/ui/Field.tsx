@@ -95,7 +95,7 @@ const selectStyles = stylex.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: space.md,
-    height: control.sm,
+    height: controlSize.sm,
     width: '100%',
     paddingInline: space.lg,
     borderRadius: radius.lg,

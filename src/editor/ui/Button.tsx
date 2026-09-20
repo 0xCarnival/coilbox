@@ -1,6 +1,6 @@
 import * as React from 'react';
 import * as stylex from '@stylexjs/stylex';
-import { button, color, control, space } from '../styles/tokens.stylex.js';
+import { button, color, controlSize, space } from '../styles/tokens.stylex.js';
 
 /**
  * The two button shapes, on the pattern left behind by the Radix investigation.
@@ -44,7 +44,7 @@ const sizeStyles = stylex.create({
   },
   /** A form-scale control: `h-8`, used on the project home and in dialogs. */
   md: {
-    height: control.sm,
+    height: controlSize.sm,
     paddingInline: space.lg,
   },
   /** A square icon-only control at the default height. */

@@ -15,7 +15,7 @@ import {
   StepForward,
   Undo2,
 } from 'lucide-react';
-import { color, control, fontSize, radius, space } from '../styles/tokens.stylex.js';
+import { color, control, controlSize, fontSize, radius, space } from '../styles/tokens.stylex.js';
 import { DOM, DOM_STATE, withDomClass } from '../dom-contract.js';
 import { useSession, useSessionSnapshot } from '../hooks.js';
 import type { TransformTool } from '../viewport/viewport-controller.js';
@@ -106,7 +106,7 @@ const styles = stylex.create({
     display: 'flex',
     alignItems: 'center',
     gap: space.xs,
-    height: control.xs,
+    height: controlSize.xs,
     paddingInline: space.md,
     borderRadius: radius.md,
     color: color.text,
@@ -127,7 +127,7 @@ const styles = stylex.create({
   /** The scene name is a quieter, secondary identity beside the project. */
   sceneName: {
     width: '150px',
-    height: control.xs,
+    height: controlSize.xs,
     fontSize: fontSize.xs,
     color: color.muted,
     backgroundColor: 'transparent',
@@ -146,7 +146,7 @@ const styles = stylex.create({
     display: 'flex',
     alignItems: 'center',
     gap: space.xs,
-    height: control.xs,
+    height: controlSize.xs,
     paddingInline: space.md,
     borderRadius: radius.md,
     color: color.muted,
@@ -165,7 +165,7 @@ const styles = stylex.create({
     display: 'flex',
     alignItems: 'center',
     gap: space.sm,
-    height: control.xs,
+    height: controlSize.xs,
     paddingInline: space.md,
     borderRadius: radius.md,
     color: color.muted,
