@@ -17,7 +17,9 @@ import { Inspector } from './panels/Inspector.js';
 import { Toolbar, SaveIndicator, type ExportTarget } from './panels/Toolbar.js';
 import { BottomPanel, type BottomTab } from './panels/BottomPanel.js';
 import { Viewport, type PlayState, type ViewportDisplay, type ViewportHandle } from './panels/Viewport.js';
-import type { CameraPlanes, SnapSettings, TransformSpace, TransformTool, ViewFace } from './viewport/viewport-controller.js';
+import type { CameraPlanes, RenderScale, SnapSettings, TransformSpace, TransformTool, ViewFace } from './viewport/viewport-controller.js';
+import type { ShadingMode } from './viewport/shading.js';
+import { FLY_KEY_CODES } from './viewport/fly-navigator.js';
 import {
   browserBookmarkStorage,
   isBookmarkSlot,
@@ -340,6 +342,11 @@ function StudioShell(): JSX.Element {
    */
   const [grid, setGrid] = useState(true);
   const [shadows, setShadows] = useState(true);
+  const [shading, setShading] = useState<ShadingMode>('solid');
+  const [renderScale, setRenderScale] = useState<RenderScale>(1);
+  const [flying, setFlying] = useState(false);
+  const [flySpeed, setFlySpeed] = useState(12);
+  const [isolated, setIsolated] = useState(false);
   /** Whether the stage is currently showing the game camera's view, for the palette's label. */
   const [cameraView, setCameraView] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -437,6 +444,8 @@ function StudioShell(): JSX.Element {
       if (!display) return;
       setGrid(display.grid);
       setShadows(display.shadows);
+      setShading(display.shading);
+      setRenderScale(display.renderScale);
     });
     return () => cancelAnimationFrame(frame);
   }, []);
@@ -465,7 +474,56 @@ function StudioShell(): JSX.Element {
     if (!display) return;
     setGrid(display.grid);
     setShadows(display.shadows);
+    setShading(display.shading);
+    setRenderScale(display.renderScale);
   };
+
+  const toggleFly = useCallback(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+    const next = !viewport.flyEnabled();
+    viewport.setFlyEnabled(next);
+    setFlying(viewport.flyEnabled());
+    setFlySpeed(viewport.flySpeed());
+    setStatus(next ? 'Fly navigation: W/A/S/D and Q/E move, right-drag looks, wheel sets the speed, Shift sprints' : 'Fly navigation off');
+  }, []);
+
+  const changeFlySpeed = useCallback((speed: number) => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+    viewport.setFlySpeed(speed);
+    setFlySpeed(viewport.flySpeed());
+    if (!viewport.flyEnabled()) {
+      viewport.setFlyEnabled(true);
+      setFlying(true);
+    }
+    setStatus(`Fly speed ${viewport.flySpeed()} m/s`);
+  }, []);
+
+  /**
+   * Isolate the selection, or show everything again. Toggling with a different selection while
+   * isolated re-isolates to the new one, which is what a second press on a new pick means.
+   */
+  const toggleIsolation = useCallback(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+    const selection = session.selection.selectedIds;
+    const current = viewport.isolation();
+    if (current && selection.every((id) => current.includes(id))) {
+      viewport.setIsolation(null);
+      setIsolated(false);
+      setStatus('Showing everything');
+      return;
+    }
+    if (selection.length === 0) {
+      setStatus('Select something to isolate');
+      return;
+    }
+    viewport.setIsolation(selection);
+    viewport.focusSelection();
+    setIsolated(true);
+    setStatus(`Isolated ${selection.length === 1 ? 'the selection' : `${selection.length} objects`} — press / to show everything`);
+  }, [session]);
 
   /**
    * Look through the scene's game camera, or leave it.
@@ -599,6 +657,18 @@ function StudioShell(): JSX.Element {
         return;
       }
       if (editorLocked || isTextEntryTarget(event.target)) return;
+      if (!meta && !event.altKey && event.shiftKey && event.key.toLowerCase() === 'f') {
+        event.preventDefault();
+        toggleFly();
+        return;
+      }
+      /** In flight the movement keys belong to the camera, not to the tool row. */
+      if (!meta && viewportRef.current?.flyEnabled() && FLY_KEY_CODES.has(event.code)) return;
+      if (!meta && !event.altKey && event.key === '/') {
+        event.preventDefault();
+        toggleIsolation();
+        return;
+      }
       /**
        * The view keys are read from `code`, and before anything that reads `key`.
        *
@@ -674,7 +744,7 @@ function StudioShell(): JSX.Element {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [editorLocked, session, handleViewKey, toggleSpace]);
+  }, [editorLocked, session, handleViewKey, toggleSpace, toggleFly, toggleIsolation]);
 
   /**
    * A rail click selects a panel. Selecting the hierarchy toggles its column; selecting one of the
@@ -833,6 +903,16 @@ function StudioShell(): JSX.Element {
                   onGridChange={(next) => setOverlay({ grid: next })}
                   shadows={shadows}
                   onShadowsChange={(next) => setOverlay({ shadows: next })}
+                  shading={shading}
+                  onShadingChange={(next) => setOverlay({ shading: next })}
+                  renderScale={renderScale}
+                  onRenderScaleChange={(next) => setOverlay({ renderScale: next })}
+                  flying={flying}
+                  onToggleFly={toggleFly}
+                  flySpeed={flySpeed}
+                  onFlySpeedChange={changeFlySpeed}
+                  isolated={isolated}
+                  onToggleIsolation={toggleIsolation}
                   bookmarks={bookmarks}
                   onSaveBookmark={saveBookmark}
                   onRecallBookmark={recallBookmark}
@@ -867,7 +947,6 @@ function StudioShell(): JSX.Element {
                 <BottomPanel
                   onReloadScene={() => void session.reloadScene()}
                   tab={bottomTab}
-                  onTabChange={setBottomTab}
                   locked={editorLocked}
                 />
                 <div {...stylex.props(styles.resizeTop)}>
@@ -903,6 +982,12 @@ function StudioShell(): JSX.Element {
                 /** The same callback numpad 0 uses, so the two cannot come to mean different things. */
                 cameraView: toggleCameraView,
                 frameAll: () => viewportRef.current?.frameAll(),
+                toggleFly,
+                flying,
+                toggleIsolation,
+                isolated,
+                shading,
+                setShading: (next: ShadingMode) => setOverlay({ shading: next }),
                 inCameraView: cameraView,
                 bookmarks,
                 saveBookmark,

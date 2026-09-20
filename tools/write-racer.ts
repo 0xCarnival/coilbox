@@ -857,7 +857,7 @@ function buildLightsAndCamera(): void {
     components: [
       behavior('racer.director', {
         crafts: CRAFT_SPECS.map((spec) => spec.name).join(', '),
-        laps: 3,
+        laps: 2,
         countdownSeconds: 3,
         podiumPlaces: 1,
         winMessage: 'CHAMPION OF THE ŌMAGATOKI CIRCUIT',
@@ -906,7 +906,7 @@ const game: GameDocumentInput = {
   id: GAME_ID,
   name: 'Ōmagatoki Circuit',
   description:
-    'Anti-gravity combat racing over a cloud sea at the twilight hour. Three laps, three rivals, three hulls: drift the air brakes, ride the boost pads, survive the Cliff Drop.',
+    'Anti-gravity combat racing over a cloud sea at the twilight hour. Two laps, three rivals, three hulls: drift the air brakes, ride the boost pads, survive the Cliff Drop.',
   scenes: [{ id: 'main', name: 'Ōmagatoki Circuit', path: 'scenes/main.scene.json' }],
   startScene: 'main',
   assetManifest: 'assets/manifest.json',
@@ -916,8 +916,8 @@ const game: GameDocumentInput = {
     render: { antialias: false, shadows: false, pixelRatioCap: 1, toneMapping: 'neutral', exposure: 1.05 },
     initialGameState: {
       raceState: 'countdown',
-      laps: 3,
-      lap: '1 / 3',
+      laps: 2,
+      lap: '1 / 2',
       place: '- / 4',
       speed: 0,
       boost: 100,
@@ -926,7 +926,7 @@ const game: GameDocumentInput = {
       weapon: '—',
       craft: 'TENGU  ·  interceptor',
       raceTime: '0:00.00',
-      hudRace: '- / 4   ·   LAP 1 / 3',
+      hudRace: '- / 4   ·   LAP 1 / 2',
       hudPilot: 'TENGU  ·  interceptor   ·   0:00.00',
       hudSystems: 'ENERGY 100%   ·   WEAPON —',
       hudBoost: 'BOOST 100%   ·   hold SHIFT',
@@ -950,7 +950,7 @@ const game: GameDocumentInput = {
         kind: 'start',
         title: 'ŌMAGATOKI CIRCUIT',
         message:
-          'Anti-gravity league, twilight session. Three laps above the cloud sea against Kaminari, Yurei and Daruma.\n\nW / ↑ thrust · S brake · A / D steer · Q / E air brakes (hold both to slam the brakes, one to drift) · SHIFT boost · SPACE fire · 1 / 2 / 3 choose your hull before the lights go out.',
+          'Anti-gravity league, twilight session. Two laps above the cloud sea against Kaminari, Yurei and Daruma.\n\nW / ↑ thrust · S brake · A / D steer · Q / E air brakes (hold both to slam the brakes, one to drift) · SHIFT boost · SPACE fire · 1 / 2 / 3 choose your hull before the lights go out.',
         actionLabel: 'Launch',
         action: 'resume',
         background: '#1a0b2e',
@@ -1005,7 +1005,7 @@ const readme = [
   '',
   `The lap is ${Math.round(lapLength)} m long: a start straight under the gantry, a rising right-hand sweep, the`,
   'Cliff Drop (a 40 m plunge with a gap jump), an S through the shrine islands, the climb to the Moon Hairpin and',
-  'the plunge home. Three laps against three AI rivals who rubber-band, drift, and shoot back.',
+  'the plunge home. Two laps against three AI rivals who rubber-band, drift, and shoot back.',
   '',
   '## Controls',
   '',

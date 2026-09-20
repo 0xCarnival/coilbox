@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { JSX } from 'react';
 import * as stylex from '@stylexjs/stylex';
 import type { Entity } from '@schema/index.js';
@@ -25,7 +25,6 @@ import { IconButton } from '../ui/Button.js';
 import { DOM, DOM_STATE, withDomClass } from '../dom-contract.js';
 import { useSession, useSessionSnapshot } from '../hooks.js';
 import { createEntity, reparentPreservingWorldTransform } from '../document/factory.js';
-import { subtreeOf } from '../document/commands.js';
 import { applyAssetDrop, hasAssetDrag, readAssetDrag, type AssetDropTarget } from '../assets/asset-drop.js';
 
 
@@ -40,6 +39,16 @@ interface TreeRow {
   entity: Entity;
   depth: number;
 }
+
+/**
+ * Rows painted above and below the visible band, so a scroll of a few rows lands on rows that
+ * already exist rather than on a flash of blank panel.
+ */
+const OVERSCAN = 12;
+/** The row height until one has been measured; the compact density's value. */
+const FALLBACK_ROW_HEIGHT = 24;
+/** The list height until the panel has been measured; tall enough that a small scene renders whole. */
+const FALLBACK_LIST_HEIGHT = 800;
 
 /**
  * Pick the glyph for an entity from the components it actually carries.
@@ -346,11 +355,28 @@ export function Hierarchy({ locked }: { locked: boolean }): JSX.Element {
 
     const needle = search.trim().toLowerCase();
     const matches = (entity: Entity) => needle.length === 0 || entity.name.toLowerCase().includes(needle) || entity.id.includes(needle);
+    /**
+     * Whether anything under an entity matches, computed once for the whole tree. Asking each row
+     * for its subtree instead is quadratic, and a two-thousand-row scene made every keystroke in the
+     * search field a visible pause.
+     */
+    const descendantMatches = new Set<string>();
+    if (needle.length > 0) {
+      const mark = (parentId: string | null): boolean => {
+        let any = false;
+        for (const entity of byParent.get(parentId) ?? []) {
+          const below = mark(entity.id);
+          if (below) descendantMatches.add(entity.id);
+          if (below || matches(entity)) any = true;
+        }
+        return any;
+      };
+      mark(null);
+    }
     const result: TreeRow[] = [];
     const visit = (parentId: string | null, depth: number) => {
       for (const entity of byParent.get(parentId) ?? []) {
-        const childrenMatch = needle.length > 0 && subtreeOf(scene, entity.id).some((child) => child.id !== entity.id && matches(child));
-        if (matches(entity) || childrenMatch) result.push({ entity, depth });
+        if (matches(entity) || descendantMatches.has(entity.id)) result.push({ entity, depth });
         /**
          * A search overrides the collapse state: hiding a match inside a closed branch would make
          * the search look like it found nothing, which is the one thing a search must not do.
@@ -377,6 +403,45 @@ export function Hierarchy({ locked }: { locked: boolean }): JSX.Element {
     }
     return parents;
   }, [scene]);
+
+  /**
+   * Only the rows in view are in the DOM.
+   *
+   * A racetrack scene has thousands of entities, and painting a `div` with five buttons for each of
+   * them cost more than the viewport did. The list scrolls a spacer the height of every row and
+   * renders the band the scroll position lands on, plus a margin either side. Row height is read
+   * from a rendered row rather than assumed, because the comfortable density makes rows taller.
+   */
+  const treeRef = useRef<HTMLDivElement | null>(null);
+  const [scrollTop, setScrollTop] = useState(0);
+  const [listHeight, setListHeight] = useState(FALLBACK_LIST_HEIGHT);
+  const [rowHeight, setRowHeight] = useState(FALLBACK_ROW_HEIGHT);
+  useEffect(() => {
+    const tree = treeRef.current;
+    if (!tree) return;
+    const observer = new ResizeObserver(() => setListHeight(tree.clientHeight));
+    observer.observe(tree);
+    return () => observer.disconnect();
+  }, []);
+  useLayoutEffect(() => {
+    const row = treeRef.current?.querySelector(`.${DOM.treeRow}`);
+    if (row instanceof HTMLElement && row.offsetHeight > 0 && row.offsetHeight !== rowHeight) setRowHeight(row.offsetHeight);
+  });
+  const firstVisible = Math.max(0, Math.floor(scrollTop / rowHeight) - OVERSCAN);
+  const lastVisible = Math.min(rows.length, Math.ceil((scrollTop + listHeight) / rowHeight) + OVERSCAN);
+  const visibleRows = rows.slice(firstVisible, lastVisible);
+
+  /** Bring the primary selection into view when it changes, so picking in the viewport finds its row. */
+  const primarySelection = snapshot.primarySelection;
+  useEffect(() => {
+    const tree = treeRef.current;
+    if (!tree || !primarySelection) return;
+    const index = rows.findIndex((row) => row.entity.id === primarySelection);
+    if (index < 0) return;
+    const top = index * rowHeight;
+    if (top < tree.scrollTop) tree.scrollTop = top;
+    else if (top + rowHeight > tree.scrollTop + tree.clientHeight) tree.scrollTop = top + rowHeight - tree.clientHeight;
+  }, [primarySelection, rows, rowHeight]);
 
   if (!scene) {
     return (
@@ -436,8 +501,10 @@ export function Hierarchy({ locked }: { locked: boolean }): JSX.Element {
       </div>
       <div
         {...stylex.props(styles.tree)}
+        ref={treeRef}
         role="tree"
         aria-label="Scene hierarchy"
+        onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}
         onDragOver={(event) => {
           if (locked || !hasAssetDrag(event.dataTransfer)) return;
           event.preventDefault();
@@ -452,7 +519,8 @@ export function Hierarchy({ locked }: { locked: boolean }): JSX.Element {
           session.log(result.ok ? 'info' : 'warning', result.message);
         }}
       >
-        {rows.map(({ entity, depth }) => {
+        {firstVisible > 0 && <div style={{ height: firstVisible * rowHeight }} aria-hidden="true" />}
+        {visibleRows.map(({ entity, depth }) => {
           const EntityIcon = entityIcon(entity);
           const isSelected = selected.has(entity.id);
           const isHovered = hovered === entity.id;
@@ -654,6 +722,7 @@ export function Hierarchy({ locked }: { locked: boolean }): JSX.Element {
             </div>
           );
         })}
+        {lastVisible < rows.length && <div style={{ height: (rows.length - lastVisible) * rowHeight }} aria-hidden="true" />}
         {rows.length === 0 && (
           <div {...withDomClass(styles.empty, DOM.panelEmpty)}>{search ? 'No matching objects' : 'This scene is empty'}</div>
         )}

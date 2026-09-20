@@ -574,7 +574,7 @@ async function main(): Promise<void> {
 
     // Acceptance: replace a model. Two models are imported through the editor, one is put on a
     // new object, and then swapped for the other — the object's model changes, nothing else does.
-    await studio.click('button[role="tab"]:has-text("Assets")');
+    await studio.click('nav[aria-label="Editor panels"] button[aria-label="Assets"]');
     await studio.setInputFiles('.asset-toolbar input[type="file"]', [
       join(root, 'tests', 'fixtures', 'models', 'spinning-crate.glb'),
       join(root, 'tests', 'fixtures', 'models', 'animated-limb.glb'),
