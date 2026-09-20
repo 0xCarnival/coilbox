@@ -45,6 +45,9 @@ interface TreeRow {
  * already exist rather than on a flash of blank panel.
  */
 const OVERSCAN = 12;
+/** Scenes at least this big open with their large root groups collapsed. */
+const LARGE_SCENE_ROWS = 500;
+const LARGE_GROUP_CHILDREN = 20;
 /** The row height until one has been measured; the compact density's value. */
 const FALLBACK_ROW_HEIGHT = 24;
 /** The list height until the panel has been measured; tall enough that a small scene renders whole. */
@@ -342,6 +345,24 @@ export function Hierarchy({ locked }: { locked: boolean }): JSX.Element {
    */
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
   const scene = snapshot.project && session.scene ? session.scene : null;
+  /**
+   * The exception to open-by-default: a scene with thousands of rows opens with its big root
+   * groups shut, so a racetrack greets the user with its sections rather than a wall of deck pieces.
+   * Decided once per scene, then left to the user.
+   */
+  const sceneKey = scene ? `${snapshot.project?.id ?? ''}/${scene.id}` : null;
+  useEffect(() => {
+    if (!scene || scene.entities.length < LARGE_SCENE_ROWS) {
+      setCollapsed(new Set());
+      return;
+    }
+    const childCount = new Map<string, number>();
+    for (const entity of scene.entities) {
+      if (entity.parentId !== null) childCount.set(entity.parentId, (childCount.get(entity.parentId) ?? 0) + 1);
+    }
+    setCollapsed(new Set(scene.entities.filter((entity) => entity.parentId === null && (childCount.get(entity.id) ?? 0) >= LARGE_GROUP_CHILDREN).map((entity) => entity.id)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sceneKey]);
 
   const rows = useMemo<TreeRow[]>(() => {
     if (!scene) return [];
