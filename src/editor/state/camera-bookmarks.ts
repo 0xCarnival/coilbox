@@ -46,15 +46,21 @@ const bookmarkSchema: z.ZodType<CameraBookmark> = z.object({
   target: tripleSchema,
   up: tripleSchema,
   zoom: z.number().finite().positive(),
+  fov: z.number().finite().positive().nullable(),
 });
 
 const storedSchema = z.record(z.string(), z.unknown());
 
+/**
+ * Web Storage throws as readily as it returns: disabled by policy, blocked in a private window, or
+ * over quota. Reads treat any failure as "nothing saved"; writes report it so the caller can say so
+ * instead of announcing a bookmark that does not exist.
+ */
 export function loadBookmarks(storage: BookmarkStorage | undefined, projectId: string, sceneId: string): CameraBookmarks {
-  const raw = storage?.getItem(bookmarkStorageKey(projectId, sceneId));
-  if (!raw) return {};
   let parsed: unknown;
   try {
+    const raw = storage?.getItem(bookmarkStorageKey(projectId, sceneId));
+    if (!raw) return {};
     parsed = JSON.parse(raw);
   } catch {
     return {};
@@ -74,6 +80,21 @@ export function saveBookmarks(
   projectId: string,
   sceneId: string,
   bookmarks: CameraBookmarks,
-): void {
-  storage?.setItem(bookmarkStorageKey(projectId, sceneId), JSON.stringify(bookmarks));
+): boolean {
+  if (!storage) return false;
+  try {
+    storage.setItem(bookmarkStorageKey(projectId, sceneId), JSON.stringify(bookmarks));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** `globalThis.localStorage` itself throws where storage is denied, so acquiring it is guarded too. */
+export function browserBookmarkStorage(): BookmarkStorage | undefined {
+  try {
+    return globalThis.localStorage;
+  } catch {
+    return undefined;
+  }
 }

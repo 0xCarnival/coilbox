@@ -23,13 +23,16 @@ const front: CameraBookmark = {
   target: [0, 0.5, 0],
   up: [0, 1, 0],
   zoom: 1.5,
+  fov: null,
 };
+
+const lens: CameraBookmark = { ...front, projection: 'perspective', zoom: 1, fov: 90 };
 
 describe('camera bookmarks', () => {
   it('round-trips through storage, per project and scene', () => {
     const storage = memoryStorage();
-    saveBookmarks(storage, 'demo', 'main', { '1': front });
-    expect(loadBookmarks(storage, 'demo', 'main')).toEqual({ '1': front });
+    expect(saveBookmarks(storage, 'demo', 'main', { '1': front, '2': lens })).toBe(true);
+    expect(loadBookmarks(storage, 'demo', 'main')).toEqual({ '1': front, '2': lens });
     expect(loadBookmarks(storage, 'demo', 'arena')).toEqual({});
     expect(loadBookmarks(storage, 'other', 'main')).toEqual({});
   });
@@ -47,6 +50,8 @@ describe('camera bookmarks', () => {
         '3': { ...front, position: [0, 1] },
         '4': { ...front, zoom: 0 },
         '5': 'nonsense',
+        '6': { ...lens, fov: -10 },
+        '7': { ...front, fov: undefined },
         '12': front,
       }),
     });
@@ -58,6 +63,26 @@ describe('camera bookmarks', () => {
     expect(loadBookmarks(memoryStorage({ [key]: '{not json' }), 'demo', 'main')).toEqual({});
     expect(loadBookmarks(memoryStorage({ [key]: '[]' }), 'demo', 'main')).toEqual({});
     expect(loadBookmarks(undefined, 'demo', 'main')).toEqual({});
+    const denied: BookmarkStorage = {
+      getItem: () => {
+        throw new Error('storage disabled');
+      },
+      setItem: () => {
+        throw new Error('quota exceeded');
+      },
+    };
+    expect(loadBookmarks(denied, 'demo', 'main')).toEqual({});
+  });
+
+  it('reports a refused write instead of throwing', () => {
+    const denied: BookmarkStorage = {
+      getItem: () => null,
+      setItem: () => {
+        throw new Error('quota exceeded');
+      },
+    };
+    expect(saveBookmarks(denied, 'demo', 'main', { '1': front })).toBe(false);
+    expect(saveBookmarks(undefined, 'demo', 'main', { '1': front })).toBe(false);
   });
 
   it('recognises the nine slots and nothing else', () => {

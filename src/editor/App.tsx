@@ -19,6 +19,7 @@ import { BottomPanel, type BottomTab } from './panels/BottomPanel.js';
 import { Viewport, type PlayState, type ViewportDisplay, type ViewportHandle } from './panels/Viewport.js';
 import type { CameraPlanes, SnapSettings, TransformSpace, TransformTool, ViewFace } from './viewport/viewport-controller.js';
 import {
+  browserBookmarkStorage,
   isBookmarkSlot,
   loadBookmarks,
   saveBookmarks,
@@ -352,7 +353,7 @@ function StudioShell(): JSX.Element {
   const projectId = snapshot.project?.id ?? null;
   const sceneId = snapshot.sceneId;
   useEffect(() => {
-    setBookmarks(projectId && sceneId ? loadBookmarks(globalThis.localStorage, projectId, sceneId) : {});
+    setBookmarks(projectId && sceneId ? loadBookmarks(browserBookmarkStorage(), projectId, sceneId) : {});
   }, [projectId, sceneId]);
 
   const saveBookmark = useCallback(
@@ -360,7 +361,10 @@ function StudioShell(): JSX.Element {
       const bookmark = viewportRef.current?.cameraBookmark();
       if (!bookmark || !projectId || !sceneId) return;
       const next = { ...bookmarks, [slot]: bookmark };
-      saveBookmarks(globalThis.localStorage, projectId, sceneId, next);
+      if (!saveBookmarks(browserBookmarkStorage(), projectId, sceneId, next)) {
+        setStatus(`Could not save bookmark ${slot}: the browser refused to store it`);
+        return;
+      }
       setBookmarks(next);
       setStatus(`Saved the view as bookmark ${slot} (Shift+${slot} returns to it)`);
     },
@@ -383,7 +387,10 @@ function StudioShell(): JSX.Element {
 
   const clearBookmarks = useCallback(() => {
     if (!projectId || !sceneId) return;
-    saveBookmarks(globalThis.localStorage, projectId, sceneId, {});
+    if (!saveBookmarks(browserBookmarkStorage(), projectId, sceneId, {})) {
+      setStatus('Could not clear the view bookmarks: the browser refused to store the change');
+      return;
+    }
     setBookmarks({});
     setStatus('Cleared the view bookmarks for this scene');
   }, [projectId, sceneId]);

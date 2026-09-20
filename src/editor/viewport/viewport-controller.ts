@@ -266,7 +266,7 @@ export type ProjectionKind = 'perspective' | 'orthographic';
  *
  * `zoom` is the orthographic dolly: `OrbitControls` zooms an orthographic camera by scaling its
  * frustum rather than moving it, so position and target alone would restore a top view at the wrong
- * magnification.
+ * magnification. `fov` is the perspective lens, `null` for an orthographic camera, which has none.
  */
 export interface CameraBookmark {
   projection: ProjectionKind;
@@ -274,6 +274,7 @@ export interface CameraBookmark {
   target: [number, number, number];
   up: [number, number, number];
   zoom: number;
+  fov: number | null;
 }
 
 /**
@@ -953,7 +954,11 @@ export class EditorViewport {
     return this.space;
   }
 
-  /** The current framing, in a form that survives a reload. */
+  /**
+   * The current framing, in a form that survives a reload. The field of view travels with it: the
+   * game camera's view swaps in the authored fov, and a bookmark taken there must reproduce that
+   * framing, not the editor's default lens at the same position.
+   */
   cameraBookmark(): CameraBookmark {
     const { position, up } = this.camera;
     const { target } = this.orbit;
@@ -963,6 +968,7 @@ export class EditorViewport {
       target: [target.x, target.y, target.z],
       up: [up.x, up.y, up.z],
       zoom: this.camera.zoom,
+      fov: this.camera instanceof THREE.PerspectiveCamera ? this.camera.fov : null,
     };
   }
 
@@ -977,6 +983,7 @@ export class EditorViewport {
     this.camera.up.set(...bookmark.up);
     this.orbit.target.set(...bookmark.target);
     this.camera.zoom = bookmark.zoom;
+    if (bookmark.fov !== null && this.camera instanceof THREE.PerspectiveCamera) this.camera.fov = bookmark.fov;
     this.camera.lookAt(this.orbit.target);
     this.camera.updateProjectionMatrix();
     this.orbit.update();
