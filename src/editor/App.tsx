@@ -300,6 +300,24 @@ function StudioShell(): JSX.Element {
   const density = useDensityState();
   const appearance = useMemo(() => ({ theme, density }), [theme, density]);
 
+  /**
+   * The theme and density classes go on `<html>`, not on the studio root: Radix portals (menus, the
+   * command palette, tooltips) render into `<body>`, outside the root, and a `createTheme` class only
+   * reaches its descendants. The document element is the one ancestor everything shares. The
+   * `data-theme` attribute for plain CSS is written next to it by `useThemeState`.
+   */
+  useEffect(() => {
+    const comfortable = density.preference === 'comfortable';
+    const { className } = stylex.props(
+      theme.resolved === 'light' && lightTheme,
+      comfortable && comfortableControls,
+      comfortable && comfortableSpace,
+    );
+    const names = className ? className.split(' ') : [];
+    document.documentElement.classList.add(...names);
+    return () => document.documentElement.classList.remove(...names);
+  }, [density.preference, theme.resolved]);
+
   useEffect(() => {
     globalThis.localStorage?.setItem(LAYOUT_KEY, JSON.stringify(layout));
   }, [layout]);
@@ -588,20 +606,7 @@ function StudioShell(): JSX.Element {
 
   return (
     <AppearanceProvider value={appearance}>
-      {/**
-       * The light theme and the comfortable density are `createTheme` classes on the root, so every
-       * `color.*` and `controlSize.*` below resolves to their values. The `<html data-theme>` attribute
-       * for plain CSS is set by `useThemeState`.
-       */}
-      <div
-        {...withDomClass(
-          styles.studio,
-          theme.resolved === 'light' && lightTheme,
-          density.preference === 'comfortable' && comfortableControls,
-          density.preference === 'comfortable' && comfortableSpace,
-          DOM.studio,
-        )}
-      >
+      <div {...withDomClass(styles.studio, DOM.studio)}>
         {!openProject ? (
           <ProjectHome />
         ) : (
