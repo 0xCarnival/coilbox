@@ -82,6 +82,7 @@ export interface RuntimeStats {
   textures: number;
   programs: number;
   entities: number;
+  instancedPrimitives: number;
   physicsBodies: number;
   physics: PhysicsCounters;
   /** Physics events observed since the world started. */
@@ -767,6 +768,7 @@ export class RuntimeWorld {
       textures: viewportStats.textures,
       programs: viewportStats.programs,
       entities: this.graph.entities.size,
+      instancedPrimitives: this.graph.instancedPrimitives,
       physicsBodies: this.bindings.size,
       physics: this.physics.getCounters(),
       contactEvents: this.eventCounts.contact,

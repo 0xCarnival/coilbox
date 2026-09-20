@@ -4,12 +4,58 @@ import { TransformControls } from 'three/addons/controls/TransformControls.js';
 import type { Entity, SceneDocument, Transform, MaterialComponent } from '@schema/index.js';
 import { applyMaterial, createLight, createPrimitiveMesh, RuntimeWorldError } from '@runtime/scene-graph.js';
 import { disposeSceneResources } from '@runtime/render/viewport.js';
+import { BATCHED_LAYER, primitiveBatchKey, PrimitiveBatches, type BatchMember } from '@runtime/instancing.js';
 import { EnvironmentProjection } from '@runtime/render/environment.js';
 import { AnimationController } from '@runtime/animation.js';
 import { loadMaterialTextures, type MaterialTextures, type ModelInstance } from '@runtime/assets/loader.js';
 import type { AssetDropTarget } from '../assets/asset-drop.js';
 import { selectionRoots } from '../document/selection-roots.js';
 import { applyPivotDelta, pointsInRect } from './group-transform.js';
+import { ShadingPass, type ShadingMode } from './shading.js';
+import { FlyNavigator } from './fly-navigator.js';
+
+/**
+ * The editor view's render scale: device pixels per CSS pixel.
+ *
+ * `'device'` follows the display, capped at 2, which is what the view always did — and on a Retina
+ * display it is four times the pixels the game draws, since the runtime caps at 1. `1` matches the
+ * game; the fractions are for a scene that is still slow at that.
+ */
+export type RenderScale = 0.5 | 0.75 | 1 | 'device';
+
+export const RENDER_SCALES: readonly RenderScale[] = [0.5, 0.75, 1, 'device'];
+
+export function isRenderScale(value: unknown): value is RenderScale {
+  return value === 'device' || value === 1 || value === 0.75 || value === 0.5;
+}
+
+/**
+ * The entities that stay visible when the view is isolated to `roots`: the roots themselves, their
+ * descendants (which follow from the parent's visibility, but are listed so a lookup is one `has`),
+ * and their ancestors, without which the roots would be hidden inside hidden groups.
+ */
+function isolationSet(scene: SceneDocument, roots: readonly string[]): Set<string> {
+  const byId = new Map(scene.entities.map((entity) => [entity.id, entity] as const));
+  const children = new Map<string | null, string[]>();
+  for (const entity of scene.entities) {
+    const list = children.get(entity.parentId) ?? [];
+    list.push(entity.id);
+    children.set(entity.parentId, list);
+  }
+  const visible = new Set<string>();
+  for (const root of roots) {
+    for (let current = byId.get(root); current; current = current.parentId === null ? undefined : byId.get(current.parentId)) {
+      visible.add(current.id);
+    }
+    const stack = [root];
+    while (stack.length > 0) {
+      const id = stack.pop()!;
+      visible.add(id);
+      for (const child of children.get(id) ?? []) stack.push(child);
+    }
+  }
+  return visible;
+}
 
 /**
  * Editor viewport: an imperative Three.js authoring view owned by one React component.
@@ -75,6 +121,8 @@ export interface ViewportStats {
   triangles: number;
   programs: number;
   geometries: number;
+  /** Primitives drawn through a shared `InstancedMesh` rather than their own call. */
+  instancedPrimitives: number;
 }
 
 interface EntityProjection {
@@ -198,6 +246,43 @@ function expandContentBounds(object: THREE.Object3D, box: THREE.Box3): void {
     if (local) box.union(local.clone().applyMatrix4(object.matrixWorld));
   }
   for (const child of object.children) expandContentBounds(child, box);
+}
+
+/** The world box of every content mesh under an object, one entry per mesh. */
+function collectContentBoxes(object: THREE.Object3D, boxes: THREE.Box3[]): void {
+  if (object.userData[EDITOR_ONLY] === true) return;
+  if (object instanceof THREE.Mesh || object instanceof THREE.Line || object instanceof THREE.Points) {
+    object.geometry.computeBoundingBox();
+    const local = object.geometry.boundingBox;
+    if (local) boxes.push(local.clone().applyMatrix4(object.matrixWorld));
+  }
+  for (const child of object.children) collectContentBoxes(child, boxes);
+}
+
+/**
+ * Below this many meshes a scene is framed on everything; above it, backdrops are left out.
+ *
+ * A level's sea, sky box or ground slab is one mesh many times the size of anything the player
+ * drives on, and framing the union of both puts the camera where the level is a thin line across a
+ * dark plane. With enough meshes the median size is a fair reading of "the level", and anything
+ * dwarfing it is scenery to look past, not at.
+ */
+const BACKDROP_MIN_MESHES = 8;
+const BACKDROP_RATIO = 8;
+
+function contentBoundsWithoutBackdrops(object: THREE.Object3D): THREE.Box3 {
+  const boxes: THREE.Box3[] = [];
+  collectContentBoxes(object, boxes);
+  const size = new THREE.Vector3();
+  const diagonals = boxes.map((box) => box.getSize(size).length()).sort((a, b) => a - b);
+  const box = new THREE.Box3();
+  if (boxes.length >= BACKDROP_MIN_MESHES) {
+    const median = diagonals[Math.floor(diagonals.length / 2)] ?? 0;
+    const limit = median * BACKDROP_RATIO;
+    for (const candidate of boxes) if (candidate.getSize(size).length() <= limit) box.union(candidate);
+  }
+  if (box.isEmpty()) for (const candidate of boxes) box.union(candidate);
+  return box;
 }
 
 /** Build a camera in the requested projection, at the editor's default framing. */
@@ -389,6 +474,26 @@ export class EditorViewport {
   private readonly clock = new THREE.Clock();
   private readonly pendingLoads = new Map<string, number>();
   private nextLoadToken = 0;
+  private readonly shading = new ShadingPass();
+  /** Identical, unselected primitives folded into instanced draws; rebuilt on sync and selection. */
+  private readonly batches = new PrimitiveBatches();
+  private renderScale: RenderScale = 1;
+  /** The user's shadow switch; the shadow map runs only when this is on *and* the view is lit. */
+  private shadowsEnabled = true;
+  /**
+   * Whether the next frame has to be drawn.
+   *
+   * The loop still runs every frame — animations advance and the orbit damps there — but it draws
+   * only when something asked it to or something is visibly moving. An idle editor on a large scene
+   * costs nothing, and a bookmark, a sync or a resize costs one frame rather than sixty a second.
+   */
+  private needsRender = true;
+  private readonly fly: FlyNavigator;
+  /** The entities the view is isolated to, with their ancestors; null shows everything. */
+  private isolatedIds: Set<string> | null = null;
+  private isolatedRoots: string[] = [];
+  /** The scene the camera has been framed for, so a fresh scene opens on its contents and a re-sync does not move the camera. */
+  private framedSceneId: string | null = null;
 
   constructor(options: ViewportOptions) {
     this.canvas = options.canvas;
@@ -396,8 +501,8 @@ export class EditorViewport {
     this.callbacks = options;
 
     this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: true });
-    this.renderer.setPixelRatio(Math.min(globalThis.devicePixelRatio || 1, 2));
-    this.renderer.shadowMap.enabled = true;
+    this.renderer.setPixelRatio(this.pixelRatioFor(this.renderScale));
+    this.renderer.shadowMap.enabled = this.shadowsEnabled && this.shading.usesShadows();
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
 
@@ -406,6 +511,8 @@ export class EditorViewport {
 
     this.camera = createCamera('perspective');
     this.camera.position.set(7, 5.5, 9);
+    // Batched primitives keep their own mesh on a layer no camera draws; picking still has to see it.
+    this.raycaster.layers.enable(BATCHED_LAYER);
 
     this.orbit = new OrbitControls(this.camera, this.canvas);
     this.orbit.enableDamping = true;
@@ -418,6 +525,8 @@ export class EditorViewport {
       MIDDLE: THREE.MOUSE.DOLLY,
       RIGHT: THREE.MOUSE.PAN,
     };
+    this.orbit.addEventListener('change', this.invalidate);
+    this.fly = new FlyNavigator(this.canvas, () => ({ camera: this.camera, orbit: this.orbit }), this.invalidate);
 
     this.grid = new THREE.GridHelper(60, 60, new THREE.Color(SCENE.gridMajor), new THREE.Color(SCENE.gridMinor));
     this.grid.userData[EDITOR_ONLY] = true;
@@ -442,6 +551,7 @@ export class EditorViewport {
     this.transform.addEventListener('dragging-changed', this.handleDraggingChanged);
     this.transform.addEventListener('objectChange', this.handleTransformObjectChange);
     this.transform.addEventListener('mouseUp', this.handleTransformCommit);
+    this.transform.addEventListener('change', this.invalidate);
     const helper = this.transform.getHelper();
     helper.userData[EDITOR_ONLY] = true;
     this.scene.add(helper);
@@ -490,6 +600,7 @@ export class EditorViewport {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
+    this.batches.dispose();
     for (const projection of this.projections.values()) this.disposeProjectionChildren(projection);
     this.stop();
     this.canvas.removeEventListener('pointerdown', this.handlePointerDown);
@@ -499,9 +610,13 @@ export class EditorViewport {
     this.transform.removeEventListener('dragging-changed', this.handleDraggingChanged);
     this.transform.removeEventListener('objectChange', this.handleTransformObjectChange);
     this.transform.removeEventListener('mouseUp', this.handleTransformCommit);
+    this.transform.removeEventListener('change', this.invalidate);
     this.transform.detach();
     this.transform.dispose();
+    this.orbit.removeEventListener('change', this.invalidate);
     this.orbit.dispose();
+    this.fly.dispose();
+    this.shading.dispose();
     this.resizeObserver?.disconnect();
     this.resizeObserver = null;
     disposeSceneResources(this.root);
@@ -517,6 +632,9 @@ export class EditorViewport {
   /** Project the authored scene into the viewport, creating/updating/removing as needed. */
   sync(scene: SceneDocument): void {
     this.lastSyncedScene = scene;
+    this.needsRender = true;
+    if (this.isolatedIds) this.isolatedIds = isolationSet(scene, this.isolatedRoots);
+    this.batches.clear();
     const seen = new Set<string>();
     for (const entity of scene.entities) {
       seen.add(entity.id);
@@ -542,9 +660,18 @@ export class EditorViewport {
     }
     this.environment.apply(scene.environment);
     if (scene.environment.background.type === 'none') this.scene.background = new THREE.Color(SCENE.background);
-    for (const light of this.fillLights) light.visible = scene.environment.lighting.type === 'none';
+    this.updateFillLights();
+    this.rebuildBatches();
     this.updateSelectionHelper();
     this.attachTransform();
+    /**
+     * A scene opens framed on its contents. The default camera stands seven metres from the origin,
+     * which is a fine place to start an empty scene and a bad place to start inside a racetrack.
+     */
+    if (this.framedSceneId !== scene.id) {
+      this.framedSceneId = scene.id;
+      if (scene.entities.length > 0) this.frameAll();
+    }
     /**
      * Last, because it reads the transforms just written.
      *
@@ -604,7 +731,85 @@ export class EditorViewport {
     projection.object.position.set(position[0], position[1], position[2]);
     projection.object.quaternion.set(rotation[0], rotation[1], rotation[2], rotation[3]).normalize();
     projection.object.scale.set(scale[0], scale[1], scale[2]);
-    projection.object.visible = entity.enabled && entity.editor.visible;
+    projection.object.visible =
+      entity.enabled && entity.editor.visible && (this.isolatedIds === null || this.isolatedIds.has(entity.id));
+  }
+
+  /**
+   * The editor's own fill shines when the document has no lighting of its own, and always in the
+   * solid view, which draws every scene under the same studio light by design.
+   */
+  /**
+   * Fold every identical, showing, unselected primitive into an instanced draw.
+   *
+   * Selected entities (and their descendants) stay on their own meshes so the transform gizmo moves
+   * what the user sees; everything else in a racetrack is a few shapes repeated a thousand times.
+   */
+  private rebuildBatches(): void {
+    const selected = new Set(this.selection);
+    const members: BatchMember[] = [];
+    this.root.updateMatrixWorld(true);
+    for (const projection of this.projections.values()) {
+      if (!this.isEffectivelyVisible(projection.object) || this.hasSelectedAncestor(projection.entity, selected)) continue;
+      const key = primitiveBatchKey(projection.entity);
+      if (key === null) continue;
+      const mesh = projection.object.children.find(isPrimitiveMesh);
+      if (!mesh) continue;
+      members.push({ key, mesh });
+    }
+    this.batches.rebuild(members, this.root);
+    for (const child of this.root.children) {
+      if (child instanceof THREE.InstancedMesh) child.userData[EDITOR_ONLY] = true;
+    }
+  }
+
+  private hasSelectedAncestor(entity: Entity, selected: ReadonlySet<string>): boolean {
+    for (let current: Entity | undefined = entity; current; ) {
+      if (selected.has(current.id)) return true;
+      current = current.parentId === null ? undefined : this.projections.get(current.parentId)?.entity;
+    }
+    return false;
+  }
+
+  private updateFillLights(): void {
+    const lighting = this.lastSyncedScene?.environment.lighting.type ?? 'none';
+    const visible = lighting === 'none' || !this.shading.usesSceneLights();
+    /**
+     * The fill is a gentle assist under a document's own lights, and the whole studio when the
+     * working views hide them: a night-time level's authored colours are dark on purpose, and at
+     * the assist level the solid view shows them as silhouettes.
+     */
+    const studio = !this.shading.usesSceneLights();
+    for (const light of this.fillLights) {
+      light.visible = visible;
+      light.intensity = (light instanceof THREE.HemisphereLight ? 0.55 : 0.85) * (studio ? 2.6 : 1);
+    }
+  }
+
+  // ------------------------------------------------------------------ isolation
+
+  /**
+   * Show only these entities (and what they contain), or everything again with null.
+   *
+   * A display state, not a document edit: the authored `editor.visible` flags are untouched, so
+   * leaving isolation restores exactly what was showing before.
+   */
+  setIsolation(entityIds: readonly string[] | null): void {
+    if (entityIds === null || entityIds.length === 0) {
+      if (this.isolatedIds === null) return;
+      this.isolatedIds = null;
+      this.isolatedRoots = [];
+    } else {
+      this.isolatedRoots = [...entityIds];
+      this.isolatedIds = this.lastSyncedScene ? isolationSet(this.lastSyncedScene, this.isolatedRoots) : new Set(entityIds);
+    }
+    if (this.lastSyncedScene) this.sync(this.lastSyncedScene);
+    this.needsRender = true;
+  }
+
+  /** The isolated entities, or null when the whole scene shows. */
+  isolation(): string[] | null {
+    return this.isolatedIds ? [...this.isolatedRoots] : null;
   }
 
   private projectComponents(projection: EntityProjection, entity: Entity): void {
@@ -750,6 +955,7 @@ export class EditorViewport {
       this.disposeProjectionModel(current);
       current.model = instance;
       current.object.add(instance.object);
+      this.needsRender = true;
       const clipNames = instance.clips.map((clip, index) => clip.name || `clip-${index}`);
       this.callbacks.onModelLoaded?.(projection.entity.id, clipNames);
       this.syncProjectionAnimation(current, current.entity);
@@ -789,6 +995,7 @@ export class EditorViewport {
       const material = current.entity.components.find((candidate) => candidate.type === 'material');
       if (mesh && mesh.material instanceof THREE.MeshStandardMaterial && material?.type === 'material') {
         applyMaterial(mesh.material, material, textures);
+        this.needsRender = true;
       }
     } catch (error) {
       this.callbacks.onWarning?.(error instanceof Error ? error.message : String(error));
@@ -871,8 +1078,10 @@ export class EditorViewport {
 
   setSelection(entityIds: readonly string[]): void {
     this.selection = [...entityIds];
+    this.rebuildBatches();
     this.attachTransform();
     this.updateSelectionHelper();
+    this.needsRender = true;
   }
 
   /**
@@ -1004,6 +1213,7 @@ export class EditorViewport {
         if (child.name === 'collider-outline') child.visible = visible;
       }
     }
+    this.needsRender = true;
   }
 
   focusSelection(): void {
@@ -1053,6 +1263,7 @@ export class EditorViewport {
 
   private frameBox(box: THREE.Box3): void {
     this.exitCameraView();
+    this.needsRender = true;
     if (box.isEmpty()) {
       this.orbit.target.set(0, 0.5, 0);
       return;
@@ -1072,6 +1283,17 @@ export class EditorViewport {
     const direction = new THREE.Vector3().subVectors(this.camera.position, this.orbit.target).normalize();
     this.orbit.target.copy(sphere.center);
     this.camera.position.copy(sphere.center).addScaledVector(direction, distance * 1.4);
+    /**
+     * A kilometre-scale level frames from further away than the default far plane reaches, and a
+     * camera that clips everything it was just pointed at shows only sky. Push the plane out to cover
+     * the far side of the sphere with room to orbit; it is never pulled back in, so nothing already
+     * visible disappears.
+     */
+    const reach = (distance * 1.4 + sphere.radius) * 2;
+    if (this.camera.far < reach) {
+      this.camera.far = reach;
+      this.camera.updateProjectionMatrix();
+    }
     this.orbit.update();
     this.renderNow();
   }
@@ -1385,7 +1607,68 @@ export class EditorViewport {
     this.renderer.setSize(width, height, false);
     this.width = width;
     this.height = height;
+    this.needsRender = true;
     fitCamera(this.camera, width, height);
+  }
+
+  private pixelRatioFor(scale: RenderScale): number {
+    return scale === 'device' ? Math.min(globalThis.devicePixelRatio || 1, 2) : scale;
+  }
+
+  /** Device pixels per CSS pixel the editor view draws at. */
+  setRenderScale(scale: RenderScale): void {
+    this.renderScale = scale;
+    this.renderer.setPixelRatio(this.pixelRatioFor(scale));
+    this.resize();
+    this.needsRender = true;
+  }
+
+  renderScaleSetting(): RenderScale {
+    return this.renderScale;
+  }
+
+  /** How the view draws the authored materials; see `ShadingMode`. */
+  setShadingMode(mode: ShadingMode): void {
+    if (mode === this.shading.current()) return;
+    const shadowsBefore = this.renderer.shadowMap.enabled;
+    this.shading.set(mode);
+    this.updateFillLights();
+    const shadowsAfter = this.shadowsEnabled && this.shading.usesShadows();
+    if (shadowsAfter !== shadowsBefore) this.applyShadowMap(shadowsAfter);
+    this.needsRender = true;
+  }
+
+  shadingMode(): ShadingMode {
+    return this.shading.current();
+  }
+
+  // ------------------------------------------------------------------ fly navigation
+
+  /**
+   * Fly navigation: WASD/QE (or the arrows) move the camera, right-drag looks, the wheel sets the
+   * speed, Shift is a sprint. The orbit target travels with the camera, so leaving fly mode leaves
+   * the orbit where the flight ended.
+   */
+  setFlyEnabled(enabled: boolean): void {
+    if (enabled === this.fly.enabled()) return;
+    if (enabled) this.exitCameraView();
+    this.fly.setEnabled(enabled);
+    this.orbit.enableZoom = !enabled;
+    this.orbit.mouseButtons.RIGHT = enabled ? null : THREE.MOUSE.PAN;
+    this.needsRender = true;
+  }
+
+  flyEnabled(): boolean {
+    return this.fly.enabled();
+  }
+
+  /** Fly speed in metres per second. */
+  setFlySpeed(speed: number): void {
+    this.fly.setSpeed(speed);
+  }
+
+  flySpeed(): number {
+    return this.fly.speed();
   }
 
   /**
@@ -1410,8 +1693,10 @@ export class EditorViewport {
     this.transform.removeEventListener('dragging-changed', this.handleDraggingChanged);
     this.transform.removeEventListener('objectChange', this.handleTransformObjectChange);
     this.transform.removeEventListener('mouseUp', this.handleTransformCommit);
+    this.transform.removeEventListener('change', this.invalidate);
     this.scene.remove(helper);
     this.transform.dispose();
+    this.orbit.removeEventListener('change', this.invalidate);
     this.orbit.dispose();
 
     this.project = next;
@@ -1432,14 +1717,17 @@ export class EditorViewport {
     this.orbit.mouseButtons = {
       LEFT: THREE.MOUSE.ROTATE,
       MIDDLE: THREE.MOUSE.DOLLY,
-      RIGHT: THREE.MOUSE.PAN,
+      RIGHT: this.fly.enabled() ? null : THREE.MOUSE.PAN,
     };
+    this.orbit.enableZoom = !this.fly.enabled();
+    this.orbit.addEventListener('change', this.invalidate);
 
     this.transform = new TransformControls(this.camera, this.canvas);
     this.transform.setSize(0.9);
     this.transform.addEventListener('dragging-changed', this.handleDraggingChanged);
     this.transform.addEventListener('objectChange', this.handleTransformObjectChange);
     this.transform.addEventListener('mouseUp', this.handleTransformCommit);
+    this.transform.addEventListener('change', this.invalidate);
     const nextHelper = this.transform.getHelper();
     nextHelper.userData[EDITOR_ONLY] = true;
     this.scene.add(nextHelper);
@@ -1781,13 +2069,16 @@ export class EditorViewport {
 
   /** Frame the whole scene. Blender's Home, and the counterpart to `focusSelection`. */
   frameAll(): void {
-    this.frame(this.root);
+    this.root.updateWorldMatrix(true, true);
+    const box = contentBoundsWithoutBackdrops(this.root);
+    if (box.isEmpty()) box.expandByPoint(new THREE.Vector3().setFromMatrixPosition(this.root.matrixWorld));
+    this.frameBox(box);
   }
 
   /** Show or hide the ground grid. */
   setGridVisible(visible: boolean): void {
     this.grid.visible = visible;
-    this.renderNow();
+    this.needsRender = true;
   }
 
   gridVisible(): boolean {
@@ -1796,7 +2087,14 @@ export class EditorViewport {
 
   /** Show or hide the helpers that draw cast shadows in the editor. */
   setShadowsVisible(visible: boolean): void {
-    this.renderer.shadowMap.enabled = visible;
+    this.shadowsEnabled = visible;
+    const enabled = visible && this.shading.usesShadows();
+    if (enabled !== this.renderer.shadowMap.enabled) this.applyShadowMap(enabled);
+    this.needsRender = true;
+  }
+
+  private applyShadowMap(enabled: boolean): void {
+    this.renderer.shadowMap.enabled = enabled;
     // Shadow maps are baked into materials, so every one of them has to be recompiled for the
     // change to take effect; without this the renderer keeps the maps it already built.
     for (const projection of this.projections.values()) {
@@ -1813,11 +2111,10 @@ export class EditorViewport {
         else if (material) material.needsUpdate = true;
       });
     }
-    this.renderNow();
   }
 
   shadowsVisible(): boolean {
-    return this.renderer.shadowMap.enabled;
+    return this.shadowsEnabled;
   }
 
   /**
@@ -1831,17 +2128,42 @@ export class EditorViewport {
    */
   renderNow(): void {
     this.orbit.update();
-    this.renderer.setViewport(0, 0, this.width, this.height);
-    this.renderer.render(this.scene, this.camera);
+    this.draw();
+  }
+
+  /** Ask for a frame. Bound, because it is handed to the controls as a listener. */
+  private readonly invalidate = (): void => {
+    this.needsRender = true;
+  };
+
+  private draw(): void {
+    this.needsRender = false;
+    if (this.selection.length > 0) this.updateSelectionHelper();
+    this.shading.apply(this.root, this.scene);
+    try {
+      this.renderer.setViewport(0, 0, this.width, this.height);
+      this.renderer.render(this.scene, this.camera);
+    } finally {
+      this.shading.restore();
+    }
   }
 
   private renderLoop = (): void => {
     if (!this.running) return;
     this.frameHandle = requestAnimationFrame(this.renderLoop);
     const delta = Math.min(this.clock.getDelta(), 0.1);
-    for (const projection of this.projections.values()) projection.animation?.update(delta);
-    if (this.selection.length > 0) this.updateSelectionHelper();
-    this.renderNow();
+    let animating = false;
+    for (const projection of this.projections.values()) {
+      const animation = projection.animation;
+      if (!animation) continue;
+      animation.update(delta);
+      if (animation.getState().playing) animating = true;
+    }
+    const flew = this.fly.update(delta);
+    // Damping keeps the orbit moving after the pointer stops; `update` says whether it still is.
+    const orbited = this.orbit.update();
+    if (!(this.needsRender || animating || flew || orbited || this.dragging)) return;
+    this.draw();
   };
 
   /** Statistics used by the editor status bar and by tests. */
@@ -1852,6 +2174,7 @@ export class EditorViewport {
       triangles: this.renderer.info.render.triangles,
       programs: this.renderer.info.programs?.length ?? 0,
       geometries: this.renderer.info.memory.geometries,
+      instancedPrimitives: this.batches.instanced(),
     };
   }
 
@@ -1890,6 +2213,10 @@ export class EditorViewport {
 /** Whether a projected object is a mesh, by three's own runtime marker rather than a class check. */
 function isMesh(object: THREE.Object3D): object is THREE.Mesh {
   return 'isMesh' in object && object.isMesh === true;
+}
+
+function isPrimitiveMesh(object: THREE.Object3D): object is BatchMember['mesh'] {
+  return isMesh(object) && object.material instanceof THREE.MeshStandardMaterial;
 }
 
 /** Release the skeletons a skinned model owns: instances share geometry, never skeletons. */

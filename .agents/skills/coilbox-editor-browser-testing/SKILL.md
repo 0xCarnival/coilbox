@@ -15,6 +15,7 @@ description: Run isolated Coilbox editor browser tests with asset and environmen
 
 - Dependencies include `@playwright/test`; import Chromium from that package.
 - Create with `pnpm studio create <name> --template blank --workspace <dir>` and start `pnpm dev --workspace <dir>`. Use the printed editor URL: port 5178 can be occupied and Vite then chooses another. The editor proxies the dynamically allocated API port.
+- On Windows, if `pnpm dev` exits immediately without service output, the CLI direct-run path check may not match the Windows invocation. Retry with `COILBOX_CLI_FORCE=1` in the process environment; confirm both the workspace API and Vite print listening addresses.
 - Create a blank project through the UI before destructive replacement/deletion tests.
 - Use PNG, WAV and GLB fixtures from `tests/fixtures`; contrasting checkerboard images make texture refresh and repeat changes visible.
 - Open the bottom Assets panel; scroll rows into view. Do not assume its upper edge is a resize handle, since dragging the canvas orbits the camera.

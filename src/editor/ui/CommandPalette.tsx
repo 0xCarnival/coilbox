@@ -10,6 +10,7 @@ import { useAppearance } from '../state/appearance.js';
 import { THEME_LABELS, THEME_PREFERENCES } from '../state/theme.js';
 import { DENSITY_LABELS, DENSITY_PREFERENCES } from '../state/density.js';
 import type { TransformSpace, TransformTool, ViewFace } from '../viewport/viewport-controller.js';
+import { SHADING_LABELS, SHADING_MODES, type ShadingMode } from '../viewport/shading.js';
 import type { PlayState } from '../panels/Viewport.js';
 import type { ExportTarget } from '../panels/Toolbar.js';
 import { BOOKMARK_SLOTS, type BookmarkSlot, type CameraBookmarks } from '../state/camera-bookmarks.js';
@@ -202,6 +203,12 @@ export interface CommandPaletteProps {
     toggleProjection(): void;
     cameraView(): void;
     frameAll(): void;
+    toggleFly(): void;
+    flying: boolean;
+    toggleIsolation(): void;
+    isolated: boolean;
+    shading: ShadingMode;
+    setShading(mode: ShadingMode): void;
     inCameraView: boolean;
     bookmarks: CameraBookmarks;
     saveBookmark(slot: BookmarkSlot): void;
@@ -291,6 +298,26 @@ export function CommandPalette({
         run: view.cameraView,
       },
       { id: 'view:frame-all', label: 'Frame everything', group: 'View', shortcut: 'Home', run: view.frameAll },
+      {
+        id: 'view:fly',
+        label: view.flying ? 'Fly navigation: off' : 'Fly navigation: on (WASD moves, right-drag looks)',
+        group: 'View',
+        shortcut: 'Shift+F',
+        run: view.toggleFly,
+      },
+      {
+        id: 'view:isolate',
+        label: view.isolated ? 'Show everything again' : 'Isolate the selection',
+        group: 'View',
+        shortcut: '/',
+        run: view.toggleIsolation,
+      },
+      ...SHADING_MODES.filter((mode) => mode !== view.shading).map((mode) => ({
+        id: `view:shading:${mode}`,
+        label: `Shading: ${SHADING_LABELS[mode]}`,
+        group: 'View',
+        run: () => view.setShading(mode),
+      })),
       ...BOOKMARK_SLOTS.filter((slot) => view.bookmarks[slot] !== undefined).map((slot) => ({
         id: `view:bookmark:${slot}`,
         label: `View: bookmark ${slot}`,

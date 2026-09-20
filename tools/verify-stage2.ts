@@ -134,7 +134,7 @@ async function main(): Promise<void> {
     });
 
     // --- import assets through the UI -------------------------------------------
-    await page.click('button[role="tab"]:has-text("Assets")');
+    await page.click('nav[aria-label="Editor panels"] button[aria-label="Assets"]');
     await page.setInputFiles('.asset-toolbar input[type="file"]', [
       join(root, 'tests', 'fixtures', 'models', 'animated-limb.glb'),
       join(root, 'tests', 'fixtures', 'models', 'spinning-crate.glb'),

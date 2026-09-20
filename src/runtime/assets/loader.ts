@@ -231,10 +231,6 @@ export class AssetCache {
       // and the loader builds the graph with this module's own three.js classes.
       if ((object as THREE.SkinnedMesh).isSkinnedMesh) skinned = true;
     });
-    if (gltf.animations.length === 0) {
-      this.onWarning(`"${assetId}" contains no animation clips`);
-    }
-
     return {
       assetId,
       source: gltf.scene,

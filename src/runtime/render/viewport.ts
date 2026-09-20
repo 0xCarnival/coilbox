@@ -189,6 +189,7 @@ export function disposeSceneResources(root: THREE.Object3D): void {
       materials.add(material);
     }
     if (mesh.skeleton) skeletons.add(mesh.skeleton);
+    if (object instanceof THREE.InstancedMesh) object.dispose();
   });
 
   for (const material of materials) {

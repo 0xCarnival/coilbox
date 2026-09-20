@@ -4,7 +4,8 @@ import * as stylex from '@stylexjs/stylex';
 import { Layers } from 'lucide-react';
 import { GIZMO_SIZE, color, fontSize, overlay, space } from '../styles/tokens.stylex.js';
 import { DOM, withDomClass } from '../dom-contract.js';
-import type { ViewFace } from '../viewport/viewport-controller.js';
+import { RENDER_SCALES, isRenderScale, type RenderScale, type ViewFace } from '../viewport/viewport-controller.js';
+import { SHADING_LABELS, SHADING_MODES, isShadingMode, type ShadingMode } from '../viewport/shading.js';
 import type { ViewportHandle } from '../panels/Viewport.js';
 import { BOOKMARK_SLOTS, type BookmarkSlot, type CameraBookmarks } from '../state/camera-bookmarks.js';
 import { IconButton } from './Button.js';
@@ -14,9 +15,34 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from './Menu.js';
+
+/** Fly speeds offered in the menu, in metres per second; the wheel tunes between them while flying. */
+export const FLY_SPEEDS: readonly number[] = [3, 12, 40, 120];
+
+function scaleLabel(scale: RenderScale): string {
+  switch (scale) {
+    case 0.5:
+      return 'Half (0.5×)';
+    case 0.75:
+      return 'Three quarters (0.75×)';
+    case 1:
+      return 'Match the game (1×)';
+    case 'device':
+      return 'Display density';
+  }
+}
+
+const SHADING_HINTS: Record<ShadingMode, string> = {
+  solid: 'studio light, colour and texture only',
+  unlit: 'colour and texture, no lighting',
+  lit: 'authored materials and lights',
+  wireframe: 'edges only',
+};
 
 /**
  * The view gizmo.
@@ -164,6 +190,16 @@ export interface ViewGizmoProps {
   onGridChange(visible: boolean): void;
   shadows: boolean;
   onShadowsChange(visible: boolean): void;
+  shading: ShadingMode;
+  onShadingChange(mode: ShadingMode): void;
+  renderScale: RenderScale;
+  onRenderScaleChange(scale: RenderScale): void;
+  flying: boolean;
+  onToggleFly(): void;
+  flySpeed: number;
+  onFlySpeedChange(speed: number): void;
+  isolated: boolean;
+  onToggleIsolation(): void;
   measurements: boolean;
   onMeasurementsChange(visible: boolean): void;
   /**
@@ -183,6 +219,16 @@ export function ViewGizmo({
   onGridChange,
   shadows,
   onShadowsChange,
+  shading,
+  onShadingChange,
+  renderScale,
+  onRenderScaleChange,
+  flying,
+  onToggleFly,
+  flySpeed,
+  onFlySpeedChange,
+  isolated,
+  onToggleIsolation,
   measurements,
   onMeasurementsChange,
   bookmarks,
@@ -354,8 +400,65 @@ export function ViewGizmo({
           </IconButton>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuLabel>Overlays</DropdownMenuLabel>
+          <DropdownMenuLabel>Shading</DropdownMenuLabel>
+          <DropdownMenuRadioGroup
+            value={shading}
+            onValueChange={(value) => {
+              if (isShadingMode(value)) onShadingChange(value);
+            }}
+          >
+            {SHADING_MODES.map((mode) => (
+              <DropdownMenuRadioItem key={mode} value={mode} onSelect={(event) => event.preventDefault()}>
+                {SHADING_LABELS[mode]} · {SHADING_HINTS[mode]}
+              </DropdownMenuRadioItem>
+            ))}
+          </DropdownMenuRadioGroup>
           <DropdownMenuSeparator />
+          <DropdownMenuLabel>Resolution</DropdownMenuLabel>
+          <DropdownMenuRadioGroup
+            value={String(renderScale)}
+            onValueChange={(value) => {
+              const parsed: unknown = value === 'device' ? value : Number(value);
+              if (isRenderScale(parsed)) onRenderScaleChange(parsed);
+            }}
+          >
+            {RENDER_SCALES.map((scale) => (
+              <DropdownMenuRadioItem key={String(scale)} value={String(scale)} onSelect={(event) => event.preventDefault()}>
+                {scaleLabel(scale)}
+              </DropdownMenuRadioItem>
+            ))}
+          </DropdownMenuRadioGroup>
+          <DropdownMenuSeparator />
+          <DropdownMenuLabel>Navigation</DropdownMenuLabel>
+          <DropdownMenuCheckboxItem
+            checked={flying}
+            onSelect={(event) => event.preventDefault()}
+            onCheckedChange={() => onToggleFly()}
+          >
+            Fly navigation · Shift+F
+          </DropdownMenuCheckboxItem>
+          <DropdownMenuRadioGroup
+            value={String(FLY_SPEEDS.includes(flySpeed) ? flySpeed : '')}
+            onValueChange={(value) => {
+              const speed = Number(value);
+              if (Number.isFinite(speed) && speed > 0) onFlySpeedChange(speed);
+            }}
+          >
+            {FLY_SPEEDS.map((speed) => (
+              <DropdownMenuRadioItem key={speed} value={String(speed)} onSelect={(event) => event.preventDefault()}>
+                Fly speed {speed} m/s
+              </DropdownMenuRadioItem>
+            ))}
+          </DropdownMenuRadioGroup>
+          <DropdownMenuCheckboxItem
+            checked={isolated}
+            onSelect={(event) => event.preventDefault()}
+            onCheckedChange={() => onToggleIsolation()}
+          >
+            Isolate the selection · /
+          </DropdownMenuCheckboxItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuLabel>Overlays</DropdownMenuLabel>
           <DropdownMenuCheckboxItem
             checked={grid}
             onSelect={(event) => event.preventDefault()}

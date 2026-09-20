@@ -1,29 +1,22 @@
-import { useState } from 'react';
+import { useEffect } from 'react';
 import type { JSX } from 'react';
 import * as stylex from '@stylexjs/stylex';
 import { color, controlSize, fontSize, radius, space } from '../styles/tokens.stylex.js';
-import { DOM, DOM_STATE, withDomClass } from '../dom-contract.js';import { useSession, useSessionSnapshot } from '../hooks.js';
+import { DOM, DOM_STATE, withDomClass } from '../dom-contract.js';
+import { useSession, useSessionSnapshot } from '../hooks.js';
 import { AssetBrowser } from './AssetBrowser.js';
 import { HistoryPanel } from './HistoryPanel.js';
 
 /**
- * Bottom panel (plan §3): assets, scenes, and errors/console as tabs.
+ * Bottom panel (plan §3): assets, scenes, history and the console.
  *
- * Assets and scene transitions arrive with later stages; the console is already the place
- * where rejected edits, load failures, and runtime errors surface with enough detail to act
- * on. Unsupported or missing content must be understandable here rather than silent.
+ * Which of them shows is chosen from the icon rail on the left, which already names each one; the
+ * panel carries no tab strip of its own, only the header actions for what is showing. The console
+ * is the place where rejected edits, load failures, and runtime errors surface with enough detail
+ * to act on. Unsupported or missing content must be understandable here rather than silent.
  */
 
 export type BottomTab = 'assets' | 'scenes' | 'history' | 'console';
-
-const BOTTOM_TABS: BottomTab[] = ['assets', 'scenes', 'history', 'console'];
-
-const TAB_LABELS: Record<BottomTab, string> = {
-  assets: 'Assets',
-  scenes: 'Scenes',
-  history: 'History',
-  console: 'Console',
-};
 
 const styles = stylex.create({
   bottomPanel: {
@@ -32,15 +25,7 @@ const styles = stylex.create({
     height: '100%',
     minHeight: 0,
   },
-  /**
-   * The panel header: a 40px band holding the tab chips, with the panel's own actions on the
-   * trailing edge and a hairline below.
-   *
-   * This is the reference's panel-header shape, and the split matters — tabs describe *what* is
-   * shown, the trailing controls act on it. Putting Reload and Clear log at the same visual weight
-   * as the tabs, as the previous version did, made three view-switchers and two commands look like
-   * five peers.
-   */
+  /** The panel header: a 40px band with the panel's actions on the trailing edge and a hairline below. */
   tabs: {
     display: 'flex',
     alignItems: 'center',
@@ -52,29 +37,12 @@ const styles = stylex.create({
     borderBlockEndColor: color.border,
     flexShrink: 0,
   },
-  /** The tab track: the segmented control's shell, holding tabs rather than radios. */
-  tabTrack: {
-    display: 'flex',
-    alignItems: 'center',
-    height: controlSize.xs,
-    padding: '3px',
-    borderRadius: radius.lg,
-    borderWidth: '1px',
-    borderStyle: 'solid',
-    borderColor: color['border-faint'],
-    backgroundColor: color['panel-2'],
-    flexShrink: 0,
-  },
-  /** The trailing action cluster, separated from the tabs by a rule. */
+  /** The trailing action cluster. */
   tabActions: {
     display: 'flex',
     alignItems: 'center',
     gap: space.xxs,
     marginInlineStart: space.md,
-    paddingInlineStart: space.md,
-    borderInlineStartWidth: '1px',
-    borderInlineStartStyle: 'solid',
-    borderInlineStartColor: color.border,
   },
   /** A quiet command in the panel header: Reload, Clear log. */
   headerAction: {
@@ -92,45 +60,8 @@ const styles = stylex.create({
       backgroundColor: color.wash,
     },
   },
-  /**
-   * `.tabs button[role='tab'].active` was a descendant selector on the parent. The button knows its
-   * own selected state, so the style moved onto the button and the selector disappears.
-   */
-  tabButton: {
-    display: 'flex',
-    alignItems: 'center',
-    height: '100%',
-    paddingInline: space.lg,
-    borderRadius: radius.md,
-    fontSize: fontSize.xs,
-    fontWeight: 500,
-    color: color.muted,
-    backgroundColor: 'transparent',
-    borderWidth: 0,
-    borderStyle: 'none',
-    cursor: 'pointer',
-    whiteSpace: 'nowrap',
-    transitionProperty: 'background-color, color, box-shadow',
-    transitionDuration: '150ms',
-    ':hover': {
-      color: color.text,
-      backgroundColor: color.wash,
-    },
-  },
-  /**
-   * The selected tab is the segmented control's selected segment, ring and all.
-   *
-   * A fill alone was ambiguous beside the trailing commands, which also fill on hover; the inset
-   * ring is what distinguishes "this one is selected" from "this one is under the cursor".
-   */
-  tabActive: {
-    backgroundColor: color.surface,
-    color: color.text,
-    boxShadow: `inset 0 0 0 1px ${color.border}`,
-  },
-  /** A count on a tab: the console's unread errors. */
-  tabBadge: {
-    marginInlineStart: space.sm,
+  /** The console's error count, in the header while the console shows. */
+  errorCount: {
     paddingInline: '5px',
     borderRadius: radius.pill,
     backgroundColor: color.panel,
@@ -233,68 +164,33 @@ const styles = stylex.create({
 
 export function BottomPanel({
   onReloadScene,
-  tab: controlledTab,
-  onTabChange,
+  tab = 'console',
   locked = false,
 }: {
   onReloadScene(): void;
-  /**
-   * The visible tab, owned by the shell.
-   *
-   * It is hoisted because the icon rail can select a tab from outside this panel — clicking the
-   * Assets icon in the rail has to open the assets tab, and a tab that owned its own state could
-   * not be told to.
-   */
+  /** The visible panel, chosen from the icon rail and owned by the shell. */
   tab?: BottomTab;
-  onTabChange?(tab: BottomTab): void;
   /** True while Play owns the scene: panels that edit the authored document disable their controls. */
   locked?: boolean;
 }): JSX.Element {
   const session = useSession();
   const snapshot = useSessionSnapshot();
-  const [ownTab, setOwnTab] = useState<BottomTab>('console');
-  const tab = controlledTab ?? ownTab;
-  const setTab = (next: BottomTab) => {
-    setOwnTab(next);
-    onTabChange?.(next);
-  };
-
   const errors = snapshot.logs.filter((entry) => entry.level === 'error').length;
 
+  // Agents and other tools can add files behind the editor's back; showing the assets re-reads the
+  // manifest rather than presenting a stale list.
+  useEffect(() => {
+    if (tab === 'assets') void session.refreshAssets();
+  }, [tab, session]);
+
   return (
-    <section {...stylex.props(styles.bottomPanel)}>
+    <section {...stylex.props(styles.bottomPanel)} data-panel={tab}>
       <div {...withDomClass(styles.tabs, DOM.tabs)}>
-        <div {...stylex.props(styles.tabTrack)} role="tablist" aria-label="Panel">
-          {BOTTOM_TABS.map((candidate) => (
-          <button
-            key={candidate}
-            {...withDomClass(
-              styles.tabButton,
-              tab === candidate && styles.tabActive,
-              tab === candidate && DOM_STATE.active,
-            )}
-            type="button"
-            role="tab"
-            aria-selected={tab === candidate}
-            onClick={() => {
-              setTab(candidate);
-              // Agents and other tools can add files behind the editor's back; opening the
-              // tab re-reads the manifest rather than showing a stale list.
-              if (candidate === 'assets') void session.refreshAssets();
-            }}
-          >
-              {TAB_LABELS[candidate]}
-              {/**
-               * The error count rides as a badge rather than inside the label: it is a state of the
-               * console, not part of its name, and a check reading the tab by text would otherwise
-               * have to know how many errors happened to be present.
-               */}
-              {candidate === 'console' && errors > 0 ? (
-                <span {...stylex.props(styles.tabBadge)}>{errors}</span>
-              ) : null}
-            </button>
-          ))}
-        </div>
+        {tab === 'console' && errors > 0 && (
+          <span {...stylex.props(styles.errorCount)} title="Errors in the log">
+            {errors}
+          </span>
+        )}
         <span {...withDomClass(styles.toolbarSpacer, DOM.toolbarSpacer)} />
         {snapshot.conflict && (
           <span {...withDomClass(styles.conflict, DOM.conflict)} role="alert">
@@ -319,9 +215,11 @@ export function BottomPanel({
           >
             Reload
           </button>
-          <button {...stylex.props(styles.headerAction)} type="button" onClick={() => session.clearLogs()}>
-            Clear log
-          </button>
+          {tab === 'console' && (
+            <button {...stylex.props(styles.headerAction)} type="button" onClick={() => session.clearLogs()}>
+              Clear log
+            </button>
+          )}
         </span>
       </div>
       <div {...stylex.props(styles.tabBody)}>

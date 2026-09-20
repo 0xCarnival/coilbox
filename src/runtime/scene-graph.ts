@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { Component, Entity, LightComponent, PrimitiveComponent, SceneDocument } from '@schema/index.js';
 import { AnimationController } from './animation.js';
 import type { MaterialTextures, ModelInstance } from './assets/loader.js';
+import { isStaticInGame, primitiveBatchKey, PrimitiveBatches, type BatchMember } from './instancing.js';
 
 /**
  * Scene-document -> Three.js projection (plan §6, §7).
@@ -54,6 +55,8 @@ export interface BuiltScene {
   /** Active game camera, or null when the scene has no camera entity. */
   camera: THREE.PerspectiveCamera | null;
   warnings: string[];
+  /** Primitives drawn through an `InstancedMesh` instead of their own mesh (see instancing.ts). */
+  instancedPrimitives: number;
 }
 
 export interface BuildSceneOptions {
@@ -67,6 +70,8 @@ export interface BuildSceneOptions {
   models?: Map<string, ModelInstance>;
   materialTextures?: Map<string, MaterialTextures>;
   onWarning?: (message: string) => void;
+  /** Batch identical static primitives into instanced draws. On unless the caller manages batching itself. */
+  instancing?: boolean;
 }
 
 /**
@@ -234,8 +239,26 @@ export function buildSceneGraph(scene: SceneDocument, options: BuildSceneOptions
     }
   }
 
+  const instancedPrimitives = options.instancing === false ? 0 : batchStaticPrimitives(root, entities);
   const camera = resolveActiveCamera(scene, entities, warnings);
-  return { root, entities, camera, warnings };
+  return { root, entities, camera, warnings, instancedPrimitives };
+}
+
+/** Fold the primitives nothing in the game can move into instanced draws; returns how many. */
+function batchStaticPrimitives(root: THREE.Group, entities: Map<string, BuiltEntity>): number {
+  const lookup = (id: string): Entity | undefined => entities.get(id)?.entity;
+  const members: BatchMember[] = [];
+  for (const built of entities.values()) {
+    if (!built.mesh || !built.entity.editor.visible) continue;
+    const key = primitiveBatchKey(built.entity);
+    if (key === null || !isStaticInGame(built.entity, lookup)) continue;
+    members.push({ key, mesh: built.mesh });
+  }
+  if (members.length === 0) return 0;
+  root.updateMatrixWorld(true);
+  const batches = new PrimitiveBatches();
+  batches.rebuild(members, root);
+  return batches.instanced();
 }
 
 function resolveActiveCamera(

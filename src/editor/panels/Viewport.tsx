@@ -19,8 +19,10 @@ import {
   type SnapSettings,
   type TransformSpace,
   type TransformTool,
+  type RenderScale,
   type ViewFace,
 } from '../viewport/viewport-controller.js';
+import type { ShadingMode } from '../viewport/shading.js';
 import { useSession } from '../hooks.js';
 import { applyAssetDrop, hasAssetDrag, readAssetDrag } from '../assets/asset-drop.js';
 
@@ -159,7 +161,11 @@ export interface ViewportDisplay {
   projection: 'perspective' | 'orthographic';
   grid: boolean;
   shadows: boolean;
+  shading: ShadingMode;
+  renderScale: RenderScale;
 }
+
+const DEFAULT_DISPLAY: ViewportDisplay = { projection: 'perspective', grid: true, shadows: true, shading: 'solid', renderScale: 1 };
 
 export interface ViewportHandle {
   play(): Promise<void>;
@@ -183,6 +189,14 @@ export interface ViewportHandle {
    */
   display(): ViewportDisplay;
   setDisplay(next: Partial<ViewportDisplay>): void;
+  /** Fly navigation: WASD moves, right-drag looks, the wheel sets the speed. */
+  setFlyEnabled(enabled: boolean): void;
+  flyEnabled(): boolean;
+  setFlySpeed(speed: number): void;
+  flySpeed(): number;
+  /** Show only these entities, or everything again with null. A view setting, not a document edit. */
+  setIsolation(entityIds: readonly string[] | null): void;
+  isolation(): string[] | null;
   /**
    * The view gizmo's half of the camera API.
    *
@@ -513,8 +527,16 @@ export function Viewport({ handleRef, tool, space, snap, onPlayStateChange, onSt
               projection: viewportRef.current.projection(),
               grid: viewportRef.current.gridVisible(),
               shadows: viewportRef.current.shadowsVisible(),
+              shading: viewportRef.current.shadingMode(),
+              renderScale: viewportRef.current.renderScaleSetting(),
             }
-          : { projection: 'perspective', grid: true, shadows: true },
+          : DEFAULT_DISPLAY,
+      setFlyEnabled: (enabled: boolean) => viewportRef.current?.setFlyEnabled(enabled),
+      flyEnabled: () => viewportRef.current?.flyEnabled() ?? false,
+      setFlySpeed: (speed: number) => viewportRef.current?.setFlySpeed(speed),
+      flySpeed: () => viewportRef.current?.flySpeed() ?? 0,
+      setIsolation: (entityIds: readonly string[] | null) => viewportRef.current?.setIsolation(entityIds),
+      isolation: () => viewportRef.current?.isolation() ?? null,
       worldBounds: (entityId: string) => viewportRef.current?.worldBounds(entityId) ?? null,
       toScreen: (point: [number, number, number]) => viewportRef.current?.toScreen(point) ?? null,
       cameraDistance: () => viewportRef.current?.cameraDistance() ?? 0,
@@ -525,6 +547,8 @@ export function Viewport({ handleRef, tool, space, snap, onPlayStateChange, onSt
         if (next.projection !== undefined) viewport.setProjection(next.projection);
         if (next.grid !== undefined) viewport.setGridVisible(next.grid);
         if (next.shadows !== undefined) viewport.setShadowsVisible(next.shadows);
+        if (next.shading !== undefined) viewport.setShadingMode(next.shading);
+        if (next.renderScale !== undefined) viewport.setRenderScale(next.renderScale);
       },
       cameraBasis: () =>
         viewportRef.current?.cameraBasis() ?? {
