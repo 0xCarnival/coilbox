@@ -4,7 +4,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import type { AddressInfo } from 'node:net';
 import type { JsonValue } from '@schema/index.js';
 import { Workspace, WorkspaceError } from './workspace.js';
-import { buildGame } from './build.js';
+import { buildGame, packageExport } from './build.js';
 import { AssetService } from './assets.js';
 import { ProjectManager } from './management.js';
 import { ProjectWatcher } from './watcher.js';
@@ -240,6 +240,19 @@ export async function startApiServer(options: ApiServerOptions): Promise<ApiServ
           sendJson(response, 200, await managerFor().archive(projectId, input));
           return;
         }
+        // GET /api/projects/:id/export.zip - the most recent export, packaged for download
+        if (route[2] === 'export.zip' && route.length === 3 && request.method === 'GET') {
+          const packaged = await packageExport(workspace, projectId);
+          response.writeHead(200, {
+            'content-type': 'application/zip',
+            'content-length': packaged.bytes.byteLength,
+            'content-disposition': `attachment; filename="${packaged.fileName}"`,
+            'cache-control': 'no-store',
+          });
+          response.end(packaged.bytes);
+          return;
+        }
+
         if (route[2] === 'export-source' && route.length === 3 && request.method === 'GET') {
           const exported = await managerFor().exportSource(projectId);
           response.writeHead(200, {

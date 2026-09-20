@@ -14,7 +14,7 @@ import { EditorSession } from './state/editor-session.js';
 import { ProjectHome } from './panels/ProjectHome.js';
 import { Hierarchy } from './panels/Hierarchy.js';
 import { Inspector } from './panels/Inspector.js';
-import { Toolbar, SaveIndicator } from './panels/Toolbar.js';
+import { Toolbar, SaveIndicator, type ExportTarget } from './panels/Toolbar.js';
 import { BottomPanel, type BottomTab } from './panels/BottomPanel.js';
 import { Viewport, type PlayState, type ViewportDisplay, type ViewportHandle } from './panels/Viewport.js';
 import type { CameraPlanes, SnapSettings, TransformSpace, TransformTool, ViewFace } from './viewport/viewport-controller.js';
@@ -691,10 +691,12 @@ function StudioShell(): JSX.Element {
     if (isBottomTab(id)) setBottomTab(id);
   }, []);
 
-  const exportGame = useCallback(async () => {
-    if (!snapshot.project) return;
+  const exportGame = useCallback(async (target: ExportTarget) => {
+    // Refuse rather than queue: a second build would race the first for the same export folder,
+    // and an export during Play would capture the authored scene while the user watches another.
+    if (!snapshot.project || exporting || editorLocked) return;
     setExporting(true);
-    setStatus('Exporting…');
+    setStatus(target === 'download' ? 'Exporting and packaging…' : 'Exporting…');
     try {
       // Save first: an export of stale content would be a silent lie.
       if (session.document?.isDirty) await session.save();
@@ -716,6 +718,11 @@ function StudioShell(): JSX.Element {
       const size = result.totalBytes === null ? '' : ` (${formatBytes(result.totalBytes)})`;
       const pruned = result.prunedBytes ? `, ${formatBytes(result.prunedBytes)} of unused assets left out` : '';
       session.log('info', `Exported to ${result.relativeOutDir}${size}${pruned}`, describeExportAssets(result));
+      if (target === 'download') {
+        const zipBytes = await session.downloadExport(snapshot.project.id);
+        setStatus(`Downloaded ${snapshot.project.id}.zip (${formatBytes(zipBytes)})${pruned} — unzip and serve with any static server`);
+        return;
+      }
       setStatus(`Exported to ${result.relativeOutDir}${size}${pruned} — serve it with any static server`);
     } catch (error) {
       session.log('error', 'Export failed', String(error));
@@ -723,7 +730,7 @@ function StudioShell(): JSX.Element {
     } finally {
       setExporting(false);
     }
-  }, [session, snapshot.project]);
+  }, [editorLocked, exporting, session, snapshot.project]);
 
   const openProject = snapshot.project !== null;
 
@@ -743,7 +750,7 @@ function StudioShell(): JSX.Element {
               onToolChange={setTool}
               onSpaceChange={setSpace}
               onSnapChange={setSnap}
-              onExport={() => void exportGame()}
+              onExport={(target) => void exportGame(target)}
               exporting={exporting}
             />
             <div
@@ -903,7 +910,8 @@ function StudioShell(): JSX.Element {
               }}
               space={space}
               onSpaceChange={setSpace}
-              onExport={() => void exportGame()}
+              onExport={(target) => void exportGame(target)}
+              exporting={exporting}
             />
             </Suspense>
             <footer {...withDomClass(styles.statusbar, DOM.statusbar)}>

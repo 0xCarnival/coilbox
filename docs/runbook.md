@@ -114,7 +114,12 @@ That is deliberate: a web page you visit cannot reach it.
 ```bash
 pnpm studio build my-game
 npx --yes serve games/my-game/.coilbox/export    # or any static server
+pnpm studio build my-game --zip my-game.zip      # the same export, packaged for upload
 ```
+
+In the editor, **Export Game** writes the same folder, and **More actions → Download game as
+.zip** (or the palette's "Export and download the game as .zip") runs the export and downloads it as
+`<project-id>.zip`, ready to unzip onto any static host.
 
 Exported games need no editor, no workspace service, and no development server.
 

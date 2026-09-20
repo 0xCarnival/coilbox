@@ -11,6 +11,7 @@ import { THEME_LABELS, THEME_PREFERENCES } from '../state/theme.js';
 import { DENSITY_LABELS, DENSITY_PREFERENCES } from '../state/density.js';
 import type { TransformSpace, TransformTool, ViewFace } from '../viewport/viewport-controller.js';
 import type { PlayState } from '../panels/Viewport.js';
+import type { ExportTarget } from '../panels/Toolbar.js';
 import { BOOKMARK_SLOTS, type BookmarkSlot, type CameraBookmarks } from '../state/camera-bookmarks.js';
 
 /** Grows out of the transform origin Radix publishes for the open content, i.e. out of its trigger. */
@@ -184,7 +185,9 @@ export interface CommandPaletteProps {
     stop(): void;
     state: PlayState;
   };
-  onExport(): void;
+  onExport(target: ExportTarget): void;
+  /** An export is running; the palette hides the export commands until it finishes. */
+  exporting: boolean;
   /**
    * The view commands, so the numpad is discoverable rather than folklore.
    *
@@ -215,6 +218,7 @@ export function CommandPalette({
   onFocusSelection,
   playback,
   onExport,
+  exporting,
   view,
   space,
   onSpaceChange,
@@ -365,7 +369,18 @@ export function CommandPalette({
       },
       { id: 'play:step', label: 'Step one frame', group: 'Play', run: playback.step },
       { id: 'play:stop', label: 'Stop and discard the simulation', group: 'Play', run: playback.stop },
-      { id: 'file:export', label: 'Export the game', group: 'File', run: onExport },
+      // Exports lock while a simulation runs or another export is in flight, as in the toolbar.
+      ...(exporting || playback.state !== 'stopped'
+        ? []
+        : [
+            { id: 'file:export', label: 'Export the game to its folder', group: 'File', run: () => onExport('folder') },
+            {
+              id: 'file:export-zip',
+              label: 'Export and download the game as .zip',
+              group: 'File',
+              run: () => onExport('download'),
+            },
+          ]),
       ...THEME_PREFERENCES.map((preference) => ({
         id: `theme:${preference}`,
         label: `Theme: ${THEME_LABELS[preference]}`,
@@ -381,6 +396,7 @@ export function CommandPalette({
     ];
   }, [
     density,
+    exporting,
     onExport,
     onFocusSelection,
     onSpaceChange,
