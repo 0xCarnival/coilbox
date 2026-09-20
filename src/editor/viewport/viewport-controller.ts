@@ -248,6 +248,43 @@ function expandContentBounds(object: THREE.Object3D, box: THREE.Box3): void {
   for (const child of object.children) expandContentBounds(child, box);
 }
 
+/** The world box of every content mesh under an object, one entry per mesh. */
+function collectContentBoxes(object: THREE.Object3D, boxes: THREE.Box3[]): void {
+  if (object.userData[EDITOR_ONLY] === true) return;
+  if (object instanceof THREE.Mesh || object instanceof THREE.Line || object instanceof THREE.Points) {
+    object.geometry.computeBoundingBox();
+    const local = object.geometry.boundingBox;
+    if (local) boxes.push(local.clone().applyMatrix4(object.matrixWorld));
+  }
+  for (const child of object.children) collectContentBoxes(child, boxes);
+}
+
+/**
+ * Below this many meshes a scene is framed on everything; above it, backdrops are left out.
+ *
+ * A level's sea, sky box or ground slab is one mesh many times the size of anything the player
+ * drives on, and framing the union of both puts the camera where the level is a thin line across a
+ * dark plane. With enough meshes the median size is a fair reading of "the level", and anything
+ * dwarfing it is scenery to look past, not at.
+ */
+const BACKDROP_MIN_MESHES = 8;
+const BACKDROP_RATIO = 8;
+
+function contentBoundsWithoutBackdrops(object: THREE.Object3D): THREE.Box3 {
+  const boxes: THREE.Box3[] = [];
+  collectContentBoxes(object, boxes);
+  const size = new THREE.Vector3();
+  const diagonals = boxes.map((box) => box.getSize(size).length()).sort((a, b) => a - b);
+  const box = new THREE.Box3();
+  if (boxes.length >= BACKDROP_MIN_MESHES) {
+    const median = diagonals[Math.floor(diagonals.length / 2)] ?? 0;
+    const limit = median * BACKDROP_RATIO;
+    for (const candidate of boxes) if (candidate.getSize(size).length() <= limit) box.union(candidate);
+  }
+  if (box.isEmpty()) for (const candidate of boxes) box.union(candidate);
+  return box;
+}
+
 /** Build a camera in the requested projection, at the editor's default framing. */
 function createCamera(projection: ProjectionKind): EditorCamera {
   if (projection === 'orthographic') {
@@ -2023,7 +2060,10 @@ export class EditorViewport {
 
   /** Frame the whole scene. Blender's Home, and the counterpart to `focusSelection`. */
   frameAll(): void {
-    this.frame(this.root);
+    this.root.updateWorldMatrix(true, true);
+    const box = contentBoundsWithoutBackdrops(this.root);
+    if (box.isEmpty()) box.expandByPoint(new THREE.Vector3().setFromMatrixPosition(this.root.matrixWorld));
+    this.frameBox(box);
   }
 
   /** Show or hide the ground grid. */
