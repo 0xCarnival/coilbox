@@ -8,6 +8,12 @@ import { DOM, withDomClass } from '../dom-contract.js';
 import { IconButton } from './Button.js';
 import type { TransformTool } from '../viewport/viewport-controller.js';
 
+/** Rises and fades in from where it sits: the eye is told something arrived without a sound. */
+const rise = stylex.keyframes({
+  from: { opacity: 0, transform: 'translateY(8px) scale(0.98)' },
+  to: { opacity: 1, transform: 'translateY(0) scale(1)' },
+});
+
 /**
  * The floating hint card.
  *
@@ -83,7 +89,7 @@ const styles = stylex.create({
      * The entrance is the toast's keyframes reused. One arrival motion for every floating layer
      * means a card appearing always looks like the same kind of event.
      */
-    animationName: 'coilbox-toast-in',
+    animationName: rise,
     animationDuration: '140ms',
     animationTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
     animationFillMode: 'both',

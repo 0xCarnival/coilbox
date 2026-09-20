@@ -9,6 +9,12 @@ import { useSession, useSessionSnapshot } from '../hooks.js';
 import type { TransformTool, ViewFace } from '../viewport/viewport-controller.js';
 import type { PlayState } from '../panels/Viewport.js';
 
+/** Grows out of the transform origin Radix publishes for the open content, i.e. out of its trigger. */
+const grow = stylex.keyframes({
+  from: { opacity: 0, transform: 'scale(0.96)' },
+  to: { opacity: 1, transform: 'scale(1)' },
+});
+
 /**
  * The command palette.
  *
@@ -39,7 +45,7 @@ const styles = stylex.create({
     backgroundColor: 'rgba(0, 0, 0, 0.55)',
     backdropFilter: 'blur(2px)',
     zIndex: 100,
-    animationName: 'coilbox-menu-in',
+    animationName: grow,
     animationDuration: '120ms',
     animationTimingFunction: 'ease-out',
     animationFillMode: 'both',
