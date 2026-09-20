@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { JSX } from 'react';
 import * as stylex from '@stylexjs/stylex';
-import { FileBox, Image as ImageIcon, Music2, Play, Square } from 'lucide-react';
+import { FileBox, Image as ImageIcon, Music2, Play, Search, Square } from 'lucide-react';
 import type { AssetEntry } from '@schema/index.js';
-import { button, color, fontFamily, fontSize, radius, space } from '../styles/tokens.stylex.js';
+import { button, color, control, controlSize, fontFamily, fontSize, radius, space } from '../styles/tokens.stylex.js';
 import { PanelSection, SegmentedControl, type SegmentedOption } from '../ui/Controls.js';
+import { Select } from '../ui/Field.js';
 import { DOM, withDomClass } from '../dom-contract.js';
 import { useSession, useSessionSnapshot } from '../hooks.js';
 import { ASSET_DRAG_MIME, hasAssetDrag } from '../assets/asset-drop.js';
@@ -36,6 +37,35 @@ const isDecoderExtension = (extension: string): extension is DecoderExtension =>
  */
 /** The two layouts the asset list offers. */
 type AssetView = 'grouped' | 'flat';
+
+/** How the rows are ordered within a list. */
+type AssetSort = 'name' | 'size' | 'usage';
+
+const SORT_OPTIONS = [
+  { value: 'name', label: 'Name' },
+  { value: 'size', label: 'Largest first' },
+  { value: 'usage', label: 'Most used first' },
+] as const satisfies ReadonlyArray<{ value: AssetSort; label: string }>;
+
+const isAssetSort = (value: string): value is AssetSort => SORT_OPTIONS.some((option) => option.value === value);
+
+type AssetUsage = Array<{ sceneId: string; entityId: string; entityName: string }>;
+
+/**
+ * The order rows appear in. Ties fall back to the id so the list is stable however it is sorted:
+ * two 12 KiB textures always sit in the same order rather than swapping as one is replaced.
+ */
+function compareAssets(sort: AssetSort, usage: Record<string, AssetUsage | undefined>): (a: AssetEntry, b: AssetEntry) => number {
+  const byName = (a: AssetEntry, b: AssetEntry) => a.id.localeCompare(b.id);
+  switch (sort) {
+    case 'size':
+      return (a, b) => b.bytes - a.bytes || byName(a, b);
+    case 'usage':
+      return (a, b) => (usage[b.id]?.length ?? 0) - (usage[a.id]?.length ?? 0) || byName(a, b);
+    default:
+      return byName;
+  }
+}
 
 const ASSET_GROUPS = [
   { kind: 'model', title: 'Models' },
@@ -130,10 +160,76 @@ const styles = stylex.create({
     gap: space.xs,
     whiteSpace: 'nowrap',
   },
-  /** The layout switch sits at the trailing edge of the panel's toolbar. */
+  /** Search, sort, and the layout switch sit together at the trailing edge of the panel's toolbar. */
+  listControls: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: space.sm,
+    marginInlineStart: 'auto',
+  },
+  searchWrap: {
+    position: 'relative',
+    display: 'flex',
+    alignItems: 'center',
+    width: '180px',
+    color: color.dim,
+  },
+  searchIcon: {
+    position: 'absolute',
+    insetInlineStart: '7px',
+    pointerEvents: 'none',
+    display: 'grid',
+    placeItems: 'center',
+  },
+  search: {
+    flex: 1,
+    minWidth: 0,
+    height: controlSize.sm,
+    paddingInlineStart: '25px',
+  },
+  sort: {
+    width: '136px',
+  },
   viewSwitch: {
-    width: '200px',
+    width: '160px',
     flexShrink: 0,
+  },
+  /**
+   * A usage entry is a link into the scene: clicking it selects that object (opening its scene
+   * first if it lives elsewhere). It is text with an underline on hover, not a button, so a row
+   * used by six objects does not become six pills.
+   */
+  usageLink: {
+    display: 'block',
+    height: 'auto',
+    paddingInline: 0,
+    fontSize: fontSize.xs,
+    fontWeight: 400,
+    color: color.muted,
+    textAlign: 'left',
+    textDecorationLine: {
+      default: 'none',
+      ':hover': 'underline',
+    },
+    backgroundColor: {
+      default: 'transparent',
+      ':hover': 'transparent',
+    },
+  },
+  usageAll: {
+    fontSize: fontSize.xs,
+    height: 'auto',
+    paddingInline: 0,
+    paddingBlock: 0,
+    color: color.dim,
+    backgroundColor: {
+      default: 'transparent',
+      ':hover': 'transparent',
+    },
+    textDecorationLine: {
+      default: 'none',
+      ':hover': 'underline',
+    },
   },
   /** The stack of per-kind sections. The panel scrolls; this column does not. */
   groups: {
@@ -179,8 +275,19 @@ export function AssetBrowser(): JSX.Element {
    * guessing.
    */
   const [view, setView] = useState<AssetView>('grouped');
+  const [sort, setSort] = useState<AssetSort>('name');
+  const [search, setSearch] = useState('');
 
   const assets = snapshot.assets;
+  const query = search.trim().toLowerCase();
+  /** The rows the current search and sort leave; groups filter this further by kind. */
+  const visible = useMemo(
+    () =>
+      assets
+        .filter((asset) => query.length === 0 || asset.id.toLowerCase().includes(query) || asset.note.toLowerCase().includes(query))
+        .sort(compareAssets(sort, snapshot.assetUsage)),
+    [assets, query, sort, snapshot.assetUsage],
+  );
 
   const importFiles = async (files: FileList | File[] | null) => {
     if (!files || files.length === 0) return;
@@ -223,18 +330,43 @@ export function AssetBrowser(): JSX.Element {
           Drag files here. Supported: self-contained .glb models, PNG/JPEG/WebP images, MP3/OGG/WAV audio.
         </span>
         {assets.length > 0 ? (
-          <span {...stylex.props(styles.viewSwitch)}>
-            <SegmentedControl<AssetView>
-              ariaLabel="Asset list layout"
-              value={view}
-              onChange={setView}
-              options={
-                [
-                  { value: 'grouped', label: 'By kind' },
-                  { value: 'flat', label: 'Flat' },
-                ] satisfies readonly SegmentedOption<AssetView>[]
-              }
-            />
+          <span {...stylex.props(styles.listControls)}>
+            <span {...stylex.props(styles.searchWrap)}>
+              <span {...stylex.props(styles.searchIcon)}>
+                <Search size={control.iconSm} />
+              </span>
+              <input
+                {...stylex.props(styles.search)}
+                type="search"
+                placeholder="Search assets"
+                aria-label="Search assets"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+              />
+            </span>
+            <span {...stylex.props(styles.sort)}>
+              <Select
+                label="Sort assets"
+                value={sort}
+                onValueChange={(value) => {
+                  if (isAssetSort(value)) setSort(value);
+                }}
+                options={SORT_OPTIONS}
+              />
+            </span>
+            <span {...stylex.props(styles.viewSwitch)}>
+              <SegmentedControl<AssetView>
+                ariaLabel="Asset list layout"
+                value={view}
+                onChange={setView}
+                options={
+                  [
+                    { value: 'grouped', label: 'By kind' },
+                    { value: 'flat', label: 'Flat' },
+                  ] satisfies readonly SegmentedOption<AssetView>[]
+                }
+              />
+            </span>
           </span>
         ) : null}
       </div>
@@ -243,6 +375,8 @@ export function AssetBrowser(): JSX.Element {
         <div {...withDomClass(styles.empty, DOM.panelEmpty)}>
           No assets yet. Import a .glb to place a model, or keep building with primitives.
         </div>
+      ) : visible.length === 0 ? (
+        <div {...withDomClass(styles.empty, DOM.panelEmpty)}>No assets match “{search.trim()}”.</div>
       ) : view === 'flat' ? (
         <table {...withDomClass(styles.table, DOM.assetTable)}>
           <thead>
@@ -256,7 +390,7 @@ export function AssetBrowser(): JSX.Element {
             </tr>
           </thead>
           <tbody>
-            {assets.map((asset) => (
+            {visible.map((asset) => (
               <AssetRow
                 key={asset.id}
                 asset={asset}
@@ -280,7 +414,7 @@ export function AssetBrowser(): JSX.Element {
          */
         <div {...stylex.props(styles.groups)}>
           {ASSET_GROUPS.map(({ kind, title }) => {
-            const members = assets.filter((asset) => asset.kind === kind);
+            const members = visible.filter((asset) => asset.kind === kind);
             if (members.length === 0) return null;
             return (
               <PanelSection key={kind} title={title} aside={<span {...stylex.props(styles.groupCount)}>{members.length}</span>}>
@@ -322,7 +456,7 @@ function AssetRow({
   onReplace,
 }: {
   asset: AssetEntry;
-  usage: Array<{ sceneId: string; entityId: string; entityName: string }>;
+  usage: AssetUsage;
   onDelete(): void;
   onReplace(file: File): void;
 }): JSX.Element {
@@ -364,6 +498,18 @@ function AssetRow({
       audioRef.current = null;
     };
   }, [asset, session]);
+  /**
+   * Select the objects that use this asset. A user in another scene opens that scene first; the
+   * selection is then made in the freshly loaded store, which is why this awaits rather than
+   * selecting and hoping the ids exist.
+   */
+  const selectUsers = async (entries: AssetUsage) => {
+    const first = entries[0];
+    if (!first) return;
+    if (first.sceneId !== snapshot.sceneId && !(await session.openScene(first.sceneId))) return;
+    session.selectMany(entries.filter((entry) => entry.sceneId === first.sceneId).map((entry) => entry.entityId));
+  };
+  const currentSceneUsers = usage.filter((entry) => entry.sceneId === snapshot.sceneId);
   const toggleAudio = () => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -416,12 +562,25 @@ function AssetRow({
         {usage.length === 0 ? (
           <span {...stylex.props(styles.muted)}>unused</span>
         ) : (
-          usage.map((entry) => (
-            <div key={`${entry.sceneId}:${entry.entityId}`} {...stylex.props(styles.muted)}>
-              {entry.entityName}{' '}
-              <span {...stylex.props(styles.mono)}>({entry.sceneId})</span>
-            </div>
-          ))
+          <>
+            {usage.map((entry) => (
+              <button
+                key={`${entry.sceneId}:${entry.entityId}`}
+                {...stylex.props(styles.usageLink)}
+                type="button"
+                title={entry.sceneId === snapshot.sceneId ? 'Select this object' : `Open “${entry.sceneId}” and select this object`}
+                onClick={() => void selectUsers([entry])}
+              >
+                {entry.entityName}{' '}
+                <span {...stylex.props(styles.mono)}>({entry.sceneId})</span>
+              </button>
+            ))}
+            {currentSceneUsers.length > 1 ? (
+              <button {...stylex.props(styles.usageAll)} type="button" onClick={() => void selectUsers(currentSceneUsers)}>
+                Select all {currentSceneUsers.length} in this scene
+              </button>
+            ) : null}
+          </>
         )}
       </td>
       <td {...stylex.props(...cell)}>
