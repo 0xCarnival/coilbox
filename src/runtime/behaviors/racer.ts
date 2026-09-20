@@ -1123,7 +1123,7 @@ export const racerDirector: BehaviorDefinition = {
         lastTick = -1;
         raceTime = 0;
         decided = false;
-        setObjective('PRESS 1 · 2 · 3 TO CHOOSE A CRAFT');
+        setObjective('HULL: 1 · 2 · 3');
         writeHudLines();
         context.showOverlay('start');
       },

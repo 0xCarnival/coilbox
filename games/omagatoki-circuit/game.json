@@ -46,8 +46,8 @@
       "hudPilot": "TENGU  ·  interceptor   ·   0:00.00",
       "hudSystems": "ENERGY 100%   ·   WEAPON —",
       "hudBoost": "BOOST 100%   ·   hold SHIFT",
-      "hudCenter": "PRESS 1 · 2 · 3 TO CHOOSE A CRAFT",
-      "objective": "PRESS 1 · 2 · 3 TO CHOOSE A CRAFT",
+      "hudCenter": "HULL: 1 · 2 · 3",
+      "objective": "HULL: 1 · 2 · 3",
       "announce": "",
       "won": false,
       "lost": false
@@ -60,7 +60,7 @@
         "bind": "hudRace",
         "position": "top-left",
         "color": "#f6e7c8",
-        "size": 26
+        "size": 22
       },
       {
         "type": "label",
@@ -69,7 +69,7 @@
         "bind": "hudCenter",
         "position": "top-center",
         "color": "#ffb070",
-        "size": 30
+        "size": 24
       },
       {
         "type": "label",
