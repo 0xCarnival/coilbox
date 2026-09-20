@@ -1237,6 +1237,17 @@ export class EditorViewport {
     const direction = new THREE.Vector3().subVectors(this.camera.position, this.orbit.target).normalize();
     this.orbit.target.copy(sphere.center);
     this.camera.position.copy(sphere.center).addScaledVector(direction, distance * 1.4);
+    /**
+     * A kilometre-scale level frames from further away than the default far plane reaches, and a
+     * camera that clips everything it was just pointed at shows only sky. Push the plane out to cover
+     * the far side of the sphere with room to orbit; it is never pulled back in, so nothing already
+     * visible disappears.
+     */
+    const reach = (distance * 1.4 + sphere.radius) * 2;
+    if (this.camera.far < reach) {
+      this.camera.far = reach;
+      this.camera.updateProjectionMatrix();
+    }
     this.orbit.update();
     this.renderNow();
   }
