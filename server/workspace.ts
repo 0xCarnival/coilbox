@@ -470,6 +470,8 @@ export class Workspace {
   }
 }
 
+export type BehaviorAssetProperties = ReadonlyMap<string, ReadonlyMap<string, string | null>>;
+
 /** What the scene validator needs to know about a project's declared behaviors. */
 export interface BehaviorValidationContext {
   behaviorIds: Set<string>;
@@ -481,7 +483,7 @@ export interface BehaviorValidationContext {
  * `studio validate` catches an unregistered behavior or a mistyped property instead of leaving it
  * for the runtime to discover.
  */
-function behaviorValidationContext(registry: BehaviorRegistryDocument): BehaviorValidationContext {
+export function behaviorValidationContext(registry: BehaviorRegistryDocument): BehaviorValidationContext {
   const behaviorIds = new Set<string>();
   const behaviorProperties = new Map<string, Map<string, BehaviorPropertyType>>();
   for (const entry of registry.behaviors) {
@@ -499,6 +501,27 @@ function behaviorValidationContext(registry: BehaviorRegistryDocument): Behavior
     behaviorProperties.set(id, descriptors);
   }
   return { behaviorIds, behaviorProperties };
+}
+
+/**
+ * Per behavior id, the properties the registry declares as `asset`, each with the asset id its
+ * default names (or `null` for none). The runtime merges those defaults under the stored values,
+ * so an entity that omits the property still uses the default asset.
+ */
+export function behaviorAssetProperties(registry: BehaviorRegistryDocument): BehaviorAssetProperties {
+  const result = new Map<string, Map<string, string | null>>();
+  for (const entry of registry.behaviors) {
+    const id = jsonString(entry, 'id');
+    if (id === undefined) continue;
+    const properties = new Map<string, string | null>();
+    for (const property of jsonArray(entry, 'properties') ?? []) {
+      const key = jsonString(property, 'key');
+      if (key === undefined || jsonString(property, 'type') !== 'asset') continue;
+      properties.set(key, jsonString(property, 'default') ?? null);
+    }
+    if (properties.size > 0) result.set(id, properties);
+  }
+  return result;
 }
 
 function isBehaviorPropertyType(value: unknown): value is BehaviorPropertyType {

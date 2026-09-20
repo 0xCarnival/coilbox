@@ -1,9 +1,10 @@
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { AssetService } from '../../server/assets.js';
+import { captureProject, planAssetExport, readAssetBytes, writeAsset } from '../../server/build.js';
 import { Workspace } from '../../server/workspace.js';
 import { parseAssetManifest } from '@schema/index.js';
 
@@ -196,5 +197,190 @@ describe('asset import', () => {
   it('warns when a model file is not a GLB at all', async () => {
     const result = await importFixture('models/not-a-model.glb');
     expect(result.warnings.join(' ')).toMatch(/too short to be a GLB|does not start with a GLB header/);
+  });
+});
+
+describe('export asset plan', () => {
+  const entry = (id: string, kind: 'model' | 'image' | 'audio', bytes: number) => ({
+    id,
+    kind,
+    path: `assets/${kind}s/${id}.bin`,
+    hash: '',
+    bytes,
+    note: '',
+    requires: [],
+    meta: {},
+  });
+
+  it('ships only referenced assets, largest first, and totals what it left out', () => {
+    const manifest = { schemaVersion: 1, assets: [entry('small', 'image', 10), entry('big', 'model', 5000), entry('song', 'audio', 300)] };
+    const plan = planAssetExport(manifest, new Set(['big']));
+    expect(plan.assets.map((asset) => [asset.id, asset.included])).toEqual([
+      ['big', true],
+      ['song', false],
+      ['small', false],
+    ]);
+    expect(plan.manifest.assets.map((asset) => asset.id)).toEqual(['big']);
+    expect(plan.manifest.schemaVersion).toBe(1);
+    expect(plan.prunedBytes).toBe(310);
+  });
+
+  it('captures the scenes it ships and their references in one read, unaffected by later saves', async () => {
+    const imported = await importFixture('models/spinning-crate.glb');
+    const scene = await workspace.readScene('g', 'main');
+    scene.entities.push({
+      id: 'crate',
+      name: 'Crate',
+      parentId: null,
+      order: 9,
+      enabled: true,
+      transform: { position: [0, 1, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] },
+      components: [{ type: 'model', assetId: imported.entry.id, castShadow: true, receiveShadow: true }],
+      editor: { visible: true, locked: false, color: null, helper: false },
+    });
+    await workspace.writeScene('g', 'main', scene, { expectedRevision: scene.revision });
+    const projectRoot = join(workspaceRoot, 'g');
+    const shippedBytes = await readFile(join(projectRoot, 'scenes', 'main.scene.json'));
+
+    const snapshot = await captureProject(workspace, 'g', projectRoot);
+
+    // A save that lands after the capture must not change what the export derives from.
+    const later = await workspace.readScene('g', 'main');
+    later.entities = later.entities.filter((entity) => entity.id !== 'crate');
+    await workspace.writeScene('g', 'main', later, { expectedRevision: later.revision });
+
+    expect(snapshot.referencedAssets).toEqual(new Set([imported.entry.id]));
+    expect(snapshot.scenes.map((scene) => scene.path)).toEqual(['scenes/main.scene.json']);
+    expect(Buffer.from(snapshot.scenes[0]!.bytes).equals(shippedBytes)).toBe(true);
+    expect(planAssetExport(snapshot.manifest, snapshot.referencedAssets).manifest.assets.map((asset) => asset.id)).toEqual([
+      imported.entry.id,
+    ]);
+  });
+
+  it('ships the asset bytes it captured even when the asset is replaced afterwards', async () => {
+    const imported = await importFixture('models/spinning-crate.glb');
+    const scene = await workspace.readScene('g', 'main');
+    scene.entities.push({
+      id: 'crate',
+      name: 'Crate',
+      parentId: null,
+      order: 9,
+      enabled: true,
+      transform: { position: [0, 1, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] },
+      components: [{ type: 'model', assetId: imported.entry.id, castShadow: true, receiveShadow: true }],
+      editor: { visible: true, locked: false, color: null, helper: false },
+    });
+    await workspace.writeScene('g', 'main', scene, { expectedRevision: scene.revision });
+    const projectRoot = join(workspaceRoot, 'g');
+    const original = await readFile(fixture('models/spinning-crate.glb'));
+
+    const snapshot = await captureProject(workspace, 'g', projectRoot);
+    await importFixture('models/animated-limb.glb', { replaceAssetId: imported.entry.id });
+    expect(existsSync(join(projectRoot, imported.entry.path))).toBe(false);
+
+    expect(snapshot.assets.map((asset) => asset.entry.path)).toEqual([imported.entry.path]);
+    expect(Buffer.from(snapshot.assets[0]!.bytes).equals(original)).toBe(true);
+    const target = join(projectRoot, '.coilbox', 'export', 'project');
+    await writeAsset(target, snapshot.assets[0]!.entry, snapshot.assets[0]!.bytes);
+    expect((await readFile(join(target, imported.entry.path))).equals(original)).toBe(true);
+  });
+
+  it('keeps assets that behaviors reference through registry-declared asset properties', async () => {
+    const imported = await importFixture('images/swatch.png');
+    const projectRoot = join(workspaceRoot, 'g');
+    await writeFile(
+      join(projectRoot, 'scripts', 'registry.json'),
+      JSON.stringify({
+        schemaVersion: 1,
+        behaviors: [{ id: 'badge', name: 'Badge', properties: [{ key: 'icon', type: 'asset' }, { key: 'label', type: 'text' }] }],
+      }),
+    );
+    const scene = await workspace.readScene('g', 'main');
+    scene.entities.push({
+      id: 'goal',
+      name: 'Goal',
+      parentId: null,
+      order: 9,
+      enabled: true,
+      transform: { position: [0, 1, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] },
+      components: [{ type: 'behavior', behaviorId: 'badge', properties: { icon: imported.entry.id, label: 'swatch' } }],
+      editor: { visible: true, locked: false, color: null, helper: false },
+    });
+    await workspace.writeScene('g', 'main', scene, { expectedRevision: scene.revision });
+
+    const snapshot = await captureProject(workspace, 'g', projectRoot);
+    expect(snapshot.referencedAssets).toEqual(new Set([imported.entry.id]));
+    const usage = await assets.usageIndex('g');
+    expect(usage[imported.entry.id]).toEqual([{ sceneId: 'main', entityId: 'goal', entityName: 'Goal' }]);
+    await expect(assets.remove('g', imported.entry.id)).rejects.toThrow(/used by main/);
+  });
+
+  it('keeps the asset a behavior property defaults to when the entity omits the property', async () => {
+    const fallback = await importFixture('images/swatch.png');
+    const projectRoot = join(workspaceRoot, 'g');
+    await writeFile(
+      join(projectRoot, 'scripts', 'registry.json'),
+      JSON.stringify({
+        schemaVersion: 1,
+        behaviors: [{ id: 'badge', name: 'Badge', properties: [{ key: 'icon', type: 'asset', default: fallback.entry.id }] }],
+      }),
+    );
+    const scene = await workspace.readScene('g', 'main');
+    scene.entities.push({
+      id: 'goal',
+      name: 'Goal',
+      parentId: null,
+      order: 9,
+      enabled: true,
+      transform: { position: [0, 1, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] },
+      components: [{ type: 'behavior', behaviorId: 'badge', properties: {} }],
+      editor: { visible: true, locked: false, color: null, helper: false },
+    });
+    await workspace.writeScene('g', 'main', scene, { expectedRevision: scene.revision });
+
+    const snapshot = await captureProject(workspace, 'g', projectRoot);
+    expect(snapshot.referencedAssets).toEqual(new Set([fallback.entry.id]));
+    await expect(assets.remove('g', fallback.entry.id)).rejects.toThrow(/used by main/);
+
+    const explicit = await workspace.readScene('g', 'main');
+    const goal = explicit.entities.find((entity) => entity.id === 'goal');
+    const badge = goal?.components[0];
+    if (!goal || badge?.type !== 'behavior') throw new Error('goal badge missing');
+    badge.properties = { icon: null };
+    await workspace.writeScene('g', 'main', explicit, { expectedRevision: explicit.revision });
+    expect((await captureProject(workspace, 'g', projectRoot)).referencedAssets).toEqual(new Set());
+  });
+
+  it('refuses a manifest path that leaves the project or the export', async () => {
+    const projectRoot = join(workspaceRoot, 'g');
+    const target = join(projectRoot, '.coilbox', 'export', 'project');
+    const evil = (path: string) => ({ ...entry('evil', 'image', 1), path });
+    await expect(readAssetBytes(projectRoot, evil('assets/../../game.json'))).rejects.toThrow(/traverse upward/);
+    await expect(readAssetBytes(projectRoot, evil('/etc/hostname'))).rejects.toThrow(/relative/);
+    await expect(writeAsset(target, evil('../../game.json'), new Uint8Array([1]))).rejects.toThrow(/traverse upward/);
+    expect(existsSync(join(projectRoot, '.coilbox', 'game.json'))).toBe(false);
+  });
+
+  it('refuses to capture a scene that references an asset the manifest does not have', async () => {
+    const projectRoot = join(workspaceRoot, 'g');
+    const raw = JSON.parse(await readFile(join(projectRoot, 'scenes', 'main.scene.json'), 'utf8'));
+    raw.entities.push({
+      id: 'ghost',
+      name: 'Ghost',
+      parentId: null,
+      order: 9,
+      enabled: true,
+      transform: { position: [0, 1, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] },
+      components: [{ type: 'model', assetId: 'missing', castShadow: true, receiveShadow: true }],
+      editor: { visible: true, locked: false, color: null, helper: false },
+    });
+    await writeFile(join(projectRoot, 'scenes', 'main.scene.json'), JSON.stringify(raw));
+    await expect(captureProject(workspace, 'g', projectRoot)).rejects.toThrow(/not valid/);
+  });
+
+  it('reports nothing pruned when every asset is used or there are none', () => {
+    expect(planAssetExport({ schemaVersion: 1, assets: [] }, new Set())).toEqual({ assets: [], manifest: { schemaVersion: 1, assets: [] }, prunedBytes: 0 });
+    const manifest = { schemaVersion: 1, assets: [entry('used', 'model', 42)] };
+    expect(planAssetExport(manifest, new Set(['used'])).prunedBytes).toBe(0);
   });
 });
