@@ -185,6 +185,8 @@ export interface CommandPaletteProps {
     state: PlayState;
   };
   onExport(target: ExportTarget): void;
+  /** An export is running; the palette hides the export commands until it finishes. */
+  exporting: boolean;
   /**
    * The view commands, so the numpad is discoverable rather than folklore.
    *
@@ -210,6 +212,7 @@ export function CommandPalette({
   onFocusSelection,
   playback,
   onExport,
+  exporting,
   view,
 }: CommandPaletteProps): JSX.Element {
   const session = useSession();
@@ -337,8 +340,18 @@ export function CommandPalette({
       },
       { id: 'play:step', label: 'Step one frame', group: 'Play', run: playback.step },
       { id: 'play:stop', label: 'Stop and discard the simulation', group: 'Play', run: playback.stop },
-      { id: 'file:export', label: 'Export the game to its folder', group: 'File', run: () => onExport('folder') },
-      { id: 'file:export-zip', label: 'Export and download the game as .zip', group: 'File', run: () => onExport('download') },
+      // Exports lock while a simulation runs or another export is in flight, as in the toolbar.
+      ...(exporting || playback.state !== 'stopped'
+        ? []
+        : [
+            { id: 'file:export', label: 'Export the game to its folder', group: 'File', run: () => onExport('folder') },
+            {
+              id: 'file:export-zip',
+              label: 'Export and download the game as .zip',
+              group: 'File',
+              run: () => onExport('download'),
+            },
+          ]),
       ...THEME_PREFERENCES.map((preference) => ({
         id: `theme:${preference}`,
         label: `Theme: ${THEME_LABELS[preference]}`,
@@ -354,6 +367,7 @@ export function CommandPalette({
     ];
   }, [
     density,
+    exporting,
     onExport,
     onFocusSelection,
     onToolChange,

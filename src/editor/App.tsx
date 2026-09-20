@@ -609,7 +609,9 @@ function StudioShell(): JSX.Element {
   }, []);
 
   const exportGame = useCallback(async (target: ExportTarget) => {
-    if (!snapshot.project) return;
+    // Refuse rather than queue: a second build would race the first for the same export folder,
+    // and an export during Play would capture the authored scene while the user watches another.
+    if (!snapshot.project || exporting || editorLocked) return;
     setExporting(true);
     setStatus(target === 'download' ? 'Exporting and packaging…' : 'Exporting…');
     try {
@@ -645,7 +647,7 @@ function StudioShell(): JSX.Element {
     } finally {
       setExporting(false);
     }
-  }, [session, snapshot.project]);
+  }, [editorLocked, exporting, session, snapshot.project]);
 
   const openProject = snapshot.project !== null;
 
@@ -814,6 +816,7 @@ function StudioShell(): JSX.Element {
                 inCameraView: cameraView,
               }}
               onExport={(target) => void exportGame(target)}
+              exporting={exporting}
             />
             </Suspense>
             <footer {...withDomClass(styles.statusbar, DOM.statusbar)}>
