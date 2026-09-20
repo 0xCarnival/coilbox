@@ -8,7 +8,7 @@ import { BehaviorRegistry } from '../src/runtime/behaviors/registry.js';
 import { lookAt } from '../src/editor/document/factory.js';
 
 /**
- * Writes the two demonstration games (plan §2, §15 stage 3).
+ * Writes Physics Targets, the Collect Room test fixture, and their starter templates.
  *
  * They are generated rather than hand-edited so the behaviour registries, ids, and component
  * shapes stay valid, and so the same script proves that both games are built from the shared
@@ -18,7 +18,6 @@ import { lookAt } from '../src/editor/document/factory.js';
  */
 
 const root = fileURLToPath(new URL('..', import.meta.url));
-const gamesRoot = join(root, 'games');
 
 const registry = BehaviorRegistry.fromDefinitions(BEHAVIOR_LIBRARY);
 
@@ -561,10 +560,10 @@ function physicsTargets(): BuiltGame {
   const readme = [
     '# Physics Targets',
     '',
-    'The second demonstration game: click to launch a physics object, knock the targets over,',
+    'A compact physics shooting gallery: click to launch a ball, knock five targets over,',
     'count the hits, and restart.',
     '',
-    'It uses the same engine and editor as Collect Room — no separate hard-coded application.',
+    'It uses the same engine and editor as NEON YOMI, with launch impulse and target physics exposed for editing.',
     '',
     '| What | Where |',
     '| --- | --- |',
@@ -613,10 +612,10 @@ function filesFor(built: BuiltGame): GameSourceFiles {
   };
 }
 
-async function writeGame(id: string, built: BuiltGame): Promise<void> {
-  const target = join(gamesRoot, id);
+async function writeGame(id: string, built: BuiltGame, destination: string): Promise<void> {
+  const target = join(root, destination, id);
   await rm(target, { recursive: true, force: true });
-  await writeFiles(target, filesFor(built), `games/${id}`);
+  await writeFiles(target, filesFor(built), `${destination}/${id}`);
 
   // The same content also ships as a whole-project template, so `studio create --template`
   // starts from a working game instead of an empty scene.
@@ -626,5 +625,5 @@ async function writeGame(id: string, built: BuiltGame): Promise<void> {
   await writeFiles(templateTarget, filesFor({ ...built, game: templateGame }), `templates/${id}`);
 }
 
-await writeGame('collect-room', collectRoom());
-await writeGame('physics-targets', physicsTargets());
+await writeGame('collect-room', collectRoom(), 'tests/fixtures/projects');
+await writeGame('physics-targets', physicsTargets(), 'games');

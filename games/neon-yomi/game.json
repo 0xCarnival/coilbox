@@ -2,13 +2,13 @@
   "schemaVersion": 1,
   "engineVersion": "0.1.0",
   "engineCompat": "0.1.0",
-  "id": "omagatoki-circuit",
-  "name": "Ōmagatoki Circuit",
-  "description": "Anti-gravity combat racing over a cloud sea at the twilight hour. Three laps, three rivals, three hulls: drift the air brakes, ride the boost pads, survive the Cliff Drop.",
+  "id": "neon-yomi",
+  "name": "NEON YOMI",
+  "description": "Anti-gravity combat racing over the drowned city. Two laps of the Yomi Loop, three rivals, three hulls \u2014 drift the air brakes, ride the boost pads, and survive the Plunge into the Kannon Spire.",
   "scenes": [
     {
       "id": "main",
-      "name": "Ōmagatoki Circuit",
+      "name": "Neon Yomi",
       "path": "scenes/main.scene.json"
     }
   ],
@@ -28,26 +28,26 @@
       "shadows": false,
       "pixelRatioCap": 1,
       "toneMapping": "neutral",
-      "exposure": 1.05
+      "exposure": 1.12
     },
     "initialGameState": {
       "raceState": "countdown",
-      "laps": 3,
-      "lap": "1 / 3",
+      "laps": 2,
+      "lap": "1 / 2",
       "place": "- / 4",
       "speed": 0,
       "boost": 100,
       "energy": 100,
       "shield": false,
-      "weapon": "—",
-      "craft": "TENGU  ·  interceptor",
+      "weapon": "\u2014",
+      "craft": "TENGU  \u00b7  interceptor",
       "raceTime": "0:00.00",
-      "hudRace": "- / 4   ·   LAP 1 / 3",
-      "hudPilot": "TENGU  ·  interceptor   ·   0:00.00",
-      "hudSystems": "ENERGY 100%   ·   WEAPON —",
-      "hudBoost": "BOOST 100%   ·   hold SHIFT",
-      "hudCenter": "HULL: 1 · 2 · 3",
-      "objective": "HULL: 1 · 2 · 3",
+      "hudRace": "- / 4   \u00b7   LAP 1 / 2",
+      "hudPilot": "TENGU  \u00b7  interceptor   \u00b7   0:00.00",
+      "hudSystems": "ENERGY 100%   \u00b7   WEAPON \u2014",
+      "hudBoost": "BOOST 100%   \u00b7   hold SHIFT",
+      "hudCenter": "HULL: 1 \u00b7 2 \u00b7 3",
+      "objective": "",
       "announce": "",
       "won": false,
       "lost": false
@@ -59,7 +59,7 @@
         "text": "{value}",
         "bind": "hudRace",
         "position": "top-left",
-        "color": "#f6e7c8",
+        "color": "#ff4fa3",
         "size": 22
       },
       {
@@ -68,8 +68,8 @@
         "text": "{value}",
         "bind": "hudCenter",
         "position": "top-center",
-        "color": "#ffb070",
-        "size": 24
+        "color": "#4ff0e6",
+        "size": 30
       },
       {
         "type": "label",
@@ -77,8 +77,8 @@
         "text": "{value}",
         "bind": "hudPilot",
         "position": "top-right",
-        "color": "#c99bff",
-        "size": 18
+        "color": "#9fb6d8",
+        "size": 17
       },
       {
         "type": "label",
@@ -86,7 +86,7 @@
         "text": "{value}",
         "bind": "hudSystems",
         "position": "bottom-left",
-        "color": "#ffb070",
+        "color": "#ffb347",
         "size": 18
       },
       {
@@ -95,8 +95,8 @@
         "text": "{value} km/h",
         "bind": "speed",
         "position": "bottom-center",
-        "color": "#f6e7c8",
-        "size": 42
+        "color": "#f0f6ff",
+        "size": 46
       },
       {
         "type": "label",
@@ -111,34 +111,34 @@
         "type": "overlay",
         "id": "start-overlay",
         "kind": "start",
-        "title": "ŌMAGATOKI CIRCUIT",
-        "message": "Anti-gravity league, twilight session. Three laps above the cloud sea against Kaminari, Yurei and Daruma.\n\nW / ↑ thrust · S brake · A / D steer · Q / E air brakes (hold both to slam the brakes, one to drift) · SHIFT boost · SPACE fire · 1 / 2 / 3 choose your hull before the lights go out.",
+        "title": "NEON YOMI",
+        "message": "The sea took Tokyo a hundred and fifty years ago. What is left is the Yomi Loop \u2014 maglev decks strung between the crowns of nine towers, and the Kannon Spire, which is dead, and which you will fall through twice.\n\nW / \u2191 thrust   \u00b7   S / \u2193 brake   \u00b7   A D / \u2190 \u2192 steer\nQ / E air brakes \u2014 hold one to drift, hold both to slam\nSHIFT boost (charges while you drift)   \u00b7   SPACE fire\n1 KITSUNE \u00b7 2 TENGU \u00b7 3 ONI \u2014 pick your hull\n\nTwo laps. Four craft. First across the Yomi line.",
         "actionLabel": "Launch",
         "action": "resume",
-        "background": "#1a0b2e",
-        "color": "#f6e7c8"
+        "background": "#04070e",
+        "color": "#f0f6ff"
       },
       {
         "type": "overlay",
         "id": "win-overlay",
         "kind": "win",
-        "title": "CHAMPION",
-        "message": "First across the line. The Ōmagatoki Circuit is yours.",
+        "title": "FIRST ACROSS THE YOMI LINE",
+        "message": "The loop is yours. Somewhere under all that black water, the old city is still lit up.",
         "actionLabel": "Race again",
         "action": "restart",
-        "background": "#1a0b2e",
-        "color": "#ffb070"
+        "background": "#04070e",
+        "color": "#4ff0e6"
       },
       {
         "type": "overlay",
         "id": "lose-overlay",
         "kind": "lose",
         "title": "RACE OVER",
-        "message": "Off the podium. Grab a shield pickup, drift the hairpins, and try again.",
+        "message": "Off the podium. Take the boost pads, drift the spiral, and put a shockwave through whoever is ahead of you.",
         "actionLabel": "Restart",
         "action": "restart",
-        "background": "#1a0b2e",
-        "color": "#c99bff"
+        "background": "#04070e",
+        "color": "#ff4fa3"
       }
     ],
     "inputBindings": {

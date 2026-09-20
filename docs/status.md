@@ -4,6 +4,9 @@ Tracks progress against the stage gates in `docs/threejs-game-studio-plan.md` §
 Each stage records how to run it, the demonstrated result, the tests that back it, and the
 gaps that are knowingly left open.
 
+The default showcase now contains NEON YOMI and Physics Targets. Collect Room and Gem Rush
+live in `tests/fixtures/projects/` so the historical acceptance scenarios below remain reproducible.
+
 | Stage | State | Gate |
 |---|---|---|
 | 0. Compatibility probe | complete | `pnpm verify:stage0` — 14/14 checks |
@@ -11,7 +14,7 @@ gaps that are knowingly left open.
 | 2. Comfortable scene editing | complete | `pnpm verify:stage2` — 19/19 checks |
 | 3. Actual games | complete | `pnpm verify:stage3` — 14/14 checks |
 | 4. Agent and management workflow | complete | `pnpm verify:stage4` — 17/17 checks |
-| 5. Reliability and release | complete | `pnpm verify:stage5` — 23/23 checks |
+| 5. Reliability and release | complete | `pnpm verify:stage5` — 24/24 checks |
 
 ## Stage 0 — compatibility probe — **complete**
 
@@ -264,9 +267,9 @@ editable in the inspector.
 ### How to run
 
 ```bash
-pnpm games                 # regenerate games/ and the matching templates from code
+pnpm games                 # regenerate Physics Targets, the Collect Room fixture, and templates
 pnpm verify:stage3         # the gate, with browser evidence
-pnpm studio test collect-room      # validate + export + play one game, bounded
+pnpm studio test collect-room --workspace tests/fixtures/projects  # validate + export + play the fixture
 ```
 
 ### Demonstrated result
@@ -344,7 +347,7 @@ pnpm verify:stage4
 |---|---|
 | Contract documents | `AGENTS.md`, `docs/agent-contract.md`, `docs/project-format.md`, `docs/engine-sdk.md` all present and linked |
 | Templates | `blank`, `collect-room`, `physics-targets` |
-| Agent-built game | `games/gem-rush` validates and `studio test` reports 9/9 checks |
+| Agent-built game | `tests/fixtures/projects/gem-rush` validates and `studio test` reports 9/9 checks |
 | Editable gameplay | The agent's game exposes `moveSpeed`; a person changed it to 9 in the inspector and it persisted to disk |
 | External change | An edit made outside the editor raises the "file changed on disk" banner with *Reload from disk* / *Keep my version* |
 | Project independence | Opening `collect-room` afterwards shows its own player, move speed 5, 14 entities, and a fresh history |
@@ -393,7 +396,7 @@ pnpm verify                        # every gate in order
 
 ### Demonstrated result
 
-`tools/verify-stage5.ts` passes 23/23 checks (22 with `--skip-clean-clone`, which drops the
+`tools/verify-stage5.ts` passes 24/24 checks (23 with `--skip-clean-clone`, which drops the
 clean-checkout check). The per-stage counts for every gate are in the table at the top of this file.
 `pnpm verify` runs them all in order — lint, then stages 0-5 — and reports 7/7 passing. The measured
 and observed results:
@@ -408,7 +411,7 @@ and observed results:
 | Narrow viewport | 390×844: 60.7% of pixels rendered, 76 steps — a viewport test, not a phone test |
 | User acceptance session | Open `gem-rush`; move five objects to x=1.25; replace a model (`spinning-crate` → `animated-limb`, both loaded in the viewport); set move speed 7, undo to 6, redo to 7; Play 66 steps with 9 behaviors; Stop; reopen with every edit intact; export from the editor |
 | Export independence | The export runs from `/releases/2026/gem-rush/` on a separate static server with the workspace service shut down: 8 requests, 0 failures, 1 WASM served as `application/wasm`, no dev URLs, 78 steps of gameplay, audio activated by a user gesture, and restart returning the run to its authored initial state (`score 2 → 0`, collectibles `3 → 5`, new world) |
-| Bounded project tests | `collect-room`, `physics-targets`, and `gem-rush` each pass 9/9 checks |
+| Bounded project tests | `collect-room`, `physics-targets`, `gem-rush`, and `neon-yomi` each pass 9/9 checks |
 | Console | No page errors in the studio, the games, or the export |
 
 Screenshots: `docs/evidence/stage5/acceptance-play.png`, `narrow-viewport.png`; raw measurements in

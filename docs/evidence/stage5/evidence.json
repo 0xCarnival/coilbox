@@ -1,9 +1,9 @@
 {
   "stage": 5,
-  "generatedAt": "2026-09-13T16:23:38.753Z",
+  "generatedAt": "2026-09-20T11:42:09.449Z",
   "node": "v24.18.0",
   "host": "darwin",
-  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage5-onMQjW",
+  "workspaceRoot": "/var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-stage5-CMYG6j",
   "measurements": {
     "playStopCycles": {
       "first": {
@@ -216,19 +216,19 @@
     },
     "referenceScene": {
       "frames": 120,
-      "medianFrameMs": 36.63857519641898,
-      "p95FrameMs": 38.54579411066772,
-      "medianPhysicsMs": 0.031089016304500085,
+      "medianFrameMs": 35.85148840375909,
+      "p95FrameMs": 37.47926568357993,
+      "medianPhysicsMs": 0.030198191469244153,
       "drawCalls": 401,
       "triangles": 4812,
       "entities": 203,
       "physicsBodies": 26,
-      "fps": 28.02332727025588
+      "fps": 27.25354166087997
     },
     "frameRateIndependence": {
-      "stepsTaken": 17,
-      "droppedTime": 0.18313333333333476,
-      "clampedTime": 0.09989999999999966,
+      "stepsTaken": 16,
+      "droppedTime": 0.18316666666666745,
+      "clampedTime": 0.11660000000000037,
       "busiestFrameSteps": 5,
       "maxSubSteps": 5,
       "framesToWatch": 8
@@ -236,9 +236,9 @@
     "narrowViewport": {
       "width": 390,
       "height": 844,
-      "rendered": 0.6062127840563859,
-      "distinctColors": 2290,
-      "steps": 63
+      "rendered": 0.695850042532507,
+      "distinctColors": 2299,
+      "steps": 62
     }
   },
   "steps": [
@@ -274,7 +274,7 @@
       "id": "clean-checkout",
       "title": "A clean checkout installs from the frozen lockfile, typechecks, tests, and builds",
       "passed": true,
-      "detail": "built in /var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-clean-OdSGuT from a fresh clone"
+      "detail": "built in /var/folders/2t/yzm5584j1yl0bs60bjnbk9xw0000gn/T/coilbox-clean-q9oWxc from a fresh clone"
     },
     {
       "id": "reference-scene",
@@ -299,28 +299,28 @@
       "id": "reference-performance",
       "title": "The reference scene renders on the declared conditions and the numbers are recorded",
       "passed": true,
-      "detail": "203 entities, 26 bodies, 401 draw calls, 4812 triangles; median frame 36.64 ms, p95 38.55 ms, physics 0.03 ms (software rasteriser, not the M1 Pro target)",
+      "detail": "203 entities, 26 bodies, 401 draw calls, 4812 triangles; median frame 35.85 ms, p95 37.48 ms, physics 0.03 ms (software rasteriser, not the M1 Pro target)",
       "observed": {
         "frames": 120,
-        "medianFrameMs": 36.63857519641898,
-        "p95FrameMs": 38.54579411066772,
-        "medianPhysicsMs": 0.031089016304500085,
+        "medianFrameMs": 35.85148840375909,
+        "p95FrameMs": 37.47926568357993,
+        "medianPhysicsMs": 0.030198191469244153,
         "drawCalls": 401,
         "triangles": 4812,
         "entities": 203,
         "physicsBodies": 26,
-        "fps": 28.02332727025588
+        "fps": 27.25354166087997
       }
     },
     {
       "id": "frame-rate-independence",
       "title": "A stalled frame is clamped and its backlog dropped, not replayed as extra steps",
       "passed": true,
-      "detail": "a 400 ms stall produced 17 steps, 0.183 s dropped, 0.100 s clamped; the busiest of the 8 following frames ran 5 steps (cap 5)",
+      "detail": "a 400 ms stall produced 16 steps, 0.183 s dropped, 0.117 s clamped; the busiest of the 8 following frames ran 5 steps (cap 5)",
       "observed": {
-        "stepsTaken": 17,
-        "droppedTime": 0.18313333333333476,
-        "clampedTime": 0.09989999999999966,
+        "stepsTaken": 16,
+        "droppedTime": 0.18316666666666745,
+        "clampedTime": 0.11660000000000037,
         "busiestFrameSteps": 5,
         "maxSubSteps": 5,
         "framesToWatch": 8
@@ -330,22 +330,22 @@
       "id": "no-catch-up-spiral",
       "title": "Time spent waiting is not replayed as a burst of simulation steps",
       "passed": true,
-      "detail": "70 steps during a 1.2 s wait (about 72 expected at 60 Hz)",
+      "detail": "69 steps during a 1.2 s wait (about 72 expected at 60 Hz)",
       "observed": {
-        "stepsDuringWait": 70
+        "stepsDuringWait": 69
       }
     },
     {
       "id": "narrow-viewport",
       "title": "The game runs at a narrow viewport (a viewport test, not a phone test)",
       "passed": true,
-      "detail": "390x844, 60.6% rendered, 63 steps",
+      "detail": "390x844, 69.6% rendered, 62 steps",
       "observed": {
         "width": 390,
         "height": 844,
-        "rendered": 0.6062127840563859,
-        "distinctColors": 2290,
-        "steps": 63
+        "rendered": 0.695850042532507,
+        "distinctColors": 2299,
+        "steps": 62
       }
     },
     {
@@ -402,16 +402,16 @@
       "id": "acceptance-play-stop",
       "title": "Acceptance: play and stop without touching code",
       "passed": true,
-      "detail": "play world ran 64 steps with 9 behaviors, then stopped",
+      "detail": "play world ran 60 steps with 9 behaviors, then stopped",
       "observed": {
         "state": "running",
-        "frames": 22,
-        "steps": 64,
-        "fps": 10.007203000105125,
-        "frameTimeMs": 99.92802184481468,
-        "physicsTimeMs": 0.107380072820704,
-        "droppedTime": 0.8165333333333309,
-        "clampedTime": 5.316500000000002,
+        "frames": 18,
+        "steps": 60,
+        "fps": 9.041415230281084,
+        "frameTimeMs": 110.60215403566987,
+        "physicsTimeMs": 0.08546500885060357,
+        "droppedTime": 0.5167333333333385,
+        "clampedTime": 5.116299999999992,
         "drawCalls": 14,
         "triangles": 4076,
         "geometries": 13,
@@ -462,9 +462,9 @@
       "id": "acceptance-export",
       "title": "Acceptance: export from the editor without touching code",
       "passed": true,
-      "detail": "Exported to .coilbox/export — serve it with any static serverscene mainSaved (1 model entity in the exported documents)",
+      "detail": "Exported to .coilbox/export (3.70 MiB), 3 KiB of unused assets left out — serve it with any static serverscene mainSaved (1 model entity in the exported documents)",
       "observed": {
-        "status": "Exported to .coilbox/export — serve it with any static serverscene mainSaved",
+        "status": "Exported to .coilbox/export (3.70 MiB), 3 KiB of unused assets left out — serve it with any static serverscene mainSaved",
         "exportedModelEntities": [
           "Model Swap"
         ]
@@ -474,7 +474,7 @@
       "id": "export-nested-path",
       "title": "The export runs from a nested path on a separate static server with no workspace service",
       "passed": true,
-      "detail": "8 requests from http://127.0.0.1:60744/releases/2026/gem-rush/, 0 failed, 60 steps",
+      "detail": "8 requests from http://127.0.0.1:54080/releases/2026/gem-rush/, 0 failed, 64 steps",
       "observed": {
         "failures": [],
         "requests": 8
@@ -509,7 +509,7 @@
         "gameState": {
           "score": 2,
           "collectiblesRemaining": 3,
-          "timeRemaining": 44.12,
+          "timeRemaining": 44.05,
           "objective": "",
           "won": false,
           "lost": false,
@@ -529,7 +529,7 @@
         "before": {
           "score": 2,
           "collectiblesRemaining": 3,
-          "timeRemaining": 44.12,
+          "timeRemaining": 44.03,
           "objective": "",
           "won": false,
           "lost": false,
@@ -571,19 +571,25 @@
       "id": "bounded-test-collect-room",
       "title": "The bounded test passes for collect-room",
       "passed": true,
-      "detail": "9/9 checks in 3.5s"
+      "detail": "9/9 checks in 3.6s"
     },
     {
       "id": "bounded-test-physics-targets",
       "title": "The bounded test passes for physics-targets",
       "passed": true,
-      "detail": "9/9 checks in 3.5s"
+      "detail": "9/9 checks in 3.7s"
     },
     {
       "id": "bounded-test-gem-rush",
       "title": "The bounded test passes for gem-rush",
       "passed": true,
-      "detail": "9/9 checks in 3.6s"
+      "detail": "9/9 checks in 3.7s"
+    },
+    {
+      "id": "bounded-test-neon-yomi",
+      "title": "The bounded test passes for neon-yomi",
+      "passed": true,
+      "detail": "9/9 checks in 5.4s"
     },
     {
       "id": "no-console-errors",

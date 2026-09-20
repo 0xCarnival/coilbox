@@ -37,7 +37,7 @@ pnpm test                   # unit tests, including the real Box3D WASM in Node
 pnpm build                  # builds the editor, player, and probe pages
 pnpm verify:stage0 .. :stage5   # the per-stage gates with browser evidence
 pnpm verify                 # every gate in order, with one exit status
-pnpm games                  # regenerate games/ and their templates from code
+pnpm games                  # regenerate Physics Targets, the Collect Room fixture, and their templates
 pnpm fixtures               # regenerate the binary test fixtures from code
 ```
 

@@ -106,7 +106,18 @@ export async function testGame(options: GameTestOptions): Promise<GameTestResult
       timeout: 30_000,
     });
     const state = await page.evaluate(() => window.__PLAYER__!.state());
-    record('loads', state.errors.length === 0, state.errors.length === 0 ? `loaded "${state.projectName}" (${state.sceneName})` : state.errors.join('; '));
+    // `state.errors` no longer carries warnings (`src/player/main.ts` explains why), so a benign
+    // load warning cannot fail this check. The count is still surfaced, because a project that
+    // logs hundreds of warnings should be visible rather than silently clean.
+    const loadWarnings =
+      state.warnings.length > 0 ? ` (${state.warnings.length} load warning${state.warnings.length === 1 ? '' : 's'})` : '';
+    record(
+      'loads',
+      state.errors.length === 0,
+      state.errors.length === 0
+        ? `loaded "${state.projectName}" (${state.sceneName})${loadWarnings}`
+        : state.errors.join('; '),
+    );
 
     const behaviors = await page.evaluate(() => window.__PLAYER__!.behaviorList());
     record('behaviors-registered', behaviors.length > 0, `${behaviors.length} behavior instance(s): ${[...new Set(behaviors.map((entry) => entry.behaviorId))].join(', ') || 'none'}`);

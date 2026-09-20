@@ -1,9 +1,9 @@
 # Physics Targets
 
-The second demonstration game: click to launch a physics object, knock the targets over,
+A compact physics shooting gallery: click to launch a ball, knock five targets over,
 count the hits, and restart.
 
-It uses the same engine and editor as Collect Room — no separate hard-coded application.
+It uses the same engine and editor as NEON YOMI, with launch impulse and target physics exposed for editing.
 
 | What | Where |
 | --- | --- |

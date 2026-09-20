@@ -143,7 +143,7 @@ describe('active camera resolution', () => {
     const root = fileURLToPath(new URL('../..', import.meta.url));
     let checked = 0;
 
-    for (const project of ['collect-room', 'physics-targets']) {
+    for (const project of ['neon-yomi', 'physics-targets']) {
       const path = join(root, 'games', project, 'scenes', 'main.scene.json');
       const scene = parseScene(JSON.parse(await readFile(path, 'utf8'))).value as SceneDocument;
       expect(scene, `${project} did not parse`).toBeTruthy();

@@ -112,7 +112,8 @@ async function main(): Promise<void> {
   const workspace = new Workspace({ root: workspaceRoot, templatesRoot: join(root, 'templates') });
   await workspace.ensureRoot();
   for (const id of ['collect-room', 'physics-targets', AGENT_GAME]) {
-    const source = join(root, 'games', id);
+    const sourceRoot = id === 'collect-room' || id === 'gem-rush' ? 'tests/fixtures/projects' : 'games';
+    const source = join(root, sourceRoot, id);
     if (existsSync(source)) await execFileAsync('cp', ['-R', source, join(workspaceRoot, id)]);
   }
 
@@ -148,7 +149,7 @@ async function main(): Promise<void> {
     id: 'agent-game-exists',
     title: `The agent created a third game (${AGENT_GAME}) as an ordinary project folder`,
     passed: agentGamePresent,
-    detail: agentGamePresent ? `games/${AGENT_GAME} exists with a manifest` : `games/${AGENT_GAME} was not found; run the agent step first`,
+    detail: agentGamePresent ? `${AGENT_GAME} exists with a manifest` : `${AGENT_GAME} was not found; run the agent step first`,
   });
 
   if (agentGamePresent) {
@@ -213,7 +214,7 @@ async function main(): Promise<void> {
         id: 'agent-game-editing-skipped',
         title: 'Editing checks were skipped because the agent game is missing',
         passed: false,
-        detail: `games/${AGENT_GAME} does not exist; the checks that follow need it`,
+        detail: `${AGENT_GAME} does not exist; the checks that follow need it`,
       });
       throw new Error(`agent game "${AGENT_GAME}" is missing`);
     }

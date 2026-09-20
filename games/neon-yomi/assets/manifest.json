@@ -1,0 +1,307 @@
+{
+  "schemaVersion": 1,
+  "assets": [
+    {
+      "id": "fx-bolt",
+      "kind": "model",
+      "path": "assets/models/fx-bolt-23d10cbb.glb",
+      "hash": "sha256:23d10cbb682545fbbbd6eaf7befff9ea65da3187d735e963dd90a7e5a49d67b5",
+      "bytes": 9636,
+      "note": "",
+      "requires": [
+        "KHR_materials_emissive_strength"
+      ],
+      "meta": {}
+    },
+    {
+      "id": "hull-kitsune",
+      "kind": "model",
+      "path": "assets/models/hull-kitsune-c0f37e6b.glb",
+      "hash": "sha256:c0f37e6b4d9d2f8d45bcc7fd44505dcd67790c2adbd6bff34d0234eb914eee24",
+      "bytes": 42516,
+      "note": "",
+      "requires": [
+        "KHR_materials_emissive_strength"
+      ],
+      "meta": {}
+    },
+    {
+      "id": "hull-oni",
+      "kind": "model",
+      "path": "assets/models/hull-oni-c32462c6.glb",
+      "hash": "sha256:c32462c66c4a519087cb48ded508b688c3ff59ce2c8cac1bc185846a194e9198",
+      "bytes": 83652,
+      "note": "",
+      "requires": [
+        "KHR_materials_emissive_strength"
+      ],
+      "meta": {}
+    },
+    {
+      "id": "hull-tengu",
+      "kind": "model",
+      "path": "assets/models/hull-tengu-78145fa8.glb",
+      "hash": "sha256:78145fa84736d7294f1b4e9df0d18800546af2df5e701a26764a48f1ecd2bc75",
+      "bytes": 50164,
+      "note": "",
+      "requires": [
+        "KHR_materials_emissive_strength"
+      ],
+      "meta": {}
+    },
+    {
+      "id": "prop-billboard-a",
+      "kind": "model",
+      "path": "assets/models/prop-billboard-a-224e53c3.glb",
+      "hash": "sha256:224e53c37d99b4459937da8788eeab3ad7bc18ba375868298b45d789e462dfcc",
+      "bytes": 48704,
+      "note": "",
+      "requires": [
+        "KHR_materials_emissive_strength"
+      ],
+      "meta": {}
+    },
+    {
+      "id": "prop-billboard-b",
+      "kind": "model",
+      "path": "assets/models/prop-billboard-b-247388fc.glb",
+      "hash": "sha256:247388fcc88ada6ea64c16d20766c5abd31bc1ee7dfd98e01d0e3f89d1330400",
+      "bytes": 37512,
+      "note": "",
+      "requires": [
+        "KHR_materials_emissive_strength"
+      ],
+      "meta": {}
+    },
+    {
+      "id": "prop-chevron",
+      "kind": "model",
+      "path": "assets/models/prop-chevron-8ec5bc25.glb",
+      "hash": "sha256:8ec5bc259bd8a3e7925d57d83298a5f7bb844ac94ad737e764608e50f27754ed",
+      "bytes": 15488,
+      "note": "",
+      "requires": [
+        "KHR_materials_emissive_strength"
+      ],
+      "meta": {}
+    },
+    {
+      "id": "prop-debris-a",
+      "kind": "model",
+      "path": "assets/models/prop-debris-a-58ef51cb.glb",
+      "hash": "sha256:58ef51cb56c64f8035a4f5a382da939fa9bd355840f0e3a7ed679558ff451013",
+      "bytes": 21220,
+      "note": "",
+      "requires": [
+        "KHR_materials_emissive_strength"
+      ],
+      "meta": {}
+    },
+    {
+      "id": "prop-gate",
+      "kind": "model",
+      "path": "assets/models/prop-gate-a044a986.glb",
+      "hash": "sha256:a044a986fe8e79cec0bf4cc31dfbc41acf45b53af185b9c5df39bcc5cf1b3302",
+      "bytes": 67044,
+      "note": "",
+      "requires": [
+        "KHR_materials_emissive_strength"
+      ],
+      "meta": {}
+    },
+    {
+      "id": "prop-pod-energy",
+      "kind": "model",
+      "path": "assets/models/prop-pod-energy-e415e279.glb",
+      "hash": "sha256:e415e279003836fac6d24e668080eede5feab079d767e0b892d67a7b5e23288f",
+      "bytes": 21176,
+      "note": "",
+      "requires": [
+        "KHR_materials_emissive_strength"
+      ],
+      "meta": {}
+    },
+    {
+      "id": "prop-pod-shield",
+      "kind": "model",
+      "path": "assets/models/prop-pod-shield-4173c9c6.glb",
+      "hash": "sha256:4173c9c6b07548530cc5d0a9d47d0de33d801d0799b471019ae0f651f3c75b42",
+      "bytes": 13092,
+      "note": "",
+      "requires": [
+        "KHR_materials_emissive_strength"
+      ],
+      "meta": {}
+    },
+    {
+      "id": "prop-pod-weapon",
+      "kind": "model",
+      "path": "assets/models/prop-pod-weapon-b5003635.glb",
+      "hash": "sha256:b50036354c48a8f00f8cb8f2a673d476bd4cf49374c46e9d1618091be8f356f6",
+      "bytes": 10644,
+      "note": "",
+      "requires": [
+        "KHR_materials_emissive_strength"
+      ],
+      "meta": {}
+    },
+    {
+      "id": "prop-pylon",
+      "kind": "model",
+      "path": "assets/models/prop-pylon-88e0980c.glb",
+      "hash": "sha256:88e0980c2fadfdcd0f729fe93925a007deddb4ca95d4797d33417435314c2c58",
+      "bytes": 11700,
+      "note": "",
+      "requires": [
+        "KHR_materials_emissive_strength"
+      ],
+      "meta": {}
+    },
+    {
+      "id": "prop-torii",
+      "kind": "model",
+      "path": "assets/models/prop-torii-1d5e5c9c.glb",
+      "hash": "sha256:1d5e5c9cd20b6f98154167a5dbab05b5b70bea97be35114269270a286941a3f5",
+      "bytes": 19716,
+      "note": "",
+      "requires": [
+        "KHR_materials_emissive_strength"
+      ],
+      "meta": {}
+    },
+    {
+      "id": "prop-tower-a",
+      "kind": "model",
+      "path": "assets/models/prop-tower-a-5455ca1f.glb",
+      "hash": "sha256:5455ca1f28f2d2d1207c622408dcc9b160c6e43b47085036ee8910310fba567f",
+      "bytes": 146520,
+      "note": "",
+      "requires": [
+        "KHR_materials_emissive_strength"
+      ],
+      "meta": {}
+    },
+    {
+      "id": "prop-tower-b",
+      "kind": "model",
+      "path": "assets/models/prop-tower-b-c4b4ca07.glb",
+      "hash": "sha256:c4b4ca0724a45026c1e19f4122c78caa5e02d7410ca25079c7dfa21984b51539",
+      "bytes": 63952,
+      "note": "",
+      "requires": [
+        "KHR_materials_emissive_strength"
+      ],
+      "meta": {}
+    },
+    {
+      "id": "tex-rail",
+      "kind": "image",
+      "path": "assets/images/tex-rail-8a912624.png",
+      "hash": "sha256:8a9126247c9bbe3bf4bd9ed8057305ca47fad10484eb22c44966982d3478cbe5",
+      "bytes": 1168,
+      "note": "",
+      "requires": [],
+      "meta": {}
+    },
+    {
+      "id": "tex-road",
+      "kind": "image",
+      "path": "assets/images/tex-road-3a01822e.png",
+      "hash": "sha256:3a01822e8f3ffad1f549279998220a1361484a93a7c400cfdbd3c8249aac1099",
+      "bytes": 14966,
+      "note": "",
+      "requires": [],
+      "meta": {}
+    },
+    {
+      "id": "tex-sign-a",
+      "kind": "image",
+      "path": "assets/images/tex-sign-a-0deca586.png",
+      "hash": "sha256:0deca5861d7b71c706835770da2d061737de2312a0a4eddff0dc8ad11d9ae0cf",
+      "bytes": 2606,
+      "note": "",
+      "requires": [],
+      "meta": {}
+    },
+    {
+      "id": "tex-sign-b",
+      "kind": "image",
+      "path": "assets/images/tex-sign-b-1cde4063.png",
+      "hash": "sha256:1cde40637d0a62a62e49f79a87fd8191c77f4208a646470e19dd1f9821ad1a57",
+      "bytes": 2201,
+      "note": "",
+      "requires": [],
+      "meta": {}
+    },
+    {
+      "id": "tex-water",
+      "kind": "image",
+      "path": "assets/images/tex-water-7039817c.png",
+      "hash": "sha256:7039817cd33e1fc2c84ea8a78412711d8a9e008c6e1ee3df959425dd25d3ce80",
+      "bytes": 8553,
+      "note": "",
+      "requires": [],
+      "meta": {}
+    },
+    {
+      "id": "snd-alert",
+      "kind": "audio",
+      "path": "assets/audios/snd-alert-fbb95ec6.wav",
+      "hash": "sha256:fbb95ec64f5988c934cd9ccadf6c13b0ab16e73c978034a9abe33b1f169399dc",
+      "bytes": 17684,
+      "note": "",
+      "requires": [],
+      "meta": {}
+    },
+    {
+      "id": "snd-boost",
+      "kind": "audio",
+      "path": "assets/audios/snd-boost-13118a5b.wav",
+      "hash": "sha256:13118a5bbcd1665e868ddfe8001d362fd9d65604104c0c19e4150c54ff134cd6",
+      "bytes": 39734,
+      "note": "",
+      "requires": [],
+      "meta": {}
+    },
+    {
+      "id": "snd-count",
+      "kind": "audio",
+      "path": "assets/audios/snd-count-6b76f2b8.wav",
+      "hash": "sha256:6b76f2b8d748311768e54c464f63eec18d850d51fb8576d80af0f9e14d0dc4b7",
+      "bytes": 11068,
+      "note": "",
+      "requires": [],
+      "meta": {}
+    },
+    {
+      "id": "snd-engine",
+      "kind": "audio",
+      "path": "assets/audios/snd-engine-a54fe7cc.wav",
+      "hash": "sha256:a54fe7ccf4e0d3aa38137015f74ea2320f0bf2887ade0408a28fc8c3b2fa9801",
+      "bytes": 88244,
+      "note": "",
+      "requires": [],
+      "meta": {}
+    },
+    {
+      "id": "snd-pickup",
+      "kind": "audio",
+      "path": "assets/audios/snd-pickup-fb19fd8f.wav",
+      "hash": "sha256:fb19fd8f0039c42b6b75e039232c231a416ca512a204876303f875ec0bdb21ab",
+      "bytes": 22094,
+      "note": "",
+      "requires": [],
+      "meta": {}
+    },
+    {
+      "id": "snd-shield",
+      "kind": "audio",
+      "path": "assets/audios/snd-shield-7e8cfe42.wav",
+      "hash": "sha256:7e8cfe42972df7c8d638998e43aeb5bddd66f8ea47a4c9319d30447378d54e55",
+      "bytes": 44144,
+      "note": "",
+      "requires": [],
+      "meta": {}
+    }
+  ]
+}

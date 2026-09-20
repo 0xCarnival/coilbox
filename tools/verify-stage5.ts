@@ -291,9 +291,10 @@ async function main(): Promise<void> {
   const workspaceRoot = await mkdtemp(join(tmpdir(), 'coilbox-stage5-'));
   const workspace = new Workspace({ root: workspaceRoot, templatesRoot: join(root, 'templates') });
   await workspace.ensureRoot();
-  for (const id of ['collect-room', 'physics-targets', 'gem-rush']) {
-    if (!existsSync(join(root, 'games', id))) continue;
-    await execFileAsync('cp', ['-R', join(root, 'games', id), join(workspaceRoot, id)]);
+  for (const id of ['collect-room', 'physics-targets', 'gem-rush', 'neon-yomi']) {
+    const sourceRoot = id === 'collect-room' || id === 'gem-rush' ? 'tests/fixtures/projects' : 'games';
+    if (!existsSync(join(root, sourceRoot, id))) continue;
+    await execFileAsync('cp', ['-R', join(root, sourceRoot, id), join(workspaceRoot, id)]);
     // `.coilbox` holds build output. Copying it would let a stale export from a previous run
     // satisfy the checks below instead of a bundle built from the source under test.
     await rm(join(workspaceRoot, id, '.coilbox'), { recursive: true, force: true });
@@ -835,7 +836,7 @@ async function main(): Promise<void> {
   }
 
   // ---------------------------------------------------------------- per-game bounded tests
-  for (const id of ['collect-room', 'physics-targets', 'gem-rush']) {
+  for (const id of ['collect-room', 'physics-targets', 'gem-rush', 'neon-yomi']) {
     const result = await testGame({ workspace, projectId: id, seconds: 2 });
     record({
       id: `bounded-test-${id}`,

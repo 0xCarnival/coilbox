@@ -36,11 +36,17 @@ export interface PlayerHandle {
   start(): void;
   stop(): Promise<void>;
   restart(): Promise<void>;
-  state(): { state: string; projectName: string; sceneName: string; errors: string[] };
+  state(): { state: string; projectName: string; sceneName: string; errors: string[]; warnings: string[] };
 }
 
 export async function startPlayer(options: PlayerOptions): Promise<PlayerHandle> {
   const errors: string[] = [];
+  // Warnings are collected separately from errors on purpose. A model asset that is perfectly
+  // valid but carries no animation clips is a documented, supported case — `project-format.md`
+  // puts no animation requirement on a model — and the editor's own gates already treat warnings
+  // as non-fatal. Folding them into `errors` made `studio test`'s `loads` check impossible to pass
+  // for any project that used a static model, which is why the two are no longer conflated.
+  const warnings: string[] = [];
   let session: RuntimeSession | null = null;
   let game: GameDocument | null = null;
   let scene: SceneDocument | null = null;
@@ -84,7 +90,8 @@ export async function startPlayer(options: PlayerOptions): Promise<PlayerHandle>
         autoStart: options.autoStart !== false,
         label: 'player',
         onLog: (level, message) => {
-          if (level === 'error' || level === 'warning') errors.push(message);
+          if (level === 'error') errors.push(message);
+          else if (level === 'warning') warnings.push(message);
         },
       });
       sceneName = scene.name;
@@ -123,6 +130,7 @@ export async function startPlayer(options: PlayerOptions): Promise<PlayerHandle>
       projectName,
       sceneName,
       errors,
+      warnings,
     }),
   };
 }
@@ -168,6 +176,8 @@ if (canvas) {
   await handle.ready;
   const state = handle.state();
   if (statusLine) {
+    // The warning count is deliberately not surfaced here: this line is player-facing chrome, and
+    // warnings are available programmatically through `state().warnings` for anything that cares.
     statusLine.textContent =
       state.errors.length > 0 ? `load errors: ${state.errors.join(' | ')}` : `${state.projectName} — ${state.sceneName}`;
   }

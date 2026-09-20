@@ -7,7 +7,7 @@ import { BEHAVIOR_LIBRARY } from '../src/runtime/behaviors/library.js';
 import { BehaviorRegistry } from '../src/runtime/behaviors/registry.js';
 
 /**
- * Writes `games/omagatoki-circuit`: the anti-gravity combat racer.
+ * Writes the retired Ōmagatoki Circuit into `.scratch/legacy-games/` for development.
  *
  * The circuit is a closed Catmull-Rom spline sampled into flat-shaded track pieces, so the whole
  * raceway — every rail, waypoint, gate and pickup — is derived from one list of control points and
@@ -1050,7 +1050,7 @@ const readme = [
   'pieces, rails, gates and pickups are generated from one spline by `tools/write-racer.ts`',
   '(`pnpm tsx tools/write-racer.ts`) so the circuit can be re-laid by editing its control points.',
   '',
-  `Run it with \`pnpm dev\`, or export it with \`pnpm studio build ${GAME_ID}\`.`,
+  `Run it with \`pnpm dev --workspace .scratch/legacy-games\`, or export it with \`pnpm studio build ${GAME_ID} --workspace .scratch/legacy-games\`.`,
   '',
 ].join('\n');
 
@@ -1062,12 +1062,12 @@ const files = {
   'README.md': readme,
 };
 
-const target = join(root, 'games', GAME_ID);
+const target = join(root, '.scratch', 'legacy-games', GAME_ID);
 await rm(target, { recursive: true, force: true });
 for (const [relative, contents] of Object.entries(files)) {
   const path = join(target, relative);
   await mkdir(dirname(path), { recursive: true });
   await writeFile(path, contents, 'utf8');
-  process.stdout.write(`wrote games/${GAME_ID}/${relative}\n`);
+  process.stdout.write(`wrote .scratch/legacy-games/${GAME_ID}/${relative}\n`);
 }
 process.stdout.write(`${entities.length} entities, ${Math.round(lapLength)} m lap\n`);

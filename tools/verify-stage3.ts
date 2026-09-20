@@ -88,7 +88,8 @@ async function main(): Promise<void> {
   const workspace = new Workspace({ root: workspaceRoot, templatesRoot: join(root, 'templates') });
   await workspace.ensureRoot();
   for (const id of ['collect-room', 'physics-targets']) {
-    await execFileAsync('cp', ['-R', join(root, 'games', id), join(workspaceRoot, id)]);
+    const sourceRoot = id === 'collect-room' ? 'tests/fixtures/projects' : 'games';
+    await execFileAsync('cp', ['-R', join(root, sourceRoot, id), join(workspaceRoot, id)]);
   }
   for (const id of ['collect-room', 'physics-targets']) {
     const validation = await workspace.validateProject(id);
