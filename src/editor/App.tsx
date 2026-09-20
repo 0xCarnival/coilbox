@@ -13,7 +13,14 @@ import { Inspector } from './panels/Inspector.js';
 import { Toolbar, SaveIndicator } from './panels/Toolbar.js';
 import { BottomPanel, type BottomTab } from './panels/BottomPanel.js';
 import { Viewport, type PlayState, type ViewportDisplay, type ViewportHandle } from './panels/Viewport.js';
-import type { CameraPlanes, SnapSettings, TransformTool, ViewFace } from './viewport/viewport-controller.js';
+import type { CameraPlanes, SnapSettings, TransformSpace, TransformTool, ViewFace } from './viewport/viewport-controller.js';
+import {
+  isBookmarkSlot,
+  loadBookmarks,
+  saveBookmarks,
+  type BookmarkSlot,
+  type CameraBookmarks,
+} from './state/camera-bookmarks.js';
 import { isFiniteJsonNumber, isJsonString, jsonField } from './json-values.js';
 import { IconRail } from './ui/IconRail.js';
 import { ResizeHandle } from './ui/ResizeHandle.js';
@@ -263,6 +270,7 @@ function StudioShell(): JSX.Element {
   const viewportRef = useRef<ViewportHandle | null>(null);
   const [playState, setPlayState] = useState<PlayState>('stopped');
   const [tool, setTool] = useState<TransformTool>('translate');
+  const [space, setSpace] = useState<TransformSpace>('world');
   const [snap, setSnap] = useState<SnapSettings>({ enabled: false, translate: 0.5, rotateDegrees: 15, scale: 0.25 });
   const [status, setStatus] = useState<string>('');
   const [layout, setLayout] = useState<Layout>(() => loadLayout());
@@ -292,6 +300,55 @@ function StudioShell(): JSX.Element {
   /** Whether the stage is currently showing the game camera's view, for the palette's label. */
   const [cameraView, setCameraView] = useState(false);
   const [exporting, setExporting] = useState(false);
+  /**
+   * The scene's saved framings, mirrored from browser storage.
+   *
+   * Reloaded whenever the project or scene changes, because the slots are per scene: slot 1 in
+   * one scene must not restore a framing saved in another.
+   */
+  const [bookmarks, setBookmarks] = useState<CameraBookmarks>({});
+  const projectId = snapshot.project?.id ?? null;
+  const sceneId = snapshot.sceneId;
+  useEffect(() => {
+    setBookmarks(projectId && sceneId ? loadBookmarks(globalThis.localStorage, projectId, sceneId) : {});
+  }, [projectId, sceneId]);
+
+  const saveBookmark = useCallback(
+    (slot: BookmarkSlot) => {
+      const bookmark = viewportRef.current?.cameraBookmark();
+      if (!bookmark || !projectId || !sceneId) return;
+      const next = { ...bookmarks, [slot]: bookmark };
+      saveBookmarks(globalThis.localStorage, projectId, sceneId, next);
+      setBookmarks(next);
+      setStatus(`Saved the view as bookmark ${slot} (Shift+${slot} returns to it)`);
+    },
+    [bookmarks, projectId, sceneId],
+  );
+
+  const recallBookmark = useCallback(
+    (slot: BookmarkSlot) => {
+      const bookmark = bookmarks[slot];
+      if (!bookmark) {
+        setStatus(`No view saved as bookmark ${slot} — Ctrl+Shift+${slot} saves the current one`);
+        return;
+      }
+      viewportRef.current?.applyCameraBookmark(bookmark);
+      setCameraView(false);
+      setStatus(`Bookmark ${slot}`);
+    },
+    [bookmarks],
+  );
+
+  const clearBookmarks = useCallback(() => {
+    if (!projectId || !sceneId) return;
+    saveBookmarks(globalThis.localStorage, projectId, sceneId, {});
+    setBookmarks({});
+    setStatus('Cleared the view bookmarks for this scene');
+  }, [projectId, sceneId]);
+
+  const toggleSpace = useCallback(() => {
+    setSpace((current) => (current === 'world' ? 'local' : 'world'));
+  }, []);
 
   useEffect(() => {
     globalThis.localStorage?.setItem(LAYOUT_KEY, JSON.stringify(layout));
@@ -391,6 +448,17 @@ function StudioShell(): JSX.Element {
       const digit = numpadDigit(event.code);
       const viewport = viewportRef.current;
       if (digit === null || !viewport) return false;
+      /**
+       * Shift turns a view digit into a bookmark: Shift+N returns to a saved framing, Ctrl+Shift+N
+       * saves the current one. Read from `code` like the views, because Shift+3 reports "#" as its
+       * key on one layout and "£" on another.
+       */
+      if (event.shiftKey && isBookmarkSlot(digit)) {
+        if (event.ctrlKey || event.metaKey) saveBookmark(digit);
+        else recallBookmark(digit);
+        return true;
+      }
+      if (event.shiftKey) return false;
       /** Ctrl is Blender's "the other side of this axis", not a modifier on the same view. */
       const sign: 1 | -1 = event.ctrlKey || event.metaKey ? -1 : 1;
       /**
@@ -441,7 +509,7 @@ function StudioShell(): JSX.Element {
           return false;
       }
     },
-    [toggleCameraView],
+    [recallBookmark, saveBookmark, toggleCameraView],
   );
 
   // Editor shortcuts only fire while the viewport owns the keyboard (plan §3). Text fields
@@ -522,13 +590,21 @@ function StudioShell(): JSX.Element {
         viewportRef.current?.focusSelection();
         return;
       }
+      /**
+       * Blender has no single key for Global/Local; the closest habit is typing an axis twice
+       * during a transform. A plain toggle on the tool row is the honest equivalent here.
+       */
+      if (!meta && !event.altKey && !event.shiftKey && (event.key === 'l' || event.key === 'L')) {
+        toggleSpace();
+        return;
+      }
       if (event.key === 'g' || event.key === 'G' || event.key === 'w' || event.key === 'W') setTool('translate');
       if (event.key === 'r' || event.key === 'R' || event.key === 'e' || event.key === 'E') setTool('rotate');
       if (event.key === 's' || event.key === 'S') setTool('scale');
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [editorLocked, session, handleViewKey]);
+  }, [editorLocked, session, handleViewKey, toggleSpace]);
 
   /**
    * A rail click selects a panel. Selecting the hierarchy toggles its column; selecting one of the
@@ -589,8 +665,10 @@ function StudioShell(): JSX.Element {
             viewport={viewportRef}
             playState={playState}
             tool={tool}
+            space={space}
             snap={snap}
             onToolChange={setTool}
+            onSpaceChange={setSpace}
             onSnapChange={setSnap}
             onExport={() => void exportGame()}
             exporting={exporting}
@@ -633,6 +711,7 @@ function StudioShell(): JSX.Element {
               <Viewport
                 handleRef={viewportRef}
                 tool={tool}
+                space={space}
                 snap={snap}
                 onPlayStateChange={setPlayState}
                 onStatus={(message) => {
@@ -665,6 +744,10 @@ function StudioShell(): JSX.Element {
                 onGridChange={(next) => setOverlay({ grid: next })}
                 shadows={shadows}
                 onShadowsChange={(next) => setOverlay({ shadows: next })}
+                bookmarks={bookmarks}
+                onSaveBookmark={saveBookmark}
+                onRecallBookmark={recallBookmark}
+                onClearBookmarks={clearBookmarks}
                 measurements={measurements}
                 onMeasurementsChange={setMeasurements}
               />
@@ -732,7 +815,12 @@ function StudioShell(): JSX.Element {
               cameraView: toggleCameraView,
               frameAll: () => viewportRef.current?.frameAll(),
               inCameraView: cameraView,
+              bookmarks,
+              saveBookmark,
+              recallBookmark,
             }}
+            space={space}
+            onSpaceChange={setSpace}
             onExport={() => void exportGame()}
           />
           </Suspense>

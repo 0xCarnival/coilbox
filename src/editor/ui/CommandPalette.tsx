@@ -6,8 +6,9 @@ import { Search } from 'lucide-react';
 import { createEntity, CREATABLE_KINDS, CREATABLE_LABELS, type CreatableKind } from '../document/factory.js';
 import { color, control, fontSize, radius, space } from '../styles/tokens.stylex.js';
 import { useSession, useSessionSnapshot } from '../hooks.js';
-import type { TransformTool, ViewFace } from '../viewport/viewport-controller.js';
+import type { TransformSpace, TransformTool, ViewFace } from '../viewport/viewport-controller.js';
 import type { PlayState } from '../panels/Viewport.js';
+import { BOOKMARK_SLOTS, type BookmarkSlot, type CameraBookmarks } from '../state/camera-bookmarks.js';
 
 /**
  * The command palette.
@@ -190,7 +191,12 @@ export interface CommandPaletteProps {
     cameraView(): void;
     frameAll(): void;
     inCameraView: boolean;
+    bookmarks: CameraBookmarks;
+    saveBookmark(slot: BookmarkSlot): void;
+    recallBookmark(slot: BookmarkSlot): void;
   };
+  space: TransformSpace;
+  onSpaceChange(space: TransformSpace): void;
 }
 
 export function CommandPalette({
@@ -201,6 +207,8 @@ export function CommandPalette({
   playback,
   onExport,
   view,
+  space,
+  onSpaceChange,
 }: CommandPaletteProps): JSX.Element {
   const session = useSession();
   const snapshot = useSessionSnapshot();
@@ -243,6 +251,13 @@ export function CommandPalette({
       { id: 'tool:rotate', label: 'Tool: Rotate', group: 'Tools', shortcut: 'R', run: () => onToolChange('rotate') },
       { id: 'tool:scale', label: 'Tool: Scale', group: 'Tools', shortcut: 'S', run: () => onToolChange('scale') },
       { id: 'tool:focus', label: 'Focus the selection', group: 'Tools', shortcut: 'F', run: onFocusSelection },
+      {
+        id: 'tool:space',
+        label: space === 'world' ? 'Transform space: Local (object axes)' : 'Transform space: World',
+        group: 'Tools',
+        shortcut: 'L',
+        run: () => onSpaceChange(space === 'world' ? 'local' : 'world'),
+      },
       { id: 'view:front', label: 'View: front', group: 'View', shortcut: '1', run: () => view.face({ axis: 'z', sign: 1 }) },
       { id: 'view:right', label: 'View: right', group: 'View', shortcut: '3', run: () => view.face({ axis: 'x', sign: 1 }) },
       { id: 'view:top', label: 'View: top', group: 'View', shortcut: '7', run: () => view.face({ axis: 'y', sign: 1 }) },
@@ -262,6 +277,20 @@ export function CommandPalette({
         run: view.cameraView,
       },
       { id: 'view:frame-all', label: 'Frame everything', group: 'View', shortcut: 'Home', run: view.frameAll },
+      ...BOOKMARK_SLOTS.filter((slot) => view.bookmarks[slot] !== undefined).map((slot) => ({
+        id: `view:bookmark:${slot}`,
+        label: `View: bookmark ${slot}`,
+        group: 'View',
+        shortcut: `Shift+${slot}`,
+        run: () => view.recallBookmark(slot),
+      })),
+      ...BOOKMARK_SLOTS.map((slot) => ({
+        id: `view:save-bookmark:${slot}`,
+        label: `Save this view as bookmark ${slot}${view.bookmarks[slot] ? ' (replace)' : ''}`,
+        group: 'View',
+        shortcut: `Ctrl+Shift+${slot}`,
+        run: () => view.saveBookmark(slot),
+      })),
       {
         id: 'edit:undo',
         label: 'Undo',
@@ -328,7 +357,7 @@ export function CommandPalette({
       { id: 'play:stop', label: 'Stop and discard the simulation', group: 'Play', run: playback.stop },
       { id: 'file:export', label: 'Export the game', group: 'File', run: onExport },
     ];
-  }, [onExport, onFocusSelection, onToolChange, playback, session, snapshot.primarySelection, snapshot.selectedIds]);
+  }, [onExport, onFocusSelection, onSpaceChange, onToolChange, playback, session, snapshot.primarySelection, snapshot.selectedIds, space, view]);
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();

@@ -18,7 +18,7 @@ import {
 import { color, control, fontSize, radius, space } from '../styles/tokens.stylex.js';
 import { DOM, DOM_STATE, withDomClass } from '../dom-contract.js';
 import { useSession, useSessionSnapshot } from '../hooks.js';
-import type { TransformTool } from '../viewport/viewport-controller.js';
+import type { TransformSpace, TransformTool } from '../viewport/viewport-controller.js';
 import type { PlayState, ViewportHandle } from './Viewport.js';
 import type { SnapSettings } from '../viewport/viewport-controller.js';
 import { createEntity, CREATABLE_KINDS, CREATABLE_LABELS, type CreatableKind } from '../document/factory.js';
@@ -185,8 +185,10 @@ export interface ToolbarProps {
   viewport: React.RefObject<ViewportHandle | null>;
   playState: PlayState;
   tool: TransformTool;
+  space: TransformSpace;
   snap: SnapSettings;
   onToolChange(tool: TransformTool): void;
+  onSpaceChange(space: TransformSpace): void;
   onSnapChange(snap: SnapSettings): void;
   onExport(): void;
   exporting: boolean;
@@ -196,8 +198,10 @@ export function Toolbar({
   viewport,
   playState,
   tool,
+  space,
   snap,
   onToolChange,
+  onSpaceChange,
   onSnapChange,
   onExport,
   exporting,
@@ -280,6 +284,20 @@ export function Toolbar({
             {TOOL_LABELS[candidate]}
           </button>
         ))}
+        <button
+          {...withDomClass(styles.toolButton, space === 'local' && styles.toolActive, space === 'local' && DOM_STATE.active)}
+          type="button"
+          title={
+            space === 'world'
+              ? 'Gizmo axes follow the world (L switches to the object’s own axes)'
+              : 'Gizmo axes follow the selected object (L switches back to the world)'
+          }
+          aria-label="Transform space"
+          aria-pressed={space === 'local'}
+          onClick={() => onSpaceChange(space === 'world' ? 'local' : 'world')}
+        >
+          {space === 'world' ? 'World' : 'Local'}
+        </button>
         <label {...withDomClass(styles.snapToggle, DOM.snapToggle)} title="Snap transforms to the grid">
           <input
             type="checkbox"

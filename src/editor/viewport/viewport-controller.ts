@@ -24,6 +24,14 @@ import { applyPivotDelta, pointsInRect } from './group-transform.js';
 
 export type TransformTool = 'translate' | 'rotate' | 'scale';
 
+/**
+ * The frame a transform gizmo's axes are drawn in: the world's, or the selected object's own.
+ *
+ * Blender's Global/Local. For a group the pivot takes the primary selection's orientation in local
+ * space, so dragging along the gizmo's X moves the group along *that object's* X.
+ */
+export type TransformSpace = 'world' | 'local';
+
 export interface SnapSettings {
   enabled: boolean;
   translate: number;
@@ -254,6 +262,21 @@ export interface CanvasSize {
 export type ProjectionKind = 'perspective' | 'orthographic';
 
 /**
+ * Everything that places the editor camera, as plain numbers so it can be stored and restored.
+ *
+ * `zoom` is the orthographic dolly: `OrbitControls` zooms an orthographic camera by scaling its
+ * frustum rather than moving it, so position and target alone would restore a top view at the wrong
+ * magnification.
+ */
+export interface CameraBookmark {
+  projection: ProjectionKind;
+  position: [number, number, number];
+  target: [number, number, number];
+  up: [number, number, number];
+  zoom: number;
+}
+
+/**
  * The six directions the view gizmo can look from.
  *
  * Named after the axis and the side rather than after Blender's Front/Back/Top/Bottom vocabulary:
@@ -308,6 +331,8 @@ export class EditorViewport {
   readonly renderer: THREE.WebGLRenderer;
   private orbit: OrbitControls;
   private transform: TransformControls;
+  /** Kept here because a projection switch rebuilds `TransformControls`, which starts in world space. */
+  private space: TransformSpace = 'world';
   /** The projection currently in use, so a resize knows which camera to refit. */
   private project: ProjectionKind = 'perspective';
   /**
@@ -878,6 +903,10 @@ export class EditorViewport {
         center.multiplyScalar(1 / objects.length);
         this.pivot.position.copy(center);
         this.pivot.quaternion.identity();
+        if (this.space === 'local') {
+          const primary = this.projections.get(this.selection[0]!)?.object ?? objects[0]!;
+          primary.getWorldQuaternion(this.pivot.quaternion);
+        }
         this.pivot.scale.setScalar(1);
         this.pivot.updateMatrixWorld(true);
         this.transform.attach(this.pivot);
@@ -910,6 +939,49 @@ export class EditorViewport {
 
   setTool(tool: TransformTool): void {
     this.transform.setMode(tool);
+  }
+
+  setSpace(space: TransformSpace): void {
+    if (space === this.space) return;
+    this.space = space;
+    this.transform.setSpace(space);
+    /** The group pivot's orientation depends on the space, so it is re-derived rather than kept. */
+    this.attachTransform();
+  }
+
+  transformSpace(): TransformSpace {
+    return this.space;
+  }
+
+  /** The current framing, in a form that survives a reload. */
+  cameraBookmark(): CameraBookmark {
+    const { position, up } = this.camera;
+    const { target } = this.orbit;
+    return {
+      projection: this.project,
+      position: [position.x, position.y, position.z],
+      target: [target.x, target.y, target.z],
+      up: [up.x, up.y, up.z],
+      zoom: this.camera.zoom,
+    };
+  }
+
+  /**
+   * Restore a saved framing. Leaves the game camera's view first, like every other view command,
+   * and rebuilds the camera when the bookmark's projection differs from the current one.
+   */
+  applyCameraBookmark(bookmark: CameraBookmark): void {
+    this.exitCameraView();
+    this.replaceCamera(bookmark.projection);
+    this.camera.position.set(...bookmark.position);
+    this.camera.up.set(...bookmark.up);
+    this.orbit.target.set(...bookmark.target);
+    this.camera.zoom = bookmark.zoom;
+    this.camera.lookAt(this.orbit.target);
+    this.camera.updateProjectionMatrix();
+    this.orbit.update();
+    this.resize();
+    this.renderNow();
   }
 
   setSnap(snap: SnapSettings): void {
@@ -1364,6 +1436,7 @@ export class EditorViewport {
     const nextHelper = this.transform.getHelper();
     nextHelper.userData[EDITOR_ONLY] = true;
     this.scene.add(nextHelper);
+    this.transform.setSpace(this.space);
     this.attachTransform();
 
     this.resize();
