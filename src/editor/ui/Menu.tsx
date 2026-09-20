@@ -62,7 +62,7 @@ const menuStyles = stylex.create({
   itemDanger: {
     color: color.danger,
     ':hover': {
-      backgroundColor: 'rgba(255, 100, 103, 0.1)',
+      backgroundColor: color['danger-wash-soft'],
     },
   },
   /** The leading slot for an item's icon, so labels line up whether or not a row has one. */

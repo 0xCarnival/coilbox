@@ -57,12 +57,12 @@ const styles = stylex.create({
     borderRadius: radius.lg,
     borderWidth: '1px',
     borderStyle: 'solid',
-    borderColor: 'rgba(255, 255, 255, 0.075)',
-    backgroundColor: 'rgba(51, 51, 51, 0.3)',
+    borderColor: color['field-border'],
+    backgroundColor: color.field,
     transitionProperty: 'border-color, box-shadow',
     transitionDuration: '75ms',
     ':hover': {
-      borderColor: 'rgba(255, 255, 255, 0.15)',
+      borderColor: color['border-input'],
     },
     ':focus-within': {
       borderColor: color.ring,

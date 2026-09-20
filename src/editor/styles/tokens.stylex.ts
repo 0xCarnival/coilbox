@@ -32,6 +32,14 @@ import * as stylex from '@stylexjs/stylex';
  *
  * The one place a hue could appear is `primary`, and it does not: their default button is a
  * near-white fill with dark text, not a coloured one.
+ *
+ * ## Themes
+ *
+ * These are the dark values. `styles/themes.stylex.ts` overrides them with `stylex.createTheme` for
+ * the light theme, which is why every colour a component paints has to come from here: a literal
+ * `rgba(23, 23, 23, 0.92)` in a panel is a dark surface that stays dark when the rest of the chrome
+ * turns light. The translucent overlays, the field fills, the shadows and the danger tints are all
+ * tokens for that reason, not because they were ever meant to be tuned separately.
  */
 
 /** Surfaces, lines, text, and status colours. */
@@ -74,11 +82,47 @@ export const color = stylex.defineVars({
   /** `white/10%` — a hovered row, or a pressed button. */
   'wash-strong': 'rgba(255, 255, 255, 0.1)',
 
+  /** The primary fill at hover and when pressed, one and two steps darker. */
+  'primary-hover': '#dcdcdc',
+  'primary-active': '#c9c9c9',
+  /** The `secondary` button fill at hover, one step above `surface`. */
+  'surface-hover': '#3d3d3d',
+
   /** The focus ring. Neutral, like theirs. `oklch(0.556 0 0)`. */
   ring: '#8a8a8a',
+  /** The ring as painted: at half opacity, so it reads over any surface. */
+  'ring-soft': 'rgba(138, 138, 138, 0.5)',
+
+  /** `white/8%` — a hairline inside a control group or between rows, fainter than `border`. */
+  'border-faint': 'rgba(255, 255, 255, 0.08)',
+  /** A scrub field or value cell at rest: barely there, until hovered. */
+  field: 'rgba(51, 51, 51, 0.3)',
+  'field-border': 'rgba(255, 255, 255, 0.075)',
+
+  /** A card floating over the stage: hint, starter, tool dock, toast. `bg` at 92%. */
+  overlay: 'rgba(23, 23, 23, 0.92)',
+  /** A lighter version of the same, for a control that sits on the stage. */
+  'overlay-soft': 'rgba(23, 23, 23, 0.72)',
+  /** The backdrop behind a modal layer. */
+  scrim: 'rgba(0, 0, 0, 0.55)',
+  /** The marquee fill: the selection colour at low opacity. */
+  'selection-wash': 'rgba(232, 232, 232, 0.12)',
+
+  /** Shadow colours. A dark theme needs a heavy shadow to lift a layer off a dark surface. */
+  shadow: 'rgba(0, 0, 0, 0.5)',
+  'shadow-soft': 'rgba(0, 0, 0, 0.4)',
 
   /** Status only. These never appear in ordinary chrome. */
   danger: '#ff6467',
+  /** Text on a danger surface, and the danger button's label. */
+  'danger-ink': '#ffc9c9',
+  /** A danger button's border and hover fill. */
+  'danger-border': 'rgba(255, 100, 103, 0.4)',
+  'danger-wash': 'rgba(255, 100, 103, 0.15)',
+  'danger-wash-soft': 'rgba(255, 100, 103, 0.1)',
+  /** An error banner: a dark red surface with pale red text. */
+  'danger-surface': 'rgba(46, 20, 18, 0.94)',
+  'danger-text': '#f6ddd9',
   warn: '#e8b04b',
   ok: '#77b892',
 });
@@ -158,12 +202,6 @@ export const fontFamily = stylex.defineVars({
  * uses `defineVars` below.
  */
 export const control = {
-  /** `h-7` — the editor's compact control: toolbar buttons and panel actions. */
-  xs: '28px',
-  /** `h-8` — the compact control: toolbar buttons, icon buttons, the scrub field. */
-  sm: '32px',
-  /** `h-9` — the default control: buttons and inputs in forms and menus. */
-  md: '36px',
   /** `size-4` — the icon size inside a button. */
   icon: 16,
   /** `size-3.5` — a menu item's tick, a tree row's glyph. */
@@ -176,13 +214,18 @@ export const control = {
  * The control lengths that styles need, as real custom properties.
  *
  * StyleX emits these as `--control-rail` and resolves them inside `stylex.create`, so a rule can
- * reference a named length and still get a declaration out the other side.
+ * reference a named length and still get a declaration out the other side. Being variables is also
+ * what lets the density setting re-scale every control from one `createTheme` in `themes.stylex.ts`.
  */
 export const controlSize = stylex.defineVars({
   rail: '56px',
+  /** `h-7` — the editor's compact control: toolbar buttons and panel actions. */
   xs: '28px',
+  /** `h-8` — icon buttons, the scrub field, form controls. */
   sm: '32px',
+  /** `h-9` — the default control in menus and forms. */
   md: '36px',
+  /** A tree, list, or field row. */
   row: '24px',
   /** The reserved trailing lane in a tree row. */
   lane: '112px',
@@ -235,10 +278,10 @@ export const button = stylex.create({
     borderStyle: 'none',
     fontWeight: 500,
     ':hover': {
-      backgroundColor: '#dcdcdc',
+      backgroundColor: color['primary-hover'],
     },
     ':active': {
-      backgroundColor: '#c9c9c9',
+      backgroundColor: color['primary-active'],
     },
   },
   /** A bordered, transparent control. Their `variant: outline`. */
@@ -260,7 +303,7 @@ export const button = stylex.create({
     borderStyle: 'none',
     color: color.text,
     ':hover': {
-      backgroundColor: '#3d3d3d',
+      backgroundColor: color['surface-hover'],
     },
   },
   /** No chrome at rest, a wash on hover. Their `variant: ghost`, and the editor's workhorse. */
@@ -295,7 +338,7 @@ export const button = stylex.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: space.sm,
-    height: control.xs,
+    height: controlSize.xs,
     paddingInline: space.md,
     borderRadius: radius.md,
     fontSize: fontSize.sm,
@@ -308,7 +351,7 @@ export const button = stylex.create({
     ':focus-visible': {
       outlineWidth: '3px',
       outlineStyle: 'solid',
-      outlineColor: 'rgba(138, 138, 138, 0.5)',
+      outlineColor: color['ring-soft'],
       outlineOffset: '0px',
     },
     ':disabled': {
@@ -349,8 +392,8 @@ export const button = stylex.create({
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    height: control.xs,
-    width: control.xs,
+    height: controlSize.xs,
+    width: controlSize.xs,
     paddingInline: 0,
     borderRadius: radius.md,
     flexShrink: 0,
@@ -360,7 +403,7 @@ export const button = stylex.create({
     ':focus-visible': {
       outlineWidth: '3px',
       outlineStyle: 'solid',
-      outlineColor: 'rgba(138, 138, 138, 0.5)',
+      outlineColor: color['ring-soft'],
       outlineOffset: '0px',
     },
     ':disabled': {
@@ -426,7 +469,7 @@ export const surface = stylex.create({
     minWidth: '128px',
     overflowY: 'auto',
     overflowX: 'hidden',
-    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.4)',
+    boxShadow: `0 4px 6px -1px ${color['shadow-soft']}, 0 2px 4px -2px ${color['shadow-soft']}`,
     zIndex: 50,
   },
   /**

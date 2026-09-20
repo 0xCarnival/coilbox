@@ -4,6 +4,10 @@ import * as stylex from '@stylexjs/stylex';
 import type { JsonValue } from '@schema/index.js';
 import { activeCameraEntityId } from '@runtime/scene-graph.js';
 import { color, controlSize, fontSize, radius, space, surface } from './styles/tokens.stylex.js';
+import { comfortableControls, comfortableSpace, lightTheme } from './styles/themes.stylex.js';
+import { AppearanceProvider } from './state/appearance.js';
+import { useThemeState } from './state/theme.js';
+import { useDensityState } from './state/density.js';
 import { DOM, withDomClass } from './dom-contract.js';
 import { SessionProvider, isTextEntryTarget, useSession, useSessionSnapshot } from './hooks.js';
 import { EditorSession } from './state/editor-session.js';
@@ -169,7 +173,7 @@ const styles = stylex.create({
     display: 'flex',
     alignItems: 'center',
     gap: space.lg,
-    height: '28px',
+    height: controlSize.xs,
     paddingInline: space.lg,
     backgroundColor: color.bg,
     borderBlockStartWidth: '1px',
@@ -292,6 +296,9 @@ function StudioShell(): JSX.Element {
   /** Whether the stage is currently showing the game camera's view, for the palette's label. */
   const [cameraView, setCameraView] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const theme = useThemeState();
+  const density = useDensityState();
+  const appearance = useMemo(() => ({ theme, density }), [theme, density]);
 
   useEffect(() => {
     globalThis.localStorage?.setItem(LAYOUT_KEY, JSON.stringify(layout));
@@ -580,177 +587,192 @@ function StudioShell(): JSX.Element {
   const openProject = snapshot.project !== null;
 
   return (
-    <div {...withDomClass(styles.studio, DOM.studio)}>
-      {!openProject ? (
-        <ProjectHome />
-      ) : (
-        <>
-          <Toolbar
-            viewport={viewportRef}
-            playState={playState}
-            tool={tool}
-            snap={snap}
-            onToolChange={setTool}
-            onSnapChange={setSnap}
-            onExport={() => void exportGame()}
-            exporting={exporting}
-          />
-          <div
-            {...withDomClass(styles.studioBody, DOM.studioBody)}
-            style={{
-              gridTemplateColumns: `${controlSize.rail} ${leftCollapsed ? 0 : layout.left}px 1fr ${layout.right}px`,
-              gridTemplateRows: `1fr ${layout.bottom}px`,
-            }}
-          >
-            <div {...stylex.props(styles.railHost)}>
-              <IconRail active={railPanel} onSelect={selectRailPanel} declared={snapshot.panels} />
-            </div>
-            {/**
-             * The hierarchy column collapses to zero rather than to a minimum. A panel shrunk to a
-             * sliver is worse than no panel: the rail stays, so the way back is always visible.
-             */}
-            {!leftCollapsed && (
-              <div {...stylex.props(styles.leftColumn, surface.panel, surface.edgeEnd, surface.edgeBottom)}>
-                <Hierarchy locked={editorLocked} />
+    <AppearanceProvider value={appearance}>
+      {/**
+       * The light theme and the comfortable density are `createTheme` classes on the root, so every
+       * `color.*` and `controlSize.*` below resolves to their values. The `<html data-theme>` attribute
+       * for plain CSS is set by `useThemeState`.
+       */}
+      <div
+        {...withDomClass(
+          styles.studio,
+          theme.resolved === 'light' && lightTheme,
+          density.preference === 'comfortable' && comfortableControls,
+          density.preference === 'comfortable' && comfortableSpace,
+          DOM.studio,
+        )}
+      >
+        {!openProject ? (
+          <ProjectHome />
+        ) : (
+          <>
+            <Toolbar
+              viewport={viewportRef}
+              playState={playState}
+              tool={tool}
+              snap={snap}
+              onToolChange={setTool}
+              onSnapChange={setSnap}
+              onExport={() => void exportGame()}
+              exporting={exporting}
+            />
+            <div
+              {...withDomClass(styles.studioBody, DOM.studioBody)}
+              style={{
+                gridTemplateColumns: `${controlSize.rail} ${leftCollapsed ? 0 : layout.left}px 1fr ${layout.right}px`,
+                gridTemplateRows: `1fr ${layout.bottom}px`,
+              }}
+            >
+              <div {...stylex.props(styles.railHost)}>
+                <IconRail active={railPanel} onSelect={selectRailPanel} declared={snapshot.panels} />
+              </div>
+              {/**
+               * The hierarchy column collapses to zero rather than to a minimum. A panel shrunk to a
+               * sliver is worse than no panel: the rail stays, so the way back is always visible.
+               */}
+              {!leftCollapsed && (
+                <div {...stylex.props(styles.leftColumn, surface.panel, surface.edgeEnd, surface.edgeBottom)}>
+                  <Hierarchy locked={editorLocked} />
+                  {/**
+                   * The resize handle is absolutely positioned into the boundary between the rail and
+                   * the column rather than given a grid track. A track would add its width to the
+                   * layout; this overlays the seam that is already there, so the handle is draggable
+                   * without the workspace gaining a permanent 7px of nothing.
+                   */}
+                  <ResizeHandle
+                    label="Resize the scene panel"
+                    size={layout.left}
+                    min={220}
+                    max={520}
+                    collapseBelow={200}
+                    onCollapse={() => setLeftCollapsed(true)}
+                    onResize={(next) => setLayout((current) => ({ ...current, left: next }))}
+                  />
+                </div>
+              )}
+              <div {...stylex.props(styles.centerPanel)}>
+                <Viewport
+                  handleRef={viewportRef}
+                  tool={tool}
+                  snap={snap}
+                  onPlayStateChange={setPlayState}
+                  onStatus={(message) => {
+                    setStatus(message);
+                    session.log('warning', message);
+                  }}
+                />
                 {/**
-                 * The resize handle is absolutely positioned into the boundary between the rail and
-                 * the column rather than given a grid track. A track would add its width to the
-                 * layout; this overlays the seam that is already there, so the handle is draggable
-                 * without the workspace gaining a permanent 7px of nothing.
+                 * The selection's own verbs, floating over the stage rather than living in the
+                 * inspector footer. The viewport owns the focus action, so the bar is mounted beside
+                 * it rather than inside the inspector.
                  */}
-                <ResizeHandle
-                  label="Resize the scene panel"
-                  size={layout.left}
-                  min={220}
-                  max={520}
-                  collapseBelow={200}
-                  onCollapse={() => setLeftCollapsed(true)}
-                  onResize={(next) => setLayout((current) => ({ ...current, left: next }))}
+                {/**
+                 * One card, not two. The badge above the stage named the selection and the hint card
+                 * explains it; two floating overlays over one canvas is one too many, and the card
+                 * carries both facts.
+                 */}
+                <HintCard tool={tool} visible={!editorLocked} />
+                <StarterCard visible={!editorLocked} />
+                {/**
+                 * Toasts float over the stage, not the window, so they never cover the inspector's
+                 * fields or the status bar; they are suppressed while the console tab is showing,
+                 * since repeating the line the user is already looking at is noise.
+                 */}
+                <Toasts enabled={bottomTab !== 'console'} />
+                <ViewGizmo
+                  viewport={viewportRef}
+                  visible={!editorLocked}
+                  grid={grid}
+                  onGridChange={(next) => setOverlay({ grid: next })}
+                  shadows={shadows}
+                  onShadowsChange={(next) => setOverlay({ shadows: next })}
+                  measurements={measurements}
+                  onMeasurementsChange={setMeasurements}
+                />
+                <MeasurementOverlay viewport={viewportRef} visible={!editorLocked && measurements} />
+                <ToolDock
+                  tool={tool}
+                  onToolChange={setTool}
+                  onFocus={() => viewportRef.current?.focusSelection()}
+                  snap={snap}
+                  onSnapChange={setSnap}
+                  visible={!editorLocked}
                 />
               </div>
-            )}
-            <div {...stylex.props(styles.centerPanel)}>
-              <Viewport
-                handleRef={viewportRef}
-                tool={tool}
-                snap={snap}
-                onPlayStateChange={setPlayState}
-                onStatus={(message) => {
-                  setStatus(message);
-                  session.log('warning', message);
-                }}
-              />
-              {/**
-               * The selection's own verbs, floating over the stage rather than living in the
-               * inspector footer. The viewport owns the focus action, so the bar is mounted beside
-               * it rather than inside the inspector.
-               */}
-              {/**
-               * One card, not two. The badge above the stage named the selection and the hint card
-               * explains it; two floating overlays over one canvas is one too many, and the card
-               * carries both facts.
-               */}
-              <HintCard tool={tool} visible={!editorLocked} />
-              <StarterCard visible={!editorLocked} />
-              {/**
-               * Toasts float over the stage, not the window, so they never cover the inspector's
-               * fields or the status bar; they are suppressed while the console tab is showing,
-               * since repeating the line the user is already looking at is noise.
-               */}
-              <Toasts enabled={bottomTab !== 'console'} />
-              <ViewGizmo
-                viewport={viewportRef}
-                visible={!editorLocked}
-                grid={grid}
-                onGridChange={(next) => setOverlay({ grid: next })}
-                shadows={shadows}
-                onShadowsChange={(next) => setOverlay({ shadows: next })}
-                measurements={measurements}
-                onMeasurementsChange={setMeasurements}
-              />
-              <MeasurementOverlay viewport={viewportRef} visible={!editorLocked && measurements} />
-              <ToolDock
-                tool={tool}
-                onToolChange={setTool}
-                onFocus={() => viewportRef.current?.focusSelection()}
-                snap={snap}
-                onSnapChange={setSnap}
-                visible={!editorLocked}
-              />
-            </div>
-            <div {...stylex.props(styles.inspectorHost, surface.panel, surface.edgeStart, surface.edgeBottom)}>
-              <Inspector locked={editorLocked} />
-              <div {...stylex.props(styles.resizeLeading)}>
-                <ResizeHandle
-                  label="Resize the properties panel"
-                  size={layout.right}
-                  min={220}
-                  max={620}
-                  direction={-1}
-                  onResize={(next) => setLayout((current) => ({ ...current, right: next }))}
+              <div {...stylex.props(styles.inspectorHost, surface.panel, surface.edgeStart, surface.edgeBottom)}>
+                <Inspector locked={editorLocked} />
+                <div {...stylex.props(styles.resizeLeading)}>
+                  <ResizeHandle
+                    label="Resize the properties panel"
+                    size={layout.right}
+                    min={220}
+                    max={620}
+                    direction={-1}
+                    onResize={(next) => setLayout((current) => ({ ...current, right: next }))}
+                  />
+                </div>
+              </div>
+              <div {...stylex.props(styles.bottomHost, surface.panel, surface.edgeBottom)}>
+                <BottomPanel
+                  onReloadScene={() => void session.reloadScene()}
+                  tab={bottomTab}
+                  onTabChange={setBottomTab}
+                  locked={editorLocked}
                 />
+                <div {...stylex.props(styles.resizeTop)}>
+                  <ResizeHandle
+                    axis="y"
+                    direction={-1}
+                    label="Resize the bottom panel"
+                    size={layout.bottom}
+                    min={90}
+                    max={420}
+                    onResize={(next) => setLayout((current) => ({ ...current, bottom: next }))}
+                  />
+                </div>
               </div>
             </div>
-            <div {...stylex.props(styles.bottomHost, surface.panel, surface.edgeBottom)}>
-              <BottomPanel
-                onReloadScene={() => void session.reloadScene()}
-                tab={bottomTab}
-                onTabChange={setBottomTab}
-                locked={editorLocked}
-              />
-              <div {...stylex.props(styles.resizeTop)}>
-                <ResizeHandle
-                  axis="y"
-                  direction={-1}
-                  label="Resize the bottom panel"
-                  size={layout.bottom}
-                  min={90}
-                  max={420}
-                  onResize={(next) => setLayout((current) => ({ ...current, bottom: next }))}
-                />
-              </div>
-            </div>
-          </div>
-          <Suspense fallback={null}>
-          <CommandPalette
-            open={paletteOpen}
-            onOpenChange={setPaletteOpen}
-            onToolChange={setTool}
-            onFocusSelection={() => viewportRef.current?.focusSelection()}
-            playback={{
-              play: () => void viewportRef.current?.play(),
-              pause: () => viewportRef.current?.pause(),
-              step: () => viewportRef.current?.step(),
-              stop: () => viewportRef.current?.stop(),
-              state: playState,
-            }}
-            view={{
-              face: (face: ViewFace) => viewportRef.current?.faceView(face),
-              opposite: () => viewportRef.current?.oppositeView(),
-              toggleProjection: () => void viewportRef.current?.toggleProjection(),
-              /** The same callback numpad 0 uses, so the two cannot come to mean different things. */
-              cameraView: toggleCameraView,
-              frameAll: () => viewportRef.current?.frameAll(),
-              inCameraView: cameraView,
-            }}
-            onExport={() => void exportGame()}
-          />
-          </Suspense>
-          <footer {...withDomClass(styles.statusbar, DOM.statusbar)}>
-            <span>{status || 'Ready'}</span>
-            <span {...withDomClass(styles.statusbarSpacer, DOM.toolbarSpacer)} />
-            <span>{snapshot.sceneId ? `scene ${snapshot.sceneId}` : 'no scene'}</span>
-            <SaveIndicator state={snapshot.saveState} lastSavedAt={snapshot.lastSavedAt} />
-            {playState !== 'stopped' && (
-              <span {...stylex.props(styles.playState)}>
-                <span {...stylex.props(styles.playDot)} />
-                {playState}
-              </span>
-            )}
-          </footer>
-        </>
-      )}
-    </div>
+            <Suspense fallback={null}>
+            <CommandPalette
+              open={paletteOpen}
+              onOpenChange={setPaletteOpen}
+              onToolChange={setTool}
+              onFocusSelection={() => viewportRef.current?.focusSelection()}
+              playback={{
+                play: () => void viewportRef.current?.play(),
+                pause: () => viewportRef.current?.pause(),
+                step: () => viewportRef.current?.step(),
+                stop: () => viewportRef.current?.stop(),
+                state: playState,
+              }}
+              view={{
+                face: (face: ViewFace) => viewportRef.current?.faceView(face),
+                opposite: () => viewportRef.current?.oppositeView(),
+                toggleProjection: () => void viewportRef.current?.toggleProjection(),
+                /** The same callback numpad 0 uses, so the two cannot come to mean different things. */
+                cameraView: toggleCameraView,
+                frameAll: () => viewportRef.current?.frameAll(),
+                inCameraView: cameraView,
+              }}
+              onExport={() => void exportGame()}
+            />
+            </Suspense>
+            <footer {...withDomClass(styles.statusbar, DOM.statusbar)}>
+              <span>{status || 'Ready'}</span>
+              <span {...withDomClass(styles.statusbarSpacer, DOM.toolbarSpacer)} />
+              <span>{snapshot.sceneId ? `scene ${snapshot.sceneId}` : 'no scene'}</span>
+              <SaveIndicator state={snapshot.saveState} lastSavedAt={snapshot.lastSavedAt} />
+              {playState !== 'stopped' && (
+                <span {...stylex.props(styles.playState)}>
+                  <span {...stylex.props(styles.playDot)} />
+                  {playState}
+                </span>
+              )}
+            </footer>
+          </>
+        )}
+      </div>
+    </AppearanceProvider>
   );
 }
 

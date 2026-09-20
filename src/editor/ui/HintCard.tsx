@@ -75,9 +75,9 @@ const styles = stylex.create({
     borderWidth: '1px',
     borderStyle: 'solid',
     borderColor: color.border,
-    backgroundColor: 'rgba(23, 23, 23, 0.92)',
+    backgroundColor: color.overlay,
     backdropFilter: 'blur(8px)',
-    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.45)',
+    boxShadow: `0 8px 24px ${color.shadow}`,
     pointerEvents: 'auto',
     /**
      * The entrance is the toast's keyframes reused. One arrival motion for every floating layer

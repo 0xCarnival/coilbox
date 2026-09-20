@@ -1,4 +1,4 @@
-import type { StyleXStyles } from '@stylexjs/stylex';
+import type { StyleXStyles, Theme, VarGroup } from '@stylexjs/stylex';
 import * as stylex from '@stylexjs/stylex';
 
 /**
@@ -153,8 +153,11 @@ export const SAVE_STATE = {
  */
 export type DomClassProps = ReturnType<typeof stylex.props>;
 
+/** A style or a `createTheme` class: everything `stylex.props` accepts other than a hook name. */
+export type DomClassStyle = StyleXStyles | Theme<VarGroup<{}>>;
+
 /** A single `withDomClass` argument: a style, or a hook class name, or a conditional `false`. */
-export type DomClassPart = StyleXStyles | string | false | null | undefined;
+export type DomClassPart = DomClassStyle | string | false | null | undefined;
 
 /**
  * Narrow a `withDomClass` argument to a hook class name.
@@ -182,7 +185,7 @@ function isHookName(part: DomClassPart): part is string {
  * The `style` and `data-style-src` keys are passed through untouched; only `className` is composed.
  */
 export function withDomClass(...parts: readonly DomClassPart[]): DomClassProps {
-  const styles: StyleXStyles[] = [];
+  const styles: DomClassStyle[] = [];
   const hooks: string[] = [];
   for (const part of parts) {
     if (isHookName(part)) hooks.push(part);
