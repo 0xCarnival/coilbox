@@ -189,9 +189,12 @@ export interface ToolbarProps {
   snap: SnapSettings;
   onToolChange(tool: TransformTool): void;
   onSnapChange(snap: SnapSettings): void;
-  onExport(): void;
+  onExport(target: ExportTarget): void;
   exporting: boolean;
 }
+
+/** Where an export goes: the project's export folder, or that folder zipped into a download. */
+export type ExportTarget = 'folder' | 'download';
 
 export function Toolbar({
   viewport,
@@ -364,7 +367,7 @@ export function Toolbar({
 
       <div {...withDomClass(styles.group, DOM.toolbarGroup)}>
         <AppearanceMenu />
-        <IconButton label="Export Game" disabled={editorLocked || exporting} onClick={onExport}>
+        <IconButton label="Export Game" disabled={editorLocked || exporting} onClick={() => onExport('folder')}>
           <Download size={control.icon} />
         </IconButton>
         <DropdownMenu>
@@ -374,6 +377,9 @@ export function Toolbar({
             </IconButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" hooks={[DOM.menu]}>
+            <DropdownMenuItem disabled={editorLocked || exporting} onSelect={() => onExport('download')}>
+              Download game as .zip
+            </DropdownMenuItem>
             <DropdownMenuItem
               disabled={editorLocked}
               onSelect={() => {

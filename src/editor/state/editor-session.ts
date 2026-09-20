@@ -533,20 +533,24 @@ export class EditorSession {
     if (!projectId) return false;
     try {
       const bytes = await this.client.exportSource(projectId);
-      // `bytes.slice()` copies into a plain `ArrayBuffer`, which is what `BlobPart` accepts.
-      const blob = new Blob([bytes.slice()], { type: 'application/gzip' });
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      anchor.href = url;
-      anchor.download = `${projectId}-source.tar.gz`;
-      anchor.click();
-      URL.revokeObjectURL(url);
+      downloadBytes(bytes, `${projectId}-source.tar.gz`, 'application/gzip');
       this.log('info', `Exported the source of "${projectId}" (${(bytes.byteLength / 1024).toFixed(0)} KiB)`);
       return true;
     } catch (error) {
       this.log('error', `Could not export "${projectId}"`, describeError(error));
       return false;
     }
+  }
+
+  /**
+   * Download the most recent game export as a zip. The caller runs the build first; this only
+   * packages what that build wrote, so the archive can never be newer than the folder.
+   */
+  async downloadExport(projectId = this.project?.id): Promise<number> {
+    if (!projectId) throw new Error('no project is open');
+    const bytes = await this.client.exportPackage(projectId);
+    downloadBytes(bytes, `${projectId}.zip`, 'application/zip');
+    return bytes.byteLength;
   }
 
   /** Import a source archive as a new project. */
@@ -833,6 +837,18 @@ export class EditorSession {
 
 export function describeIssues(issues: ValidationIssue[]): string {
   return issues.length > 0 ? issues.map((issue) => `${issue.path}: ${issue.message}`).join('; ') : 'the change was rejected';
+}
+
+/** Hand bytes to the browser as a file download. */
+function downloadBytes(bytes: Uint8Array, fileName: string, type: string): void {
+  // `bytes.slice()` copies into a plain `ArrayBuffer`, which is what `BlobPart` accepts.
+  const blob = new Blob([bytes.slice()], { type });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = fileName;
+  anchor.click();
+  URL.revokeObjectURL(url);
 }
 
 /** Describe a caught failure. `cause` is whatever was thrown, so it has no narrower contract. */

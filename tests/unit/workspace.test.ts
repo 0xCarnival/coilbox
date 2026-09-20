@@ -214,6 +214,25 @@ describe('scene reads and writes', () => {
     const onDisk = JSON.parse(await readFile(gamePath, 'utf8'));
     expect(onDisk.schemaVersion).toBe(99);
   });
+
+  it('serves the most recent export as a zip download, and 404 before any export exists', async () => {
+    const missing = await request('/api/projects/g/export.zip');
+    expect(missing.status).toBe(404);
+    expect(missing.body.error).toBe('no-export');
+
+    const outDir = join(workspaceRoot, 'g', '.coilbox', 'export');
+    await mkdir(outDir, { recursive: true });
+    await writeFile(join(outDir, 'index.html'), '<!doctype html>');
+    const response = await fetch(`${api.url}/api/projects/g/export.zip`);
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toBe('application/zip');
+    expect(response.headers.get('content-disposition')).toBe('attachment; filename="g.zip"');
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    expect(response.headers.get('content-length')).toBe(String(bytes.byteLength));
+    // A zip starts with a local file header and ends with the end-of-central-directory record.
+    expect(Array.from(bytes.subarray(0, 4))).toEqual([0x50, 0x4b, 0x03, 0x04]);
+    expect(Array.from(bytes.subarray(bytes.byteLength - 22, bytes.byteLength - 18))).toEqual([0x50, 0x4b, 0x05, 0x06]);
+  });
 });
 
 describe('security', () => {

@@ -241,6 +241,18 @@ export class WorkspaceClient {
     return new Uint8Array(await response.arrayBuffer());
   }
 
+  /** The most recent export of a project, packaged as a zip. */
+  async exportPackage(projectId: string): Promise<Uint8Array> {
+    const response = await fetch(`${this.baseUrl}/projects/${encodeURIComponent(projectId)}/export.zip`, {
+      headers: { accept: 'application/zip' },
+    });
+    if (!response.ok) {
+      const failure = readServiceError(await response.text(), 'export-failed');
+      throw new WorkspaceClientError(response.status, failure.code, failure.message ?? response.statusText);
+    }
+    return new Uint8Array(await response.arrayBuffer());
+  }
+
   importSource(bytes: Uint8Array, projectId?: string): Promise<{ projectId: string; detail: string; warnings: string[] }> {
     const query = projectId ? `?projectId=${encodeURIComponent(projectId)}` : '';
     return this.request(`/projects/import${query}`, {

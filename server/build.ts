@@ -16,6 +16,7 @@ import { box3dWasmPlugin } from '../tools/vite-plugin-box3d-wasm.js';
 import { parseJson } from './json.js';
 import { assertProjectRelative, resolveInside } from './paths.js';
 import { behaviorAssetProperties, behaviorValidationContext, Workspace, WorkspaceError } from './workspace.js';
+import { createZip } from './zip.js';
 
 /**
  * Export Game: a standalone web player plus the project documents it needs (plan §14).
@@ -101,6 +102,47 @@ export function planAssetExport(manifest: AssetManifest, referenced: ReadonlySet
   };
 }
 
+export const DEFAULT_EXPORT_SUBDIRECTORY = join('.coilbox', 'export');
+
+export interface ExportPackage {
+  /** A zip of the export directory; every path sits under `<projectId>/`. */
+  bytes: Uint8Array;
+  fileName: string;
+  files: number;
+  /** Uncompressed size of the packaged files. */
+  totalBytes: number;
+}
+
+/**
+ * Package the most recent export of a project as one downloadable zip. This packages what
+ * `buildGame` wrote and nothing else, so the archive is exactly the folder a static server would
+ * serve; a project that has never been exported is refused instead of silently packaging nothing.
+ */
+export async function packageExport(
+  workspace: Workspace,
+  projectId: string,
+  outSubdirectory: string = DEFAULT_EXPORT_SUBDIRECTORY,
+): Promise<ExportPackage> {
+  const projectRoot = await workspace.projectRoot(projectId);
+  const outDir = join(projectRoot, outSubdirectory);
+  if (!existsSync(join(outDir, 'index.html'))) {
+    throw new WorkspaceError('no-export', `"${projectId}" has no export to package; export the game first`, 404);
+  }
+  const files = await listFiles(outDir);
+  const entries = await Promise.all(
+    files.map(async (path) => ({
+      path: `${projectId}/${relative(outDir, path).split(sep).join('/')}`,
+      bytes: new Uint8Array(await readFile(path)),
+    })),
+  );
+  return {
+    bytes: createZip(entries),
+    fileName: `${projectId}.zip`,
+    files: entries.length,
+    totalBytes: entries.reduce((sum, entry) => sum + entry.bytes.byteLength, 0),
+  };
+}
+
 export interface BuildOptions {
   workspace: Workspace;
   projectId: string;
@@ -128,7 +170,7 @@ export async function buildGame(options: BuildOptions): Promise<BuildResult> {
     );
   }
 
-  const outDir = join(projectRoot, options.outSubdirectory ?? join('.coilbox', 'export'));
+  const outDir = join(projectRoot, options.outSubdirectory ?? DEFAULT_EXPORT_SUBDIRECTORY);
   await rm(outDir, { recursive: true, force: true });
   await mkdir(outDir, { recursive: true });
 

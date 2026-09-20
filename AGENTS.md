@@ -20,7 +20,7 @@ pnpm studio list                              # projects in the workspace
 pnpm studio create my-game --template blank   # templates: blank, collect-room, physics-targets
 pnpm studio validate my-game                  # structural and relationship validation
 pnpm studio test my-game                      # validate + export + play headlessly, with exit status
-pnpm studio build my-game                     # standalone web build in .coilbox/export
+pnpm studio build my-game                     # standalone web build in .coilbox/export (--zip file.zip to package it)
 
 # Project management
 pnpm studio duplicate my-game --as my-game-2 --name "My Game 2"

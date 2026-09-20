@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import type { ViteDevServer } from 'vite';
 import { startApiServer, type ApiServerHandle } from './api.js';
 import { Workspace } from './workspace.js';
-import { buildGame } from './build.js';
+import { buildGame, packageExport } from './build.js';
 import { ProjectManager } from './management.js';
 import { testGame } from './test-runner.js';
 import { writeFile } from 'node:fs/promises';
@@ -176,15 +176,22 @@ async function main(): Promise<void> {
     }
     case 'build': {
       const id = args.positionals[0];
-      if (!id) throw new Error('usage: studio build <game-id> [--out <relative-dir>]');
+      if (!id) throw new Error('usage: studio build <game-id> [--out <relative-dir>] [--zip <file.zip>]');
       const workspace = workspaceFor();
+      const outSubdirectory = stringFlag(args, 'out');
       const result = await buildGame({
         workspace,
         projectId: id,
-        outSubdirectory: stringFlag(args, 'out'),
+        outSubdirectory,
         log: (message) => process.stdout.write(`${message}\n`),
       });
       process.stdout.write(`\nexported to ${result.outDir}\n`);
+      const zip = stringFlag(args, 'zip');
+      if (zip !== undefined) {
+        const packaged = await packageExport(workspace, id, outSubdirectory);
+        await writeFile(zip, packaged.bytes);
+        process.stdout.write(`packaged ${packaged.files} files (${packaged.bytes.byteLength} bytes) -> ${zip}\n`);
+      }
       return;
     }
     case 'test': {
@@ -296,7 +303,7 @@ async function main(): Promise<void> {
           '  list                list projects in the workspace',
           '  create <id>         create a project from a template (--template, --name)',
           '  validate <id>       validate a project on disk',
-          '  build <id>          export a standalone playable web build',
+          '  build <id>          export a standalone playable web build (--out <dir>, --zip <file.zip>)',
           '  test <id>           validate, export, and play the game headlessly',
           '  duplicate <id>      copy a project (--as <new-id>, --name "New Name")',
           '  archive <id>        move a project into the recoverable archive',
