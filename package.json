@@ -41,6 +41,7 @@
     "fixtures": "tsx tools/write-fixtures.ts",
     "verify:stage3": "tsx tools/verify-stage3.ts",
     "games": "tsx tools/write-games.ts",
+    "racer": "tsx tools/write-racer.ts",
     "verify:stage4": "tsx tools/verify-stage4.ts",
     "verify:stage5": "tsx tools/verify-stage5.ts",
     "verify": "tsx tools/verify-all.ts"

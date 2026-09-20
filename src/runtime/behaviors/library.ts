@@ -1,5 +1,6 @@
 import type { JsonValue } from '@schema/index.js';
 
+import { RACER_BEHAVIORS } from './racer.js';
 import type { BehaviorContext, BehaviorDefinition, BehaviorInstance, BehaviorPropertyDescriptor } from './types.js';
 
 /**
@@ -688,4 +689,5 @@ export const BEHAVIOR_LIBRARY: BehaviorDefinition[] = [
   knockDownTarget,
   animationPlayback,
   audioCue,
+  ...RACER_BEHAVIORS,
 ];
