@@ -631,7 +631,14 @@ function StudioShell(): JSX.Element {
             <div
               {...withDomClass(styles.studioBody, DOM.studioBody)}
               style={{
-                gridTemplateColumns: `${controlSize.rail} ${leftCollapsed ? 0 : layout.left}px 1fr ${layout.right}px`,
+                /**
+                 * The scene column's track is dropped, not zeroed, when the panel collapses: the
+                 * column element is not rendered then, and an empty 0px track would swallow the
+                 * viewport by auto-placement, pushing the inspector into the stage's slot.
+                 */
+                gridTemplateColumns: leftCollapsed
+                  ? `${controlSize.rail} 1fr ${layout.right}px`
+                  : `${controlSize.rail} ${layout.left}px 1fr ${layout.right}px`,
                 gridTemplateRows: `1fr ${layout.bottom}px`,
               }}
             >
