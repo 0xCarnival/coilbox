@@ -1,7 +1,7 @@
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import type Character from '../Player'
-import Game from '@mavonengine/core/Game'
-import Entity3D from '@mavonengine/core/World/Entity3D'
+import Game from '@coilbox/core/Game'
+import Entity3D from '@coilbox/core/World/Entity3D'
 
 export default class PlayerGraphicsComponent extends Entity3D {
   private player: Character

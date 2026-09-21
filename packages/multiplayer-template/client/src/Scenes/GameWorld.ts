@@ -1,8 +1,8 @@
 import type {
   Material,
 } from 'three'
-import Game from '@mavonengine/core/Game'
-import GameObject from '@mavonengine/core/World/GameObject'
+import Game from '@coilbox/core/Game'
+import GameObject from '@coilbox/core/World/GameObject'
 import {
   AmbientLight,
   Color,

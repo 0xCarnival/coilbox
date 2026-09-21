@@ -15,7 +15,7 @@ function createTestZip(destPath: string): void {
   zip.addFile('Core-0.0.6-alpha/packages/multiplayer-template/', Buffer.alloc(0))
   zip.addFile(
     'Core-0.0.6-alpha/packages/multiplayer-template/package.json',
-    Buffer.from(JSON.stringify({ name: '@mavonengine/multiplayer-template', version: '0.0.1' })),
+    Buffer.from(JSON.stringify({ name: '@coilbox/multiplayer-template', version: '0.0.1' })),
   )
   zip.addFile(
     'Core-0.0.6-alpha/packages/multiplayer-template/src/',
@@ -39,7 +39,7 @@ describe('extractTemplate', () => {
   let destDir: string
 
   beforeEach(() => {
-    tmpDir = join(tmpdir(), `mavon-extractor-test-${Date.now()}`)
+    tmpDir = join(tmpdir(), `coilbox-extractor-test-${Date.now()}`)
     mkdirSync(tmpDir, { recursive: true })
     zipPath = join(tmpDir, 'test.zip')
     destDir = join(tmpDir, 'output')

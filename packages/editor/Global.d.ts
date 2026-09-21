@@ -1,4 +1,4 @@
-import type Game from '@mavonengine/core/Game'
+import type Game from '@coilbox/core/Game'
 
 declare global {
   interface Window {

@@ -1,5 +1,5 @@
 import type Player from '../Base/Player'
-import NetworkedEntityState from '@mavonengine/core/Networking/NetworkedEntityState'
+import NetworkedEntityState from '@coilbox/core/Networking/NetworkedEntityState'
 import WalkingState from './WalkingState'
 
 export default class IdleState extends NetworkedEntityState {

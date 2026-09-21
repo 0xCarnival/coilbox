@@ -4,7 +4,7 @@ import glsl from 'vite-plugin-glsl'
 
 const GLSL_FILTER = /\.glsl$/
 
-const mavonEngineGlslPlugin = {
+const coilboxGlslPlugin = {
   name: 'glsl',
   setup(build) {
     build.onLoad({ filter: GLSL_FILTER }, (args) => {
@@ -23,13 +23,13 @@ export default defineConfig({
   optimizeDeps: {
     esbuildOptions: {
       plugins: [
-        mavonEngineGlslPlugin,
+        coilboxGlslPlugin,
       ],
     },
   },
   server: {
     watch: {
-      // For local npm link dev mode in @mavonengine/core
+      // For local npm link dev mode in @coilbox/core
       followSymlinks: true,
     },
   },

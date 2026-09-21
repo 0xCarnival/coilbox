@@ -48,7 +48,7 @@ export default class BaseGame extends EventEmitter implements GameObjectInterfac
       '',
       '┌─────────────────────────────────────────┐',
       '│                                         │',
-      '│              MavonEngine                │',
+      '│                 Coilbox                 │',
       '│                                         │',
       `│  Version:  ${ENGINE_VERSION.padEnd(28)} │`,
       `│  Three.js: r${THREE_REVISION.padEnd(27)} │`,
@@ -56,8 +56,7 @@ export default class BaseGame extends EventEmitter implements GameObjectInterfac
       // eslint-disable-next-line node/prefer-global/process
       `│  Mode:     ${(process.env.NODE_ENV ?? 'development').padEnd(28)} │`,
       '│                                         │',
-      '│  https://github.com/MavonEngine/core    │',
-      '│  https://mavonengine.com                │',
+      '│  https://github.com/0xCarnival/coilbox  │',
       '│                                         │',
       '└─────────────────────────────────────────┘',
       '',

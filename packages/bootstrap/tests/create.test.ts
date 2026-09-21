@@ -26,7 +26,7 @@ function createFakeZip(destPath: string): void {
   zip.addFile(
     'Core-0.0.6-alpha/packages/multiplayer-template/package.json',
     Buffer.from(
-      JSON.stringify({ name: '@mavonengine/multiplayer-template', version: '0.0.1' }, null, 2),
+      JSON.stringify({ name: '@coilbox/multiplayer-template', version: '0.0.1' }, null, 2),
     ),
   )
   zip.addFile(
@@ -61,7 +61,7 @@ describe('createProject', () => {
   let fakeZipPath: string
 
   beforeEach(() => {
-    tmpDir = join(tmpdir(), `mavon-create-test-${Date.now()}`)
+    tmpDir = join(tmpdir(), `coilbox-create-test-${Date.now()}`)
     mkdirSync(tmpDir, { recursive: true })
     fakeZipPath = join(tmpDir, 'fake.zip')
     createFakeZip(fakeZipPath)

@@ -11,7 +11,7 @@ export async function downloadZip(url: string): Promise<string> {
     throw new Error(`Failed to download ${url}: ${response.status} ${response.statusText}`)
   }
 
-  const dest = join(tmpdir(), `mavonengine-bootstrap-${Date.now()}.zip`)
+  const dest = join(tmpdir(), `coilbox-bootstrap-${Date.now()}.zip`)
   const fileStream = createWriteStream(dest)
 
   await pipeline(Readable.fromWeb(response.body as import('node:stream/web').ReadableStream), fileStream)

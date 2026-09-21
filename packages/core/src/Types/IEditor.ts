@@ -3,7 +3,7 @@ import type EditorHelper from '../Editor/EditorHelper'
 
 /**
  * Minimal interface that core code requires from an editor implementation.
- * The full Editor class (in @mavonengine/editor) must satisfy this interface.
+ * The full Editor class (in @coilbox/editor) must satisfy this interface.
  */
 export default interface IEditor {
   update(delta: number): void

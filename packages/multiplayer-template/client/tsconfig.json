@@ -23,6 +23,6 @@
   },
   "include": [
     "src",
-    "../node_modules/@mavonengine/core/Global.d.ts"
+    "../node_modules/@coilbox/core/Global.d.ts"
   ]
 }

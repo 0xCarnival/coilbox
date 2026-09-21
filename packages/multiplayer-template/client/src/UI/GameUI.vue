@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ENGINE_VERSION } from '@mavonengine/core/BaseGame'
+import { ENGINE_VERSION } from '@coilbox/core/BaseGame'
 import { nextTick, ref, watch } from 'vue'
 import NetworkManager from '../NetworkManager'
 import useChat from './composables/useChat'
@@ -44,9 +44,8 @@ function onKeydown(e: KeyboardEvent) {
         {{ networkState.connected ? `${networkState.players + 1} online · ${networkState.ping}ms` : 'Connecting…' }}
       </span>
       <span class="hud-links">
-        <span class="hud-version">MavonEngine v{{ ENGINE_VERSION }}</span>
-        <a href="https://mavonengine.com/getting-started" target="_blank" rel="noopener">Docs</a>
-        <a href="https://mavonengine.com/community" target="_blank" rel="noopener">Community</a>
+        <span class="hud-version">Coilbox v{{ ENGINE_VERSION }}</span>
+        <a href="https://github.com/0xCarnival/coilbox" target="_blank" rel="noopener">Repo</a>
       </span>
     </div>
 

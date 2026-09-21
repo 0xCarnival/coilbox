@@ -265,7 +265,7 @@ export default abstract class Server<TClient extends GameObject> {
   }
 
   start() {
-    this.logger.info('Starting @mavon/engine - Socket Server')
+    this.logger.info('Starting Coilbox - Socket Server')
     this.gameSocket.listen(8081)
 
     this.startHttpServer()
@@ -279,7 +279,7 @@ export default abstract class Server<TClient extends GameObject> {
   }
 
   private startHttpServer() {
-    this.logger.info('Starting @mavon/engine - HTTP Server')
+    this.logger.info('Starting Coilbox - HTTP Server')
     this.httpServer.listen(8050)
     this.registerHealthEndpoint()
 

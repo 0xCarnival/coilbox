@@ -1,6 +1,6 @@
 import type { ContainerApi } from '@tweakpane/core'
 import type { Object3D } from 'three'
-import EditorHelper from '@mavonengine/core/Editor/EditorHelper'
+import EditorHelper from '@coilbox/core/Editor/EditorHelper'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Mesh, PlaneGeometry } from 'three'
 import { Pane } from 'tweakpane'

@@ -47,7 +47,7 @@ describe('baseGame', () => {
     expect(game.physicsWorld).toBe(mockPhysicsWorld)
     expect(game.scene).toBeInstanceOf(Scene)
     expect(game.rayCaster).toBeInstanceOf(Raycaster)
-    expect(mockLogger.info).toHaveBeenCalledWith(expect.stringContaining('MavonEngine'))
+    expect(mockLogger.info).toHaveBeenCalledWith(expect.stringContaining('Coilbox'))
   })
 
   it('should call physics step and update callbacks on update()', () => {

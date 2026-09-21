@@ -1,4 +1,4 @@
-import { ENGINE_VERSION } from '@mavonengine/core/BaseGame'
+import { ENGINE_VERSION } from '@coilbox/core/BaseGame'
 import { version } from '../../../package.json' with { type: 'json' }
 import styles from './StatusBar.module.css'
 import { useSceneStats } from './useSceneStats'
@@ -40,7 +40,7 @@ export default function StatusBar() {
           Editor v
           {version}
           {' '}
-          | MavonEngine v
+          | Coilbox v
           {ENGINE_VERSION}
         </span>
       </div>

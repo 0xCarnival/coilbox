@@ -36,7 +36,7 @@ async function findParticleFiles(projectRoot) {
 export default defineConfig(({ command }) => ({
   resolve: {
     alias: command === 'serve'
-      ? { '@mavonengine/core': resolve(coreRoot, 'src') }
+      ? { '@coilbox/core': resolve(coreRoot, 'src') }
       : {},
   },
   plugins: [
@@ -56,7 +56,7 @@ export default defineConfig(({ command }) => ({
             const normalized = f.replaceAll('\\', '/')
             if (normalized.startsWith(coreSrc)) {
               const relative = normalized.slice(coreSrc.length).replace(TS_EXT_RE, '')
-              return `import '@mavonengine/core/${relative}'`
+              return `import '@coilbox/core/${relative}'`
             }
             return `import '${normalized}'`
           }).join('\n')
@@ -84,12 +84,12 @@ export default defineConfig(({ command }) => ({
   build: {
     lib: {
       entry: resolve(editorRoot, 'src/Editor.ts'),
-      name: 'MavonEditor',
+      name: 'CoilboxEditor',
       fileName: 'Editor',
       formats: ['es'],
     },
     rollupOptions: {
-      external: id => ['react', 'react-dom', 'react/jsx-runtime', 'three'].includes(id) || id.startsWith('react/') || id.startsWith('@mavonengine/core') || id.startsWith(coreRoot),
+      external: id => ['react', 'react-dom', 'react/jsx-runtime', 'three'].includes(id) || id.startsWith('react/') || id.startsWith('@coilbox/core') || id.startsWith(coreRoot),
       plugins: [
         {
           name: 'inject-css-into-mount-chunk',

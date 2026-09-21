@@ -1,4 +1,4 @@
-import Game from '@mavonengine/core/Game'
+import Game from '@coilbox/core/Game'
 import { Matrix4, Mesh, Object3D, Vector3 } from 'three'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -51,7 +51,7 @@ vi.mock('../src/Editor/mount', () => ({
   mountEditorUI: vi.fn().mockReturnValue({ unmount: vi.fn() }),
 }))
 
-vi.mock('@mavonengine/core/Game', () => ({
+vi.mock('@coilbox/core/Game', () => ({
   default: { instance: vi.fn() },
 }))
 

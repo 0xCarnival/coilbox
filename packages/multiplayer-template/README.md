@@ -3,19 +3,18 @@
 Bootstrap this template instantly with:
 
 ```bash
-npx @mavonengine/create-bootstrap
+npx @coilbox/create-bootstrap
 ```
 
-A ready-to-use multiplayer 3D game template built on the [MavonEngine](https://mavonengine.com/) framework. It demonstrates a client-server architecture with authoritative physics, real-time state synchronisation, player animations, chat, and a 3D world with environmental objects.
+A ready-to-use multiplayer 3D game template built on the [Coilbox](https://github.com/0xCarnival/coilbox/) framework. It demonstrates a client-server architecture with authoritative physics, real-time state synchronisation, player animations, chat, and a 3D world with environmental objects.
 
-**Stack:** Vue 3 + Three.js (client) · Node.js + Three.js (server) · RAPIER physics · geckos.io networking all tied together with MavonEngine
+**Stack:** Vue 3 + Three.js (client) · Node.js + Three.js (server) · RAPIER physics · geckos.io networking all tied together with Coilbox
 
 > **Note:** This template has only been tested with Node.js 24.
 
 **Links:**
-- [Website](https://mavonengine.com/)
-- [Getting Started](https://mavonengine.com/getting-started)
-- [Community](https://mavonengine.com/community)
+- [Repo](https://github.com/0xCarnival/coilbox)
+- [Issues](https://github.com/0xCarnival/coilbox/issues)
 
 ---
 
@@ -39,7 +38,7 @@ These are the foundation of the template. Understanding them is the key to exten
 
 ### `Base/Player` (`server/src/Base/Player.ts`)
 
-Extends `BasePlayer` from `@mavonengine/core`. This is the single source of truth for everything that must be consistent between server and client.
+Extends `BasePlayer` from `@coilbox/core`. This is the single source of truth for everything that must be consistent between server and client.
 
 Responsibilities:
 - **Health system** – `health`, `maxHealth`, `isDead`, `takeDamage()`, `heal()`
@@ -51,7 +50,7 @@ The server's `Server/Entities/Player` extends this with server-only concerns (e.
 
 ### `Base/Vegetation/Tree` (`server/src/Base/Vegetation/Tree.ts`)
 
-Extends `GameObject` from `@mavonengine/core`. Creates a RAPIER static cylinder collider for tree physics. The client extends this (without additions) and separately manages all tree rendering via an instanced mesh in `World/Trees.ts`.
+Extends `GameObject` from `@coilbox/core`. Creates a RAPIER static cylinder collider for tree physics. The client extends this (without additions) and separately manages all tree rendering via an instanced mesh in `World/Trees.ts`.
 
 ---
 

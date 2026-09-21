@@ -1,5 +1,5 @@
 {
-  "name": "mavon-engine-monorepo",
+  "name": "coilbox",
   "private": true,
   "workspaces": [
     "packages/bootstrap",

@@ -54,7 +54,7 @@ jobs:
     # workspaces does not handle recursively, so we need a separate npm ci here
     - name: Build multiplayer-template
       run: |
-        npm link @mavonengine/core
+        npm link @coilbox/core
         npm run typecheck
         npm run build
         npm run lint

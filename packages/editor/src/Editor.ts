@@ -1,15 +1,15 @@
-import type { LightPrimitive } from '@mavonengine/core/Prefab/Lights/index'
-import type { Primitive } from '@mavonengine/core/Prefab/Primitives/index'
-import type IEditor from '@mavonengine/core/Types/IEditor'
-import type GameObjectInterface from '@mavonengine/core/World/GameObjectInterface'
+import type { LightPrimitive } from '@coilbox/core/Prefab/Lights/index'
+import type { Primitive } from '@coilbox/core/Prefab/Primitives/index'
+import type IEditor from '@coilbox/core/Types/IEditor'
+import type GameObjectInterface from '@coilbox/core/World/GameObjectInterface'
 import type { Root } from 'react-dom/client'
 import type { Material, MeshBasicMaterial, Object3DEventMap } from 'three'
 import type { TransformControlsMode } from 'three/examples/jsm/Addons.js'
-import EditorHelper from '@mavonengine/core/Editor/EditorHelper'
-import Game from '@mavonengine/core/Game'
-import { AmbientLightPrimitive, DirectionalLightShadowPrimitive } from '@mavonengine/core/Prefab/Lights/index'
-import { BoxPrimitive, CapsulePrimitive, ConePrimitive, CylinderPrimitive, DodecahedronPrimitive, IcosahedronPrimitive, OctahedronPrimitive, PlanePrimitive, SpherePrimitive, TorusKnotPrimitive } from '@mavonengine/core/Prefab/Primitives/index'
-import EventEmitter from '@mavonengine/core/Utils/EventEmitter'
+import EditorHelper from '@coilbox/core/Editor/EditorHelper'
+import Game from '@coilbox/core/Game'
+import { AmbientLightPrimitive, DirectionalLightShadowPrimitive } from '@coilbox/core/Prefab/Lights/index'
+import { BoxPrimitive, CapsulePrimitive, ConePrimitive, CylinderPrimitive, DodecahedronPrimitive, IcosahedronPrimitive, OctahedronPrimitive, PlanePrimitive, SpherePrimitive, TorusKnotPrimitive } from '@coilbox/core/Prefab/Primitives/index'
+import EventEmitter from '@coilbox/core/Utils/EventEmitter'
 import { Matrix4, Mesh, Object3D, Vector2, Vector3 } from 'three'
 import { FlyControls, OutlinePass, TransformControls } from 'three/examples/jsm/Addons.js'
 import { applyShadeMode } from './Editor/applyShadeMode'
@@ -76,7 +76,7 @@ export default class Editor extends EventEmitter implements IEditor, GameObjectI
     Game.instance().contextMenuAbort.abort()
     Game.instance().uiRoot.innerHTML = ''
     Game.instance().uiRoot.style.opacity = '1'
-    document.title = 'MavonEngine | Editor'
+    document.title = 'Coilbox | Editor'
     document.getElementsByTagName('body')[0].removeAttribute('onContextMenu')
     Promise.all([
       import('./Editor/mount'),

@@ -1,6 +1,6 @@
 import RAPIER from '@dimforge/rapier3d-compat'
-import BaseGame from '@mavonengine/core/BaseGame'
-import BasePlayer from '@mavonengine/core/Networking/Entities/Player'
+import BaseGame from '@coilbox/core/BaseGame'
+import BasePlayer from '@coilbox/core/Networking/Entities/Player'
 import { Vector3 } from 'three'
 
 /**

@@ -7,8 +7,8 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "paths": {
-      "@mavonengine/core": ["../core/src/index"],
-      "@mavonengine/core/*": ["../core/src/*"]
+      "@coilbox/core": ["../core/src/index"],
+      "@coilbox/core/*": ["../core/src/*"]
     },
     "allowUmdGlobalAccess": true,
     "strict": true,

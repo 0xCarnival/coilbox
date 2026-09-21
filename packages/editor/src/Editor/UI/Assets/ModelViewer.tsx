@@ -1,6 +1,6 @@
 import type { AnimationAction, AnimationClip, Material, MeshBasicMaterial, Object3D } from 'three'
 import type { ShadeMode } from '../../../Editor'
-import Game from '@mavonengine/core/Game'
+import Game from '@coilbox/core/Game'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { AmbientLight, AnimationMixer, Box3, DirectionalLight, LoopOnce, LoopRepeat, Mesh, PerspectiveCamera, Scene, Vector3, WebGLRenderer } from 'three'
 import { OrbitControls } from 'three/examples/jsm/Addons.js'

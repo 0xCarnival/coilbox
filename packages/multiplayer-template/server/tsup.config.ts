@@ -8,7 +8,7 @@ export default defineConfig({
   bundle: true,
   splitting: false,
   sourcemap: true,
-  noExternal: ['@mavonengine/core'],
+  noExternal: ['@coilbox/core'],
   external: [
     '@geckos.io/server',
     'express',

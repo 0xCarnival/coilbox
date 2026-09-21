@@ -1,6 +1,6 @@
 import type { Object3D } from 'three'
-import Game from '@mavonengine/core/Game'
-import { getPreviewMap } from '@mavonengine/core/Particles/System/ParticlePreviewRegistry'
+import Game from '@coilbox/core/Game'
+import { getPreviewMap } from '@coilbox/core/Particles/System/ParticlePreviewRegistry'
 import { useEffect, useRef } from 'react'
 import { PerspectiveCamera, Scene, WebGLRenderer } from 'three'
 import styles from './ModelViewer.module.css'

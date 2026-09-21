@@ -1,8 +1,8 @@
 {
-  "name": "@mavonengine/create-bootstrap",
+  "name": "@coilbox/create-bootstrap",
   "type": "module",
   "version": "0.0.8",
-  "description": "Bootstrap a MavonEngine multiplayer project",
+  "description": "Bootstrap a Coilbox multiplayer project",
   "license": "MIT",
   "bin": {
     "create-bootstrap": "./dist/index.js"

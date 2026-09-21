@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
-import Game from '@mavonengine/core/Game'
-import EventEmitter from '@mavonengine/core/Utils/EventEmitter'
+import Game from '@coilbox/core/Game'
+import EventEmitter from '@coilbox/core/Utils/EventEmitter'
 import { act, cleanup, render, screen } from '@testing-library/react'
 
 import { Object3D, Scene, Vector3 } from 'three'
@@ -19,25 +19,25 @@ vi.mock('../../../src/Editor/UI/Assets/TextureViewer', () => ({
   default: () => null,
   getTextureUrl: () => '',
 }))
-vi.mock('@mavonengine/core/Editor/EditorHelper', () => ({ default: { from: () => null } }))
-vi.mock('@mavonengine/core/Renderer/AssetRenderer', () => ({
+vi.mock('@coilbox/core/Editor/EditorHelper', () => ({ default: { from: () => null } }))
+vi.mock('@coilbox/core/Renderer/AssetRenderer', () => ({
   default: vi.fn().mockImplementation(() => ({ render: vi.fn().mockReturnValue('') })),
 }))
-vi.mock('@mavonengine/core/Prefab/Water/Water', () => ({
+vi.mock('@coilbox/core/Prefab/Water/Water', () => ({
   default: vi.fn().mockImplementation(() => ({ material: {} })),
 }))
-vi.mock('@mavonengine/core/Prefab/Water/WaterManager', () => ({
+vi.mock('@coilbox/core/Prefab/Water/WaterManager', () => ({
   default: { instance: null, init: vi.fn() },
 }))
-vi.mock('@mavonengine/core/Prefab/Grass/Grass', () => ({
+vi.mock('@coilbox/core/Prefab/Grass/Grass', () => ({
   default: vi.fn().mockImplementation(() => ({ addBindings: vi.fn() })),
 }))
-vi.mock('@mavonengine/core/Particles/System/ParticlePreviewRegistry', () => ({
+vi.mock('@coilbox/core/Particles/System/ParticlePreviewRegistry', () => ({
   getPreviewMap: () => ({}),
   spawnParticle: vi.fn().mockReturnValue(new Object3D()),
   registerParticle: vi.fn(),
 }))
-vi.mock('@mavonengine/core/Game', () => ({
+vi.mock('@coilbox/core/Game', () => ({
   default: { instance: vi.fn() },
 }))
 
@@ -188,7 +188,7 @@ describe('dropped assets appear in SceneExplorer', () => {
 
       act(() => {
         game.canvas.dispatchEvent(
-          createDropEvent('application/mavonengine-resource', 'model'),
+          createDropEvent('application/coilbox-resource', 'model'),
         )
       })
 
@@ -205,7 +205,7 @@ describe('dropped assets appear in SceneExplorer', () => {
 
       act(() => {
         game.canvas.dispatchEvent(
-          createDropEvent('application/mavonengine-resource', 'doesNotExist'),
+          createDropEvent('application/coilbox-resource', 'doesNotExist'),
         )
       })
 
@@ -223,7 +223,7 @@ describe('dropped assets appear in SceneExplorer', () => {
 
       act(() => {
         game.canvas.dispatchEvent(
-          createDropEvent('application/mavonengine-resource', 'model2'),
+          createDropEvent('application/coilbox-resource', 'model2'),
         )
       })
 
@@ -243,7 +243,7 @@ describe('dropped assets appear in SceneExplorer', () => {
 
       act(() => {
         game.canvas.dispatchEvent(
-          createDropEvent('application/mavonengine-particle', 'Rain'),
+          createDropEvent('application/coilbox-particle', 'Rain'),
         )
       })
 
@@ -256,7 +256,7 @@ describe('dropped assets appear in SceneExplorer', () => {
 
       act(() => {
         game.canvas.dispatchEvent(
-          createDropEvent('application/mavonengine-resource', 'ghost'),
+          createDropEvent('application/coilbox-resource', 'ghost'),
         )
       })
 

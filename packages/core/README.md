@@ -1,14 +1,14 @@
-# MavonEngine — Three.js Game Engine for Browser Games
+# Coilbox — Three.js Game Engine for Browser Games
 
-MavonEngine is an open-source Three.js game engine built for single player or real-time multiplayer. It combines
+Coilbox is an open-source Three.js game engine built for single player or real-time multiplayer. It combines
 rendering, physics, networking, animation, and debugging into a single cohesive TypeScript package
 — so you're not assembling a stack, you're building a game.
 
-> **Early WIP** — things will change. For documentation visit [mavonengine.com](https://mavonengine.com).
+> **Early WIP** — things will change. Source: [github.com/0xCarnival/coilbox](https://github.com/0xCarnival/coilbox).
 
 ## Get Started
 ```bash
-npx @mavonengine/create-bootstrap
+npx @coilbox/create-bootstrap
 ```
 
 | URL | Description |
@@ -19,14 +19,14 @@ npx @mavonengine/create-bootstrap
 The multiplayer template includes the authoritative server setup, networking boilerplate, and a
 working client/server split out of the box.
 
-## What is MavonEngine?
+## What is Coilbox?
 
-MavonEngine is a full-stack Three.js game engine built on top of [Three.js](https://threejs.org/)
+Coilbox is a full-stack Three.js game engine built on top of [Three.js](https://threejs.org/)
 for rendering, [Rapier3D](https://rapier.rs/) for physics, and
 [geckos.io](https://github.com/geckosio/geckos.io) for WebRTC-based UDP networking.
 
 Most Three.js game engines focus on single-player or leave multiplayer as an exercise for the
-developer. MavonEngine is designed from the ground up for multiplayer — with a unified server-client
+developer. Coilbox is designed from the ground up for multiplayer — with a unified server-client
 architecture, authoritative physics, and real-time networking built in, not bolted on.
 
 ## How It Works
@@ -62,7 +62,7 @@ and state reconciliation.
 ## Why a Three.js Game Engine with Multiplayer?
 
 Three.js is the most widely used 3D library for the web, but it's a rendering library — not a game
-engine. MavonEngine fills that gap specifically for single or multiplayer: entity management, state machines,
+engine. Coilbox fills that gap specifically for single or multiplayer: entity management, state machines,
 world/chunk streaming, input handling, resource loading, and authoritative networking are all
 handled for you.
 
@@ -70,6 +70,6 @@ handled for you.
 
 This is early-stage software built out of real project needs. APIs will change and some parts are
 still tightly coupled to specific setups. Contributions and PRs are welcome — see the
-[contributing guide](https://mavonengine.com/getting-started/contributing) to get started.
+[repo](https://github.com/0xCarnival/coilbox) to get started.
 
-Join the [community](https://mavonengine.com/community) for development discussions.
+Issues and discussion: [github.com/0xCarnival/coilbox/issues](https://github.com/0xCarnival/coilbox/issues).

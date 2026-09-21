@@ -1,6 +1,6 @@
-import type GameObject from '@mavonengine/core/World/GameObject'
+import type GameObject from '@coilbox/core/World/GameObject'
 import type { Object3D } from 'three'
-import ObjectLabel from '@mavonengine/core/ui/ObjectLabel'
+import ObjectLabel from '@coilbox/core/ui/ObjectLabel'
 import { Vector3 } from 'three'
 
 /**

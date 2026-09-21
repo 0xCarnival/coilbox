@@ -1,9 +1,9 @@
 import type {
   CommandPacket,
-} from '@mavonengine/core/Networking/Server/Commands'
+} from '@coilbox/core/Networking/Server/Commands'
 import {
   ClientCommand as BaseClientCommand,
-} from '@mavonengine/core/Networking/Server/Commands'
+} from '@coilbox/core/Networking/Server/Commands'
 
 /**
  * Define all available client commands here that get sent to the server.

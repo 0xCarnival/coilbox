@@ -1,6 +1,6 @@
 import {
   ServerCommand as BaseServerCommand,
-} from '@mavonengine/core/Networking/Server/Commands'
+} from '@coilbox/core/Networking/Server/Commands'
 
 /**
  * Define all available server commands here that get sent to the client.

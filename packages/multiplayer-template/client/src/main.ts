@@ -1,6 +1,6 @@
 import type { App } from 'vue'
 import RAPIER from '@dimforge/rapier3d-compat'
-import Game from '@mavonengine/core/Game'
+import Game from '@coilbox/core/Game'
 import { createApp } from 'vue'
 import GameWorld from './Scenes/GameWorld'
 import Frame from './UI/Frame.vue'
@@ -8,7 +8,7 @@ import './game.css'
 
 if (import.meta.env.DEV) {
   Game.devModeHook = () => {
-    import('@mavonengine/editor').then(({ default: Editor }) => Editor.registerListener())
+    import('@coilbox/editor').then(({ default: Editor }) => Editor.registerListener())
   }
 }
 

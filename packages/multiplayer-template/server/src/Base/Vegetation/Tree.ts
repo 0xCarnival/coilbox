@@ -1,7 +1,7 @@
 import type { Vector3 } from 'three'
 import RAPIER from '@dimforge/rapier3d-compat'
-import BaseGame from '@mavonengine/core/BaseGame'
-import GameObject from '@mavonengine/core/World/GameObject'
+import BaseGame from '@coilbox/core/BaseGame'
+import GameObject from '@coilbox/core/World/GameObject'
 
 export default class Tree extends GameObject {
   collider?: InstanceType<typeof RAPIER.Collider>

@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import config from '@mavonengine/core/vite.config'
+import config from '@coilbox/core/vite.config'
 import vue from '@vitejs/plugin-vue'
 
 const clientRoot = dirname(fileURLToPath(import.meta.url))
@@ -26,10 +26,10 @@ export default {
   resolve: {
     ...config.resolve,
     alias: {
-      ...(existsSync(editorSrc) ? { '@mavonengine/editor': editorSrc } : {}),
-      ...(existsSync(coreSrc) ? { '@mavonengine/core': coreSrc } : {}),
+      ...(existsSync(editorSrc) ? { '@coilbox/editor': editorSrc } : {}),
+      ...(existsSync(coreSrc) ? { '@coilbox/core': coreSrc } : {}),
       '@template/server': resolve(templateRoot, 'server/src'),
     },
-    dedupe: ['@mavonengine/core', 'three', 'vue', 'react', 'react-dom', '@dimforge/rapier3d-compat'],
+    dedupe: ['@coilbox/core', 'three', 'vue', 'react', 'react-dom', '@dimforge/rapier3d-compat'],
   },
 }

@@ -1046,7 +1046,7 @@
                   "id": "D3BfG",
                   "name": "sbEngine",
                   "fill": "#FFFFFF",
-                  "content": "Mavon Engine",
+                  "content": "Coilbox",
                   "fontFamily": "Inter",
                   "fontSize": 10,
                   "fontWeight": "600"
@@ -1086,7 +1086,7 @@
           "id": "5rL0M",
           "name": "dsSubtitle",
           "fill": "$text-secondary",
-          "content": "Mavon Engine Editor — Component Library",
+          "content": "Coilbox Editor — Component Library",
           "fontFamily": "Inter",
           "fontSize": 12,
           "fontWeight": "normal"
